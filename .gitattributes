@@ -1,0 +1,14 @@
+# Normalize line endings across Windows (Mahmoud, Hatem, Ali) and Linux (Guindy)
+# Prevents "entire file changed" CRLF vs LF merge conflicts in Pull Requests!
+* text=auto eol=lf
+
+# Visual Studio Solution files prefer CRLF on Windows
+*.sln text eol=crlf
+
+# Binary assets (do not modify bytes)
+*.png binary
+*.jpg binary
+*.wav binary
+*.ogg binary
+*.ttf binary
+*.pdf binary

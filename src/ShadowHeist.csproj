@@ -12,10 +12,10 @@
     <PackageReference Include="Raylib-cs" Version="6.1.1" />
   </ItemGroup>
 
-  <!-- Automatically copy the assets/ folder to the build output directory -->
+  <!-- Automatically copy the assets/ folder to the build output directory on both Windows & Linux -->
   <ItemGroup>
-    <None Include="..\assets\**\*.*">
-      <Link>assets\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    <None Include="../assets/**/*.*">
+      <Link>assets/%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
