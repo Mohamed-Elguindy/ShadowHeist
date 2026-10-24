@@ -64,6 +64,6 @@ git push -u origin feat/mahmoud-player-stances
 | PR Author | Primary Reviewer | Secondary Reviewer |
 | :--- | :--- | :--- |
 | **Mahmoud** | Hatem | Guindy |
-| **Hatem** | Mahmoud | Ali |
+| **Hatem** | Guindy | Ali |
 | **Ali** | Mahmoud | Guindy |
 | **Guindy** | Hatem | Ali |
