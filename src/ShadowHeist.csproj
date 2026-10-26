@@ -6,6 +6,8 @@
     <RootNamespace>ShadowHeist</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Treat any nullable warning as a hard compiler error -->
+    <WarningsAsErrors>nullable</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
