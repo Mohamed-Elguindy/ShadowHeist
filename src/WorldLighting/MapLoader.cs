@@ -4,10 +4,6 @@ using ShadowHeist.Core;
 
 namespace ShadowHeist.WorldLighting;
 
-/// <summary>
-/// Data-driven JSON map loader and DTO definitions (Ticket #7 - Ali).
-/// Deserializes level geometry, floor dimensions, and spawn coordinates into <see cref="GameContext"/>.
-/// </summary>
 public static class MapLoader
 {
     private const string DefaultLevelName = "Level 1: City Central Bank";
@@ -16,6 +12,11 @@ public static class MapLoader
     private const int DefaultGridHeight = 12;
     private const float DefaultSpawnX = 128f;
     private const float DefaultSpawnY = 640f;
+
+    private const float DefaultGetawayX = 64f;
+    private const float DefaultGetawayY = 640f;
+    private const float DefaultGetawayWidth = 128f;
+    private const float DefaultGetawayHeight = 96f;
 
     private const float OuterWallThickness = 32f;
     private const float InteriorWallThickness = 32f;
@@ -33,25 +34,18 @@ public static class MapLoader
 
     public static LevelMapData LoadFromFile(string filePath, GameContext context)
     {
-        ArgumentNullException.ThrowIfNull(context);
-
-        LevelMapDto? dto = null;
-        if (File.Exists(filePath))
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            string json = File.ReadAllText(filePath);
-            dto = JsonSerializer.Deserialize<LevelMapDto>(json, SerializerOptions);
+            return LoadFromJson(string.Empty, context);
         }
 
-        LevelMapData mapData = ConvertDtoToMapData(dto);
-        ApplyToContext(mapData, context);
-        return mapData;
+        string json = File.ReadAllText(filePath);
+        return LoadFromJson(json, context);
     }
 
     public static LevelMapData LoadFromJson(string json, GameContext context)
     {
-        ArgumentNullException.ThrowIfNull(context);
-
-        var dto = string.IsNullOrWhiteSpace(json)
+        LevelMapDto? dto = string.IsNullOrWhiteSpace(json)
             ? null
             : JsonSerializer.Deserialize<LevelMapDto>(json, SerializerOptions);
 
@@ -64,43 +58,149 @@ public static class MapLoader
     {
         string levelName = string.IsNullOrWhiteSpace(dto?.LevelName) ? DefaultLevelName : dto.LevelName;
         int tileSize = dto?.TileSize > 0 ? dto.TileSize : DefaultTileSize;
-        int width = dto?.Width > 0 ? dto.Width : DefaultGridWidth;
-        int height = dto?.Height > 0 ? dto.Height : DefaultGridHeight;
+        int gridWidth = dto?.Width > 0 ? dto.Width : DefaultGridWidth;
+        int gridHeight = dto?.Height > 0 ? dto.Height : DefaultGridHeight;
 
-        Vector2 playerSpawn = dto?.PlayerSpawn is not null
-            ? new Vector2(dto.PlayerSpawn.X, dto.PlayerSpawn.Y)
-            : new Vector2(DefaultSpawnX, DefaultSpawnY);
+        Vector2 playerSpawn = ResolvePlayerSpawn(dto?.PlayerSpawn);
+        RectangleBounds getawayZone = ResolveGetawayZone(dto?.GetawayZone);
+        List<RectangleBounds> walls = BuildWalls(dto?.Walls, gridWidth * tileSize, gridHeight * tileSize);
+        List<InteractableSpawnData> interactables = BuildInteractables(dto?.Interactables);
+        List<GuardSpawnData> guards = BuildGuards(dto?.Guards);
 
-        List<RectangleBounds> walls = BuildWalls(dto, width * tileSize, height * tileSize);
-
-        return new LevelMapData(levelName, tileSize, width, height, playerSpawn, walls);
+        return new LevelMapData(
+            levelName,
+            tileSize,
+            gridWidth,
+            gridHeight,
+            playerSpawn,
+            getawayZone,
+            walls,
+            interactables,
+            guards);
     }
 
-    private static List<RectangleBounds> BuildWalls(LevelMapDto? dto, float mapPixelWidth, float mapPixelHeight)
+    private static Vector2 ResolvePlayerSpawn(MapPointDto? spawnDto)
+    {
+        return spawnDto is not null
+            ? new Vector2(spawnDto.X, spawnDto.Y)
+            : new Vector2(DefaultSpawnX, DefaultSpawnY);
+    }
+
+    private static RectangleBounds ResolveGetawayZone(MapRectDto? zoneDto)
+    {
+        return zoneDto is { Width: > 0f, Height: > 0f }
+            ? new RectangleBounds(zoneDto.X, zoneDto.Y, zoneDto.Width, zoneDto.Height)
+            : new RectangleBounds(DefaultGetawayX, DefaultGetawayY, DefaultGetawayWidth, DefaultGetawayHeight);
+    }
+
+    private static List<RectangleBounds> BuildWalls(
+        List<MapRectDto>? wallDtos,
+        float mapPixelWidth,
+        float mapPixelHeight)
+    {
+        var customWalls = ParseCustomWalls(wallDtos);
+        if (customWalls.Count > 0)
+        {
+            return customWalls;
+        }
+
+        return BuildDefaultBankWalls(mapPixelWidth, mapPixelHeight);
+    }
+
+    private static List<RectangleBounds> ParseCustomWalls(List<MapRectDto>? wallDtos)
     {
         var walls = new List<RectangleBounds>();
-
-        if (dto?.Walls is { Count: > 0 })
+        if (wallDtos is null)
         {
-            foreach (var wall in dto.Walls)
-            {
-                walls.Add(new RectangleBounds(wall.X, wall.Y, wall.Width, wall.Height));
-            }
-
             return walls;
         }
 
-        // Outer bank perimeter walls
-        walls.Add(new RectangleBounds(0f, 0f, mapPixelWidth, OuterWallThickness));
-        walls.Add(new RectangleBounds(0f, mapPixelHeight - OuterWallThickness, mapPixelWidth, OuterWallThickness));
-        walls.Add(new RectangleBounds(0f, 0f, OuterWallThickness, mapPixelHeight));
-        walls.Add(new RectangleBounds(mapPixelWidth - OuterWallThickness, 0f, OuterWallThickness, mapPixelHeight));
-
-        // Interior vault corridor partition walls
-        walls.Add(new RectangleBounds(VaultWallStartX, VaultTopWallY, VaultWallWidth, InteriorWallThickness));
-        walls.Add(new RectangleBounds(LobbyDividerX, LobbyDividerY, InteriorWallThickness, LobbyDividerHeight));
+        foreach (var wall in wallDtos)
+        {
+            if (wall.Width > 0f && wall.Height > 0f)
+            {
+                walls.Add(new RectangleBounds(wall.X, wall.Y, wall.Width, wall.Height));
+            }
+        }
 
         return walls;
+    }
+
+    private static List<RectangleBounds> BuildDefaultBankWalls(float mapPixelWidth, float mapPixelHeight)
+    {
+        return new List<RectangleBounds>
+        {
+            new(0f, 0f, mapPixelWidth, OuterWallThickness),
+            new(0f, mapPixelHeight - OuterWallThickness, mapPixelWidth, OuterWallThickness),
+            new(0f, 0f, OuterWallThickness, mapPixelHeight),
+            new(mapPixelWidth - OuterWallThickness, 0f, OuterWallThickness, mapPixelHeight),
+            new(VaultWallStartX, VaultTopWallY, VaultWallWidth, InteriorWallThickness),
+            new(LobbyDividerX, LobbyDividerY, InteriorWallThickness, LobbyDividerHeight)
+        };
+    }
+
+    private static List<InteractableSpawnData> BuildInteractables(List<InteractableSpawnDto>? interactableDtos)
+    {
+        var interactables = new List<InteractableSpawnData>();
+        if (interactableDtos is null)
+        {
+            return interactables;
+        }
+
+        foreach (var item in interactableDtos)
+        {
+            if (string.IsNullOrWhiteSpace(item.Type) || string.IsNullOrWhiteSpace(item.Id))
+            {
+                continue;
+            }
+
+            interactables.Add(new InteractableSpawnData(
+                item.Type,
+                item.Id,
+                new Vector2(item.X, item.Y),
+                item.TargetId,
+                item.CashValue));
+        }
+
+        return interactables;
+    }
+
+    private static List<GuardSpawnData> BuildGuards(List<GuardSpawnDto>? guardDtos)
+    {
+        var guards = new List<GuardSpawnData>();
+        if (guardDtos is null)
+        {
+            return guards;
+        }
+
+        foreach (var guard in guardDtos)
+        {
+            if (string.IsNullOrWhiteSpace(guard.Name))
+            {
+                continue;
+            }
+
+            List<Vector2> waypoints = ParseWaypoints(guard.Waypoints);
+            guards.Add(new GuardSpawnData(guard.Name, waypoints));
+        }
+
+        return guards;
+    }
+
+    private static List<Vector2> ParseWaypoints(List<MapPointDto>? waypointDtos)
+    {
+        var waypoints = new List<Vector2>();
+        if (waypointDtos is null)
+        {
+            return waypoints;
+        }
+
+        foreach (var point in waypointDtos)
+        {
+            waypoints.Add(new Vector2(point.X, point.Y));
+        }
+
+        return waypoints;
     }
 
     private static void ApplyToContext(LevelMapData mapData, GameContext context)
@@ -109,37 +209,4 @@ public static class MapLoader
         context.Walls.Clear();
         context.Walls.AddRange(mapData.Walls);
     }
-}
-
-public sealed record LevelMapData(
-    string LevelName,
-    int TileSize,
-    int GridWidth,
-    int GridHeight,
-    Vector2 PlayerSpawn,
-    IReadOnlyList<RectangleBounds> Walls);
-
-public sealed class LevelMapDto
-{
-    public string? LevelName { get; set; }
-    public int TileSize { get; set; }
-    public int Width { get; set; }
-    public int Height { get; set; }
-    public MapPointDto? PlayerSpawn { get; set; }
-    public MapRectDto? GetawayZone { get; set; }
-    public List<MapRectDto>? Walls { get; set; }
-}
-
-public sealed class MapPointDto
-{
-    public float X { get; set; }
-    public float Y { get; set; }
-}
-
-public sealed class MapRectDto
-{
-    public float X { get; set; }
-    public float Y { get; set; }
-    public float Width { get; set; }
-    public float Height { get; set; }
 }

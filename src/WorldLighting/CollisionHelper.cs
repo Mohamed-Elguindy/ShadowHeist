@@ -3,103 +3,96 @@ using ShadowHeist.Core;
 
 namespace ShadowHeist.WorldLighting;
 
-/// <summary>
-/// Pure static Circle-vs-AABB collision resolver (Ticket #8 - Ali).
-/// Pushes circular entities out of axis-aligned wall rectangles while allowing smooth wall sliding.
-/// </summary>
 public static class CollisionHelper
 {
     public const float DefaultActorRadius = 18f;
-    private const float DistanceEpsilon = 0.0001f;
+    private const float MinDistanceSquared = 0.0001f;
 
-    /// <summary>
-    /// Resolves collisions between a circular actor and all wall bounds, returning the corrected position.
-    /// </summary>
     public static Vector2 ResolveWallCollision(
-        Vector2 position,
-        float radius,
+        Vector2 actorPosition,
+        float actorRadius,
         IEnumerable<RectangleBounds> walls)
     {
-        ArgumentNullException.ThrowIfNull(walls);
-
-        if (radius <= 0f)
+        if (actorRadius <= 0f)
         {
-            return position;
+            return actorPosition;
         }
 
-        Vector2 resolvedPosition = position;
+        Vector2 resolvedPosition = actorPosition;
         foreach (var wall in walls)
         {
-            resolvedPosition = ResolveSingleWallCollision(resolvedPosition, radius, wall);
+            resolvedPosition = ResolveSingleWallCollision(resolvedPosition, actorRadius, wall);
         }
 
         return resolvedPosition;
     }
 
-    /// <summary>
-    /// Resolves collision between a circular actor and a single axis-aligned bounding box (AABB).
-    /// </summary>
     public static Vector2 ResolveSingleWallCollision(
-        Vector2 position,
-        float radius,
+        Vector2 actorPosition,
+        float actorRadius,
         RectangleBounds wall)
     {
-        if (radius <= 0f || wall.Width <= 0f || wall.Height <= 0f)
+        if (IsInvalidInput(actorRadius, wall))
         {
-            return position;
+            return actorPosition;
         }
 
+        Vector2 closestPointOnWall = ClampToWall(actorPosition, wall);
+        Vector2 offsetFromWall = actorPosition - closestPointOnWall;
+        float distanceSquared = offsetFromWall.LengthSquared();
+
+        if (distanceSquared >= actorRadius * actorRadius)
+        {
+            return actorPosition;
+        }
+
+        if (distanceSquared > MinDistanceSquared)
+        {
+            return closestPointOnWall + (Vector2.Normalize(offsetFromWall) * actorRadius);
+        }
+
+        return PushToNearestWallEdge(actorPosition, actorRadius, wall);
+    }
+
+    private static bool IsInvalidInput(float actorRadius, RectangleBounds wall)
+    {
+        return actorRadius <= 0f || wall.Width <= 0f || wall.Height <= 0f;
+    }
+
+    private static Vector2 ClampToWall(Vector2 actorPosition, RectangleBounds wall)
+    {
+        var minBounds = new Vector2(wall.X, wall.Y);
+        var maxBounds = new Vector2(wall.X + wall.Width, wall.Y + wall.Height);
+        return Vector2.Clamp(actorPosition, minBounds, maxBounds);
+    }
+
+    private static Vector2 PushToNearestWallEdge(
+        Vector2 actorPosition,
+        float actorRadius,
+        RectangleBounds wall)
+    {
         float wallRight = wall.X + wall.Width;
         float wallBottom = wall.Y + wall.Height;
 
-        float closestX = Math.Clamp(position.X, wall.X, wallRight);
-        float closestY = Math.Clamp(position.Y, wall.Y, wallBottom);
+        float distToLeft = MathF.Abs(actorPosition.X - wall.X);
+        float distToRight = MathF.Abs(wallRight - actorPosition.X);
+        float distToTop = MathF.Abs(actorPosition.Y - wall.Y);
+        float distToBottom = MathF.Abs(wallBottom - actorPosition.Y);
 
-        float deltaX = position.X - closestX;
-        float deltaY = position.Y - closestY;
-        float distanceSquared = (deltaX * deltaX) + (deltaY * deltaY);
-        float radiusSquared = radius * radius;
+        float nearestHorizontalDist = MathF.Min(distToLeft, distToRight);
+        float nearestVerticalDist = MathF.Min(distToTop, distToBottom);
 
-        if (distanceSquared >= radiusSquared)
-        {
-            return position;
-        }
-
-        // Standard overlap: circle center is outside the wall rectangle
-        if (distanceSquared > DistanceEpsilon)
-        {
-            float distance = MathF.Sqrt(distanceSquared);
-            float penetrationDepth = radius - distance;
-            float normalX = deltaX / distance;
-            float normalY = deltaY / distance;
-
-            return new Vector2(
-                position.X + (normalX * penetrationDepth),
-                position.Y + (normalY * penetrationDepth));
-        }
-
-        // Deep overlap: circle center is inside the wall rectangle; push out toward nearest edge
-        float distToLeft = MathF.Abs(position.X - wall.X);
-        float distToRight = MathF.Abs(wallRight - position.X);
-        float distToTop = MathF.Abs(position.Y - wall.Y);
-        float distToBottom = MathF.Abs(wallBottom - position.Y);
-
-        float minHorizontal = MathF.Min(distToLeft, distToRight);
-        float minVertical = MathF.Min(distToTop, distToBottom);
-
-        if (minHorizontal < minVertical)
+        if (nearestHorizontalDist < nearestVerticalDist)
         {
             float resolvedX = distToLeft < distToRight
-                ? wall.X - radius
-                : wallRight + radius;
-            return new Vector2(resolvedX, position.Y);
+                ? wall.X - actorRadius
+                : wallRight + actorRadius;
+            return new Vector2(resolvedX, actorPosition.Y);
         }
-        else
-        {
-            float resolvedY = distToTop < distToBottom
-                ? wall.Y - radius
-                : wallBottom + radius;
-            return new Vector2(position.X, resolvedY);
-        }
+
+        float resolvedY = distToTop < distToBottom
+            ? wall.Y - actorRadius
+            : wallBottom + actorRadius;
+        return new Vector2(actorPosition.X, resolvedY);
     }
 }
