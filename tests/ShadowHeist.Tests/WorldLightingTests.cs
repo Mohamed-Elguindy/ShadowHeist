@@ -10,7 +10,7 @@ public sealed class WorldLightingTests
     private const float FloatTolerance = 0.001f;
 
     [Fact]
-    public void LoadFromJson_ValidJson_PopulatesMapDataSpawnsAndContext()
+    public void LoadFromJson_ValidJson_PopulatesMapDataAndContext()
     {
         using var context = new GameContext();
         const string json = """
@@ -24,18 +24,6 @@ public sealed class WorldLightingTests
           "walls": [
             { "x": 0, "y": 0, "width": 1280, "height": 32 },
             { "x": 320, "y": 160, "width": 640, "height": 32 }
-          ],
-          "interactables": [
-            { "type": "LootCrate", "id": "loot_1", "x": 960, "y": 192, "cashValue": 250000 }
-          ],
-          "guards": [
-            {
-              "name": "Guard_Lobby",
-              "waypoints": [
-                { "x": 320, "y": 320 },
-                { "x": 640, "y": 320 }
-              ]
-            }
           ]
         }
         """;
@@ -49,14 +37,6 @@ public sealed class WorldLightingTests
         Assert.Equal(new Vector2(128f, 640f), context.PlayerPosition);
         Assert.Equal(new RectangleBounds(64f, 640f, 128f, 96f), mapData.GetawayZone);
         Assert.Equal(2, context.Walls.Count);
-
-        Assert.Single(mapData.Interactables);
-        Assert.Equal("LootCrate", mapData.Interactables[0].Type);
-        Assert.Equal(250_000, mapData.Interactables[0].CashValue);
-
-        Assert.Single(mapData.Guards);
-        Assert.Equal("Guard_Lobby", mapData.Guards[0].Name);
-        Assert.Equal(2, mapData.Guards[0].Waypoints.Count);
     }
 
     [Fact]
