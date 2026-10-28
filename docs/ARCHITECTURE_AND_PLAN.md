@@ -207,7 +207,7 @@ Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where ev
 | :--- | :--- | :--- | :--- |
 | **#1** | 👤 Guindy | Initialize Day-1 Skeleton (`GameContext`, `IGameSystem`, `IInteractable`, `GameEventBus`) | Interfaces & DI |
 | **#2** | 👤 Guindy | Implement `LootCrate.cs : IInteractable` & basic `HudRenderer.cs` (`\$0 / \$500,000`) | Interface implementation |
-| **#3** | 🎮 Mahmoud | Create `IInputProvider` + `KeyboardInputProvider.cs` returning a clean `PlayerInputCommand` struct | Input Abstraction (DI) |
+| **#3** | 🎮 Mahmoud | Create `IInputProvider` + `KeyboardInputProvider.cs` returning `PlayerInputCommand` (WASD move, Left Ctrl crouch/sneak toggle, Shift sprint, E interact) | Input Abstraction (DI) |
 | **#4** | 🎮 Mahmoud | Implement `Player.cs` movement & smooth mouse-aim rotation separated from `PlayerRenderer.cs` | Single Responsibility Principle |
 | **#5** | 🧠 Hatem | Create `Guard.cs` entity + `PatrolState.cs : IGuardState` (walks between patrol waypoints) | State Pattern basics |
 | **#6** | 🧠 Hatem | Add smooth guard rotation toward next waypoint + debug gizmo lines | Vector2 math encapsulation |
@@ -223,7 +223,7 @@ Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where ev
 | :--- | :--- | :--- | :--- |
 | **#9** | 👤 Guindy | Create `VaultDoor.cs` and `KeypadTerminal.cs : IInteractable` (holding `E` fills bypass bar) | Object composition & IDs |
 | **#10** | 👤 Guindy | Add animated **Sound Meter Bar** & **Interaction Progress Ring** to `HudRenderer.cs` | Event Bus subscriptions |
-| **#11** | 🎮 Mahmoud | Implement `IPlayerStance` with `SneakStance.cs`, `WalkStance.cs`, and `SprintStance.cs` | State Pattern & Polymorphism |
+| **#11** | 🎮 Mahmoud | Implement `IPlayerStance` with `SneakStance.cs` (toggled via `Left Ctrl`), `WalkStance.cs`, and `SprintStance.cs` | State Pattern & Polymorphism |
 | **#12** | 🎮 Mahmoud | Publish `NoiseEmittedEvent` based on active stance & floor surface (silent crouch vs. loud sprint) | Event-Driven Architecture |
 | **#13** | 🧠 Hatem | Implement `SuspiciousState.cs` (guard hears `NoiseEmittedEvent` and walks to investigate) | Event-driven state transitions |
 | **#14** | 🧠 Hatem | Implement 2D Grid `AStarPathfinder.cs` so guards navigate cleanly around walls and rooms | Algorithm encapsulation |
