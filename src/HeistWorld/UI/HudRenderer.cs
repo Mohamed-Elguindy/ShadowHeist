@@ -11,7 +11,7 @@ public sealed class HudRenderer
     private const int CashFontSize = 20;
     private const int PromptFontSize = 16;
 
-    public void Draw(GameContext context)
+    public void DrawHudOverlay(GameContext context)
     {
         DrawStolenCashBanner(context.StolenCash);
         DrawContextualPrompt(context);
@@ -36,25 +36,13 @@ public sealed class HudRenderer
 
     private static void DrawContextualPrompt(GameContext context)
     {
-        IInteractable? activeItem = GetNearbyInteractable(context);
+        IInteractable? activeItem = InteractableQuery.FindInPlayerRange(context);
         if (activeItem == null || string.IsNullOrWhiteSpace(activeItem.PromptText))
         {
             return;
         }
 
         DrawPromptBox(activeItem.PromptText, activeItem.Position);
-    }
-
-    private static IInteractable? GetNearbyInteractable(GameContext context)
-    {
-        foreach (var item in context.Interactables)
-        {
-            if (item.CanInteract(context.PlayerPosition))
-            {
-                return item;
-            }
-        }
-        return null;
     }
 
     private static void DrawPromptBox(string prompt, Vector2 worldPosition)
