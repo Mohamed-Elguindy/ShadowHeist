@@ -67,11 +67,10 @@ public sealed class Player
             _stepTimer = SprintStepInterval;
         }
 
-            eventBus.Publish(new NoiseEmittedEvent(
-                Position,
-                CurrentStance.NoiseRadius,
-                $"PlayerFootstep:{CurrentStance.Name}"));
-        }
+        eventBus.Publish(new NoiseEmittedEvent(
+            Position,
+            CurrentStance.NoiseRadius,
+            $"PlayerFootstep:{CurrentStance.Name}"));
     }
 
     private void RotateTowards(Vector2 targetPosition, float deltaTime)

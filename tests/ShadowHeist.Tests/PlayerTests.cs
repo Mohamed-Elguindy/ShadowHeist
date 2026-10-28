@@ -1,5 +1,6 @@
 using System.Numerics;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Events;
 using ShadowHeist.Core.Interfaces;
 using ShadowHeist.PlayerSystem;
 using Xunit;
