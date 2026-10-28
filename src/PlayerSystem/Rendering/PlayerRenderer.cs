@@ -11,6 +11,7 @@ public sealed class PlayerRenderer : IDisposable
 {
     private const string SpritePath = "assets/sprites/player_sneak.png";
     private const float SpriteSize = 48f;
+    private const float SpriteFacesUpOffsetDegrees = 90f;
     private static readonly Vector2 SpriteOrigin = new(SpriteSize / 2f, SpriteSize / 2f);
     private readonly Texture2D _texture;
     private readonly bool _hasTexture;
@@ -27,7 +28,8 @@ public sealed class PlayerRenderer : IDisposable
         {
             var source = new Rectangle(0, 0, _texture.Width, _texture.Height);
             var dest = new Rectangle(player.Position.X, player.Position.Y, SpriteSize, SpriteSize);
-            Raylib.DrawTexturePro(_texture, source, dest, SpriteOrigin, player.RotationDegrees, Color.White);
+            float spriteRotation = player.RotationDegrees + SpriteFacesUpOffsetDegrees;
+            Raylib.DrawTexturePro(_texture, source, dest, SpriteOrigin, spriteRotation, Color.White);
         }
         else
         {

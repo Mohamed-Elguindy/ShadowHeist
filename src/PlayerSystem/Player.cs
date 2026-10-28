@@ -14,7 +14,7 @@ namespace ShadowHeist.PlayerSystem;
 public sealed class Player
 {
     private const float BaseSpeed = 160f;
-    private const float TurnSpeed = 720f; // Degrees per second
+    private const float MinAimDistance = 16f; // Ignore aim changes when mouse is directly on the player
     private const float WalkStepInterval = 0.40f;   // Seconds between walk footstep sounds
     private const float SprintStepInterval = 0.25f; // Seconds between sprint footstep sounds
 
@@ -43,7 +43,7 @@ public sealed class Player
         Position = CollisionHelper.ResolveWallCollision(Position, Radius, walls);
 
         // 4. Aim towards mouse
-        RotateTowards(input.AimWorldPosition, deltaTime);
+        RotateTowards(input.AimWorldPosition);
 
         // 5. Emit footstep noise based on active stance
         UpdateFootstepNoise(input.MoveDirection, deltaTime, eventBus);
@@ -73,21 +73,12 @@ public sealed class Player
             $"PlayerFootstep:{CurrentStance.Name}"));
     }
 
-    private void RotateTowards(Vector2 targetPosition, float deltaTime)
+    private void RotateTowards(Vector2 targetPosition)
     {
         Vector2 diff = targetPosition - Position;
-        if (diff.LengthSquared() < 0.0001f) return;
+        if (diff.LengthSquared() < MinAimDistance * MinAimDistance) return;
 
-        // Atan2 takes (Y, X) and returns radians; * (180 / PI) converts to degrees
-        float targetAngle = MathF.Atan2(diff.Y, diff.X) * (180f / MathF.PI);
-
-        // Shortest angle difference (-180 to +180)
-        float deltaAngle = (targetAngle - RotationDegrees) % 360f;
-        if (deltaAngle > 180f) deltaAngle -= 360f;
-        if (deltaAngle < -180f) deltaAngle += 360f;
-
-        // Clamp rotation step to smoothly reach target without overshooting
-        float maxStep = TurnSpeed * deltaTime;
-        RotationDegrees += Math.Clamp(deltaAngle, -maxStep, maxStep);
+        // Directly face mouse aim position without turn-rate lag
+        RotationDegrees = MathF.Atan2(diff.Y, diff.X) * (180f / MathF.PI);
     }
 }
