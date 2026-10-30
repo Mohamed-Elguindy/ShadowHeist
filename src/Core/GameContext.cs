@@ -18,6 +18,7 @@ public sealed class GameContext : IDisposable
     public Vector2 PlayerPosition { get; set; } = new(160f, 360f);
     public int StolenCash { get; set; }
     public bool IsAlarmTriggered { get; set; }
+    public PlayerInputCommand CurrentInput { get; set; }
 
     public void RegisterSystem(IGameSystem system)
     {

@@ -12,7 +12,8 @@ public readonly record struct PlayerInputCommand(
     bool IsSneakToggled,
     bool IsSprintHeld,
     bool IsInteractPressed,
-    bool IsUseGadgetPressed
+    bool IsUseGadgetPressed,
+    bool IsInteractHeld = false
 );
 
 /// <summary>

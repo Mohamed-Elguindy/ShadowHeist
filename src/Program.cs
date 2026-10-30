@@ -23,10 +23,10 @@ public static class Program
         Raylib.SetTargetFPS(TargetFps);
 
         using var context = new GameContext();
+        context.RegisterSystem(new PlayerSystemModule());  // Mahmoud (Input & Player)
         context.RegisterSystem(new WorldLightingModule()); // Ali
-        context.RegisterSystem(new HeistWorldModule());    // Guindy
+        context.RegisterSystem(new HeistWorldModule());    // Guindy (Interactions)
         context.RegisterSystem(new GuardAiModule());       // Hatem
-        context.RegisterSystem(new PlayerSystemModule());  // Mahmoud
 
         context.InitializeAll();
 

@@ -207,7 +207,7 @@ Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where ev
 | :--- | :--- | :--- | :--- |
 | **#1** | 👤 Guindy | Initialize Day-1 Skeleton (`GameContext`, `IGameSystem`, `IInteractable`, `GameEventBus`) | Interfaces & DI |
 | **#2** | 👤 Guindy | Implement `LootCrate.cs : IInteractable` & basic `HudRenderer.cs` (`\$0 / \$500,000`) | Interface implementation |
-| **#3** | 🎮 Mahmoud | Create `IInputProvider` + `KeyboardInputProvider.cs` returning a clean `PlayerInputCommand` struct | Input Abstraction (DI) |
+| **#3** | 🎮 Mahmoud | Create `IInputProvider` + `KeyboardInputProvider.cs` returning `PlayerInputCommand` (WASD move, Left Ctrl crouch/sneak toggle, Shift sprint, E interact) | Input Abstraction (DI) |
 | **#4** | 🎮 Mahmoud | Implement `Player.cs` movement & smooth mouse-aim rotation separated from `PlayerRenderer.cs` | Single Responsibility Principle |
 | **#5** | 🧠 Hatem | Create `Guard.cs` entity + `PatrolState.cs : IGuardState` (walks between patrol waypoints) | State Pattern basics |
 | **#6** | 🧠 Hatem | Add smooth guard rotation toward next waypoint + debug gizmo lines | Vector2 math encapsulation |
@@ -223,7 +223,7 @@ Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where ev
 | :--- | :--- | :--- | :--- |
 | **#9** | 👤 Guindy | Create `VaultDoor.cs` and `KeypadTerminal.cs : IInteractable` (holding `E` fills bypass bar) | Object composition & IDs |
 | **#10** | 👤 Guindy | Add animated **Sound Meter Bar** & **Interaction Progress Ring** to `HudRenderer.cs` | Event Bus subscriptions |
-| **#11** | 🎮 Mahmoud | Implement `IPlayerStance` with `SneakStance.cs`, `WalkStance.cs`, and `SprintStance.cs` | State Pattern & Polymorphism |
+| **#11** | 🎮 Mahmoud | Implement `IPlayerStance` with `SneakStance.cs` (toggled via `Left Ctrl`), `WalkStance.cs`, and `SprintStance.cs` | State Pattern & Polymorphism |
 | **#12** | 🎮 Mahmoud | Publish `NoiseEmittedEvent` based on active stance & floor surface (silent crouch vs. loud sprint) | Event-Driven Architecture |
 | **#13** | 🧠 Hatem | Implement `SuspiciousState.cs` (guard hears `NoiseEmittedEvent` and walks to investigate) | Event-driven state transitions |
 | **#14** | 🧠 Hatem | Implement 2D Grid `AStarPathfinder.cs` so guards navigate cleanly around walls and rooms | Algorithm encapsulation |
@@ -261,3 +261,54 @@ Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where ev
 | **#30** | 🧠 Hatem | Write **5 `xUnit` Unit Tests** verifying `AStarPathfinder` shortest paths and `Guard` state transitions | Automated Unit Testing (`xUnit`) |
 | **#31** | 🔦 Ali | Build **Level 1 (City Bank)** and **Level 2 (Luxury Penthouse)** JSON maps + integrate HD sprite pack | Content pipeline |
 | **#32** | 🔦 Ali | Add Bloom shader (`BeginShaderMode`) and `AudioManager` (`IDisposable` sound cleanup) | Resource lifecycle (`IDisposable`) |
+
+---
+
+## 5. 🚀 Extra Milestone 5: 3D Tactical Perspective Overhaul (Bonus Post-Launch Milestone)
+
+> [!TIP]
+> **The Ultimate Proof of SOLID Architecture:** 
+> Because gameplay logic (`Player`, `Guard`, `A* Pathfinding`, `CollisionHelper`, `VaultDoor`) is strictly decoupled from Raylib drawing calls, the simulation runs entirely on a 2D mathematical ground plane (`X, Z` where `Y = 0`). 
+> Milestone 5 swaps the presentation layer from 2D top-down sprites to a **3D Isometric Tactical View (`Camera3D`)** with **zero breaking changes to gameplay logic and zero broken unit tests**.
+
+### 📐 2D-to-3D Coordinate Mapping Architecture
+
+```mermaid
+flowchart LR
+    subgraph Simulation2D["Pure 2D Logic Plane (X, Y)"]
+        P2D["Player.Position (X, Y)"]
+        G2D["Guard.Position (X, Y)"]
+        W2D["RectangleBounds Walls"]
+        AStar["2D A* Grid Pathfinding"]
+    end
+
+    subgraph Renderer3D["Raylib Camera3D Presentation (X, Y, Z)"]
+        Floor3D["Textured 3D Ground Quad (X, 0, Z)"]
+        Walls3D["Extruded 3D Wall Blocks (DrawCube)"]
+        Billboards["3D Y-Axis Billboard Characters"]
+        Flashlights["3D Volumetric Vision Cones"]
+    end
+
+    Simulation2D -->|"Y -> Z Ground Transform"| Renderer3D
+```
+
+### 🎮 Dual-Mode Viewport Control
+Pressing **`[F5]`** toggles seamlessly between:
+1. **Classic 2D Blueprint View:** Top-down pixel view with 2D lighting and shadows (great for tactical planning).
+2. **3D Isometric Tactical View:** Angled 3D camera (`Camera3D`) with depth, extruded concrete walls, and volumetric light cones.
+
+### 🗓️ Milestone 5 Ticket Backlog (Tickets #33 – #36)
+
+| Ticket | Owner | Task Description | Engineering Focus |
+| :--- | :--- | :--- | :--- |
+| **#33** | 👤 Guindy | **`Camera3D` Controller & Dual-Mode Viewport:** Implement smooth isometric follow camera, `[F5]` perspective toggle, and ray-to-plane mouse cursor picking (`GetMouseRay`) so mouse aim and keypad interactions work seamlessly in 3D. | Ray-Plane Math & Viewport Abstraction |
+| **#34** | 🔦 Ali | **3D Wall Extrusion & Level Geometry:** Extrude `RectangleBounds` walls into 3D voxel blocks (`DrawCube` / `DrawCubeWires`) with concrete textures, render 3D floor quad, and render laser tripwires as glowing 3D beam cylinders. | 3D Primitives & Texture Mapping |
+| **#35** | 🎮 Mahmoud | **3D Character Billboarding & 3D Gadgets:** Render player sprite as a camera-oriented 3D billboard (`DrawBillboardRec`), project footstep sound rings onto the 3D floor plane, and render thrown coins/EMPs as 3D tumbling meshes. | Billboard Math & 3D Gizmos |
+| **#36** | 🧠 Hatem | **3D Guard Presentation & Volumetric Flashlight:** Render guards in 3D, project guard vision cones as angled 3D transparent light pyramids, and render 3D overhead detection question mark / exclamation mark meters. | Volumetric Cones & World-Space UI |
+
+---
+
+### 🎓 Academic & Graduation Project Defense Note
+When defending the project in front of professors and committee evaluators:
+> *"To prove that our team achieved genuine SOLID separation of concerns, we added a live `[F5]` switch that transforms the game from a 2D sprite game into a 3D isometric game in real-time. Notice that not a single line of Guard AI, A\* pathfinding, or player stance logic had to be rewritten — our unit tests pass identically in both 2D and 3D because our business logic is 100% agnostic of how graphics are rendered."*
+
