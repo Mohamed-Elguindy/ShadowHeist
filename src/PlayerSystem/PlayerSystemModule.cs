@@ -14,9 +14,14 @@ namespace ShadowHeist.PlayerSystem;
 /// </summary>
 public sealed class PlayerSystemModule : IGameSystem, IDisposable
 {
-    private readonly IInputProvider _input = new KeyboardInputProvider();
+    private readonly IInputProvider _input;
     private Player _player = null!;
-    private PlayerRenderer _renderer = null!;
+    private PlayerRenderer? _renderer;
+
+    public PlayerSystemModule(IInputProvider? input = null)
+    {
+        _input = input ?? new KeyboardInputProvider();
+    }
 
     public void Init(GameContext context)
     {
@@ -26,11 +31,12 @@ public sealed class PlayerSystemModule : IGameSystem, IDisposable
 
     public void Update(float deltaTime, GameContext context)
     {
-        _player.Update(_input.ReadInput(), deltaTime, context.Walls, context.EventBus);
+        context.CurrentInput = _input.ReadInput();
+        _player.Update(context.CurrentInput, deltaTime, context.Walls, context.EventBus);
         context.PlayerPosition = _player.Position;
     }
 
-    public void Draw(GameContext context) => _renderer.Draw(_player);
+    public void Draw(GameContext context) => _renderer?.Draw(_player);
 
-    public void Dispose() => _renderer.Dispose();
+    public void Dispose() => _renderer?.Dispose();
 }

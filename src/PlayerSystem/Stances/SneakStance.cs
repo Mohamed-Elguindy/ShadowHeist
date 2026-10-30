@@ -11,14 +11,27 @@ public sealed class SneakStance : IPlayerStance
     private const float Speed = 0.55f;
     private const float Noise = 0f;
 
+    private bool _requiresSprintRelease;
+
     public string Name => "Sneak";
     public float SpeedMultiplier => Speed;
     public float NoiseRadius => Noise;
 
+    public SneakStance(bool enteredWhileSprinting = false)
+    {
+        _requiresSprintRelease = enteredWhileSprinting;
+    }
+
     public IPlayerStance HandleInput(PlayerInputCommand command)
     {
-        // Sprinting immediately breaks out of sneak
-        if (command.IsSprintHeld)
+        // Reset latch once player lifts their finger off Shift
+        if (!command.IsSprintHeld)
+        {
+            _requiresSprintRelease = false;
+        }
+
+        // Sprinting breaks out of sneak (only if Shift was freshly pressed)
+        if (command.IsSprintHeld && !_requiresSprintRelease)
         {
             return new SprintStance();
         }

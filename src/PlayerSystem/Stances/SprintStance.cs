@@ -17,16 +17,16 @@ public sealed class SprintStance : IPlayerStance
 
     public IPlayerStance HandleInput(PlayerInputCommand command)
     {
+        // Emergency brake: pressing Ctrl while sprinting immediately drops into sneak
+        if (command.IsSneakToggled)
+        {
+            return new SneakStance(enteredWhileSprinting: true);
+        }
+
         // Releasing Shift returns to walk
         if (!command.IsSprintHeld)
         {
             return new WalkStance();
-        }
-
-        // Pressing Ctrl toggles into sneak
-        if (command.IsSneakToggled)
-        {
-            return new SneakStance();
         }
 
         return this;

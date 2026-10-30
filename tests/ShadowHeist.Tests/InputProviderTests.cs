@@ -46,5 +46,14 @@ public sealed class InputProviderTests
         Assert.Equal(new Vector2(400f, 300f), command.AimWorldPosition);
         Assert.True(command.MoveDirection.LengthSquared() > 0.99f && command.MoveDirection.LengthSquared() < 1.01f);
     }
+
+    [Fact]
+    public void PlayerSystemModule_AcceptsInjectedInputProvider_ForDependencyInjection()
+    {
+        var mock = new MockInputProvider();
+        using var module = new ShadowHeist.PlayerSystem.PlayerSystemModule(mock);
+
+        Assert.NotNull(module);
+    }
 }
 

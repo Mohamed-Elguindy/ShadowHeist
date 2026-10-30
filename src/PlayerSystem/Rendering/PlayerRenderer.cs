@@ -12,6 +12,7 @@ public sealed class PlayerRenderer : IDisposable
     private const string SpritePath = "assets/sprites/player_sneak.png";
     private const float SpriteSize = 48f;
     private const float SpriteFacesUpOffsetDegrees = 90f;
+    private const float FallbackAimLineLength = 24f;
     private static readonly Vector2 SpriteOrigin = new(SpriteSize / 2f, SpriteSize / 2f);
     private readonly Texture2D _texture;
     private readonly bool _hasTexture;
@@ -37,8 +38,8 @@ public sealed class PlayerRenderer : IDisposable
             Raylib.DrawCircleV(player.Position, player.Radius, Color.SkyBlue);
 
             // Draw a line showing facing direction
-            float radians = player.RotationDegrees * (MathF.PI / 180f);
-            var facingEnd = player.Position + new Vector2(MathF.Cos(radians), MathF.Sin(radians)) * 24f;
+            float radians = player.RotationDegrees * Raylib.DEG2RAD;
+            var facingEnd = player.Position + new Vector2(MathF.Cos(radians), MathF.Sin(radians)) * FallbackAimLineLength;
             Raylib.DrawLineV(player.Position, facingEnd, Color.White);
         }
     }
