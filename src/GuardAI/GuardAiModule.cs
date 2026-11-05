@@ -1,5 +1,7 @@
 using System.Numerics;
+using Raylib_cs;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Events;
 using ShadowHeist.Core.Interfaces;
 using ShadowHeist.GuardAI.Rendering;
 
@@ -7,11 +9,29 @@ namespace ShadowHeist.GuardAI;
 
 /// <summary>
 /// Owned by: Hatem (ShadowHeist.GuardAI)
-/// Week 1: Ticket #5 (Guard + PatrolState) & Ticket #6 (Smooth Guard Rotation)
-/// Week 2: Ticket #13 (SuspiciousState via EventBus) & Ticket #14 (AStarPathfinder)
+/// Week 1: Ticket #5 (Guard + PatrolState) &amp; Ticket #6 (Smooth Guard Rotation)
+/// Week 2: Ticket #13 (SuspiciousState via EventBus) &amp; Ticket #14 (AStarPathfinder)
 /// </summary>
 public sealed class GuardAiModule : IGameSystem, IDisposable
 {
+    private const float AlphaGuardSpeed = 75f;
+    private const float BetaGuardSpeed = 65f;
+    private const float DebugClickNoiseRadius = 400f;
+
+    private static readonly Vector2[] PatrolRouteAlpha =
+    {
+        new(320f, 200f),
+        new(860f, 200f),
+        new(860f, 380f),
+        new(320f, 380f)
+    };
+
+    private static readonly Vector2[] PatrolRouteBeta =
+    {
+        new(980f, 160f),
+        new(980f, 540f)
+    };
+
     private readonly List<Guard> _guards = new();
     private GuardRenderer? _renderer;
 
@@ -19,12 +39,22 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
 
     public void Init(GameContext context)
     {
-        _renderer = new GuardRenderer();
+        ArgumentNullException.ThrowIfNull(context);
+
+        _guards.Clear();
         SpawnInitialGuards();
+
+        context.EventBus.Subscribe<NoiseEmittedEvent>(evt => HandleNoiseEmitted(evt, context.Walls));
     }
 
     public void Update(float deltaTime, GameContext context)
     {
+        if (_renderer is not null && Raylib.IsMouseButtonPressed(MouseButton.Left))
+        {
+            Vector2 clickPos = Raylib.GetMousePosition();
+            context.EventBus.Publish(new NoiseEmittedEvent(clickPos, DebugClickNoiseRadius, "DebugClickNoise"));
+        }
+
         foreach (var guard in _guards)
         {
             guard.Update(deltaTime, context);
@@ -33,7 +63,8 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
 
     public void Draw(GameContext context)
     {
-        _renderer?.Draw(_guards);
+        _renderer ??= new GuardRenderer();
+        _renderer.Draw(_guards);
     }
 
     public void Dispose()
@@ -43,24 +74,20 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
         _guards.Clear();
     }
 
+    private void HandleNoiseEmitted(NoiseEmittedEvent noiseEvent, IReadOnlyList<RectangleBounds> walls)
+    {
+        _renderer?.RecordNoisePulse(noiseEvent.Origin, noiseEvent.Radius);
+
+        foreach (var guard in _guards)
+        {
+            guard.OnNoiseEmitted(noiseEvent, walls);
+        }
+    }
+
     private void SpawnInitialGuards()
     {
-        var patrolRouteAlpha = new List<Vector2>
-        {
-            new(320f, 200f),
-            new(860f, 200f),
-            new(860f, 380f),
-            new(320f, 380f)
-        };
-
-        var patrolRouteBeta = new List<Vector2>
-        {
-            new(980f, 160f),
-            new(980f, 540f)
-        };
-
-        var guardAlpha = new Guard("guard_vault_patrol_alpha", patrolRouteAlpha[0], patrolRouteAlpha, moveSpeed: 75f);
-        var guardBeta = new Guard("guard_corridor_patrol_beta", patrolRouteBeta[0], patrolRouteBeta, moveSpeed: 65f);
+        var guardAlpha = new Guard("guard_vault_patrol_alpha", PatrolRouteAlpha[0], PatrolRouteAlpha, moveSpeed: AlphaGuardSpeed);
+        var guardBeta = new Guard("guard_corridor_patrol_beta", PatrolRouteBeta[0], PatrolRouteBeta, moveSpeed: BetaGuardSpeed);
 
         _guards.Add(guardAlpha);
         _guards.Add(guardBeta);

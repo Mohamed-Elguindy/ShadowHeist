@@ -1,5 +1,6 @@
 using System.Numerics;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Events;
 using ShadowHeist.Core.Interfaces;
 using ShadowHeist.GuardAI.States;
 
@@ -12,6 +13,10 @@ public sealed class Guard
 {
     private const float DefaultMoveSpeed = 80f;
     private const float DefaultTurnRate = 360f;
+    private const float DirectionEpsilonSquared = 0.0001f;
+    private const float RadToDeg = 180f / MathF.PI;
+    private const float FullCircleDegrees = 360f;
+    private const float HalfCircleDegrees = 180f;
 
     public string Id { get; }
     public Vector2 Position { get; set; }
@@ -53,6 +58,29 @@ public sealed class Guard
         CurrentState.Enter();
     }
 
+    public bool OnNoiseEmitted(NoiseEmittedEvent noiseEvent, IReadOnlyList<RectangleBounds>? walls = null)
+    {
+        if (noiseEvent.Radius <= 0f)
+        {
+            return false;
+        }
+
+        float distanceSquared = Vector2.DistanceSquared(Position, noiseEvent.Origin);
+        if (distanceSquared > noiseEvent.Radius * noiseEvent.Radius)
+        {
+            return false;
+        }
+
+        if (CurrentState is SuspiciousState activeSuspicious)
+        {
+            activeSuspicious.UpdateInvestigationTarget(noiseEvent.Origin, walls);
+            return true;
+        }
+
+        TransitionTo(new SuspiciousState(this, noiseEvent.Origin, CurrentState, walls));
+        return true;
+    }
+
     public void Update(float deltaTime, GameContext context)
     {
         var nextState = CurrentState.Update(deltaTime, context);
@@ -64,20 +92,20 @@ public sealed class Guard
 
     public void RotateToward(Vector2 direction, float deltaTime, float turnRate = DefaultTurnRate)
     {
-        if (direction.LengthSquared() < 0.0001f)
+        if (direction.LengthSquared() < DirectionEpsilonSquared)
         {
             return;
         }
 
-        float targetAngle = MathF.Atan2(direction.Y, direction.X) * (180f / MathF.PI);
+        float targetAngle = MathF.Atan2(direction.Y, direction.X) * RadToDeg;
         RotationDegrees = MoveTowardsAngle(RotationDegrees, targetAngle, turnRate * deltaTime);
     }
 
     public static float MoveTowardsAngle(float current, float target, float maxDelta)
     {
-        float diff = (target - current) % 360f;
-        if (diff > 180f) diff -= 360f;
-        if (diff < -180f) diff += 360f;
+        float diff = (target - current) % FullCircleDegrees;
+        if (diff > HalfCircleDegrees) diff -= FullCircleDegrees;
+        if (diff < -HalfCircleDegrees) diff += FullCircleDegrees;
 
         if (MathF.Abs(diff) <= maxDelta)
         {
