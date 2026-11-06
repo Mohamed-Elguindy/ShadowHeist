@@ -9,7 +9,8 @@ public static class SoundMeterBarRenderer
     private const int BarWidth = 120;
     private const int BarHeight = 12;
     private const int MarginLeft = 20;
-    private const int MarginBottom = 20;
+    private const int MarginTop = 20;
+    private const int BoxHeight = 36;
     private const int Padding = 8;
     private const int Spacing = 10;
     private const float QuietLevelLimit = 0.35f;
@@ -25,21 +26,25 @@ public static class SoundMeterBarRenderer
 
     public static void Draw(float level)
     {
+        if (level <= 0f)
+        {
+            return;
+        }
+
         int labelWidth = Raylib.MeasureText(LabelText, LabelFontSize);
         int boxWidth = Padding + labelWidth + Spacing + BarWidth + Padding;
-        int boxHeight = 32;
         int boxX = MarginLeft;
-        int boxY = Raylib.GetScreenHeight() - boxHeight - MarginBottom;
+        int boxY = MarginTop;
 
-        Raylib.DrawRectangle(boxX, boxY, boxWidth, boxHeight, PanelBackground);
-        Raylib.DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, PanelBorder);
+        Raylib.DrawRectangle(boxX, boxY, boxWidth, BoxHeight, PanelBackground);
+        Raylib.DrawRectangleLines(boxX, boxY, boxWidth, BoxHeight, PanelBorder);
 
         int labelX = boxX + Padding;
-        int labelY = boxY + (boxHeight - LabelFontSize) / 2;
+        int labelY = boxY + (BoxHeight - LabelFontSize) / 2;
         Raylib.DrawText(LabelText, labelX, labelY, LabelFontSize, Color.RayWhite);
 
         int barX = labelX + labelWidth + Spacing;
-        int barY = boxY + (boxHeight - BarHeight) / 2;
+        int barY = boxY + (BoxHeight - BarHeight) / 2;
         Raylib.DrawRectangle(barX, barY, BarWidth, BarHeight, TrackBackground);
 
         float clampedLevel = Math.Clamp(level, 0f, 1f);
