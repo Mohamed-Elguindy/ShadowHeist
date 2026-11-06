@@ -2,6 +2,7 @@ using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Interfaces;
+using ShadowHeist.HeistWorld.Interactables;
 
 namespace ShadowHeist.HeistWorld.UI;
 
@@ -11,10 +12,36 @@ public sealed class HudRenderer
     private const int CashFontSize = 20;
     private const int PromptFontSize = 16;
 
+    private readonly SoundMeter _soundMeter;
+
+    public HudRenderer(SoundMeter soundMeter)
+    {
+        ArgumentNullException.ThrowIfNull(soundMeter);
+        _soundMeter = soundMeter;
+    }
+
     public void DrawHudOverlay(GameContext context)
     {
         DrawStolenCashBanner(context.StolenCash);
         DrawContextualPrompt(context);
+        DrawSoundMeter();
+        DrawHoldProgressRing(context);
+    }
+
+    private void DrawSoundMeter()
+    {
+        SoundMeterBarRenderer.Draw(_soundMeter.Level);
+    }
+
+    private static void DrawHoldProgressRing(GameContext context)
+    {
+        IHoldInteractable? activeHold = InteractableQuery.FindHoldInProgress(context);
+        if (activeHold == null)
+        {
+            return;
+        }
+
+        HoldProgressRingRenderer.Draw(activeHold.Position, activeHold.HoldProgress);
     }
 
     private static void DrawStolenCashBanner(int stolenCash)
