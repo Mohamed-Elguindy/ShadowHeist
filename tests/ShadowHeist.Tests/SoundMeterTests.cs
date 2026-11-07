@@ -16,65 +16,72 @@ public sealed class SoundMeterTests
         var meter = new SoundMeter(bus);
 
         Assert.Equal(0f, meter.Level);
+        Assert.Equal(0f, meter.TargetLevel);
     }
 
     [Fact]
-    public void NoiseEmitted_SetsLevelProportionally()
+    public void NoiseEmitted_SetsTargetLevelProportionally()
     {
         var bus = new GameEventBus();
         var meter = new SoundMeter(bus);
 
         bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius / 2f, "Test"));
 
-        Assert.Equal(0.5f, meter.Level, 0.001f);
+        Assert.Equal(0.5f, meter.TargetLevel, 0.001f);
     }
 
     [Fact]
-    public void NoiseEmitted_ClampsAtOne()
+    public void NoiseEmitted_ClampsTargetAtOne()
     {
         var bus = new GameEventBus();
         var meter = new SoundMeter(bus);
 
         bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius * 1.5f, "Test"));
 
-        Assert.Equal(1f, meter.Level);
+        Assert.Equal(1f, meter.TargetLevel);
     }
 
     [Fact]
-    public void NoiseEmitted_QuieterNoiseDoesNotLowerLevel()
-    {
-        var bus = new GameEventBus();
-        var meter = new SoundMeter(bus);
-
-        bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius * 0.8f, "Loud"));
-        bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius * 0.3f, "Quiet"));
-
-        Assert.Equal(0.8f, meter.Level, 0.001f);
-    }
-
-    [Fact]
-    public void Update_HoldsPeakDuringHoldDuration()
+    public void Update_RampsLevelTowardsTargetLinearly()
     {
         var bus = new GameEventBus();
         var meter = new SoundMeter(bus);
         bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius, "Test"));
 
-        meter.Update(SoundMeter.PeakHoldDuration / 2f);
+        const float attackTime = 0.1f;
+        meter.Update(attackTime);
 
-        Assert.Equal(1f, meter.Level);
+        float expected = SoundMeter.AttackPerSecond * attackTime;
+        Assert.Equal(expected, meter.Level, 0.001f);
     }
 
     [Fact]
-    public void Update_DecaysLinearlyAfterHoldDuration()
+    public void Update_ReachesTargetLevel_WhenWithinHoldDuration()
     {
         var bus = new GameEventBus();
         var meter = new SoundMeter(bus);
-        bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius, "Test"));
+        bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius * 0.5f, "Test"));
 
-        const float decayDelta = 0.5f;
+        meter.Update(0.30f);
+
+        Assert.Equal(0.5f, meter.Level, 0.001f);
+    }
+
+    [Fact]
+    public void Update_DecaysLinearly_AfterHoldDurationExpires()
+    {
+        var bus = new GameEventBus();
+        var meter = new SoundMeter(bus);
+        bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius * 0.5f, "Test"));
+        meter.Update(0.30f);
+        Assert.Equal(0.5f, meter.Level, 0.001f);
+
+        bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius * 0.5f, "Test"));
+
+        const float decayDelta = 0.2f;
         meter.Update(SoundMeter.PeakHoldDuration + decayDelta);
 
-        float expected = 1f - (SoundMeter.DecayPerSecond * decayDelta);
+        float expected = 0.5f - (SoundMeter.DecayPerSecond * decayDelta);
         Assert.Equal(expected, meter.Level, 0.001f);
     }
 
@@ -91,6 +98,27 @@ public sealed class SoundMeterTests
     }
 
     [Fact]
+    public void ContinuousSteps_BuildsLevelGraduallyOverMultipleSteps()
+    {
+        var bus = new GameEventBus();
+        var meter = new SoundMeter(bus);
+        const float sprintRadius = 220f;
+        float target = sprintRadius / SoundMeter.FullMeterNoiseRadius;
+
+        bus.Publish(new NoiseEmittedEvent(TestOrigin, sprintRadius, "SprintStep1"));
+        meter.Update(0.25f);
+        float step1Level = meter.Level;
+
+        bus.Publish(new NoiseEmittedEvent(TestOrigin, sprintRadius, "SprintStep2"));
+        meter.Update(0.25f);
+        float step2Level = meter.Level;
+
+        Assert.True(step1Level < target);
+        Assert.True(step2Level > step1Level);
+        Assert.Equal(target, step2Level, 0.001f);
+    }
+
+    [Fact]
     public void NoiseEmitted_IgnoresZeroOrNegativeRadiusNoise()
     {
         var bus = new GameEventBus();
@@ -99,6 +127,7 @@ public sealed class SoundMeterTests
         bus.Publish(new NoiseEmittedEvent(TestOrigin, 0f, "Silent"));
         bus.Publish(new NoiseEmittedEvent(TestOrigin, -10f, "Invalid"));
 
+        Assert.Equal(0f, meter.TargetLevel);
         Assert.Equal(0f, meter.Level);
     }
 }

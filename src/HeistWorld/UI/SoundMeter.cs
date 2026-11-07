@@ -5,12 +5,15 @@ namespace ShadowHeist.HeistWorld.UI;
 public sealed class SoundMeter
 {
     public const float FullMeterNoiseRadius = 300f;
+    public const float AttackPerSecond = 1.8f;
     public const float DecayPerSecond = 0.75f;
     public const float PeakHoldDuration = 0.35f;
 
+    private float _targetLevel;
     private float _holdTimer;
 
     public float Level { get; private set; }
+    public float TargetLevel => _targetLevel;
 
     public SoundMeter(GameEventBus eventBus)
     {
@@ -22,17 +25,30 @@ public sealed class SoundMeter
     {
         if (_holdTimer > 0f)
         {
-            _holdTimer -= deltaTime;
-            if (_holdTimer > 0f)
+            float holdTimeUsed = Math.Min(_holdTimer, deltaTime);
+            _holdTimer -= holdTimeUsed;
+            float remainingDelta = deltaTime - holdTimeUsed;
+
+            if (Level < _targetLevel)
             {
-                return;
+                Level = Math.Min(_targetLevel, Level + (AttackPerSecond * holdTimeUsed));
+            }
+            else if (Level > _targetLevel)
+            {
+                Level = Math.Max(_targetLevel, Level - (DecayPerSecond * holdTimeUsed));
             }
 
-            deltaTime = -_holdTimer;
-            _holdTimer = 0f;
+            if (_holdTimer <= 0f)
+            {
+                _targetLevel = 0f;
+                Level = Math.Max(0f, Level - (DecayPerSecond * remainingDelta));
+            }
         }
-
-        Level = Math.Max(0f, Level - (DecayPerSecond * deltaTime));
+        else
+        {
+            _targetLevel = 0f;
+            Level = Math.Max(0f, Level - (DecayPerSecond * deltaTime));
+        }
     }
 
     private void OnNoiseEmitted(NoiseEmittedEvent noise)
@@ -42,12 +58,13 @@ public sealed class SoundMeter
             return;
         }
 
-        float incomingLevel = Math.Clamp(noise.Radius / FullMeterNoiseRadius, 0f, 1f);
-        if (incomingLevel >= Level)
+        float incomingTarget = Math.Clamp(noise.Radius / FullMeterNoiseRadius, 0f, 1f);
+        if (incomingTarget >= _targetLevel || _holdTimer <= 0f)
         {
-            Level = incomingLevel;
-            _holdTimer = PeakHoldDuration;
+            _targetLevel = incomingTarget;
         }
+
+        _holdTimer = PeakHoldDuration;
     }
 
     private static bool IsRelevantNoise(NoiseEmittedEvent noise) => noise.Radius > 0f;
