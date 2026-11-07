@@ -6,7 +6,7 @@ public sealed class SoundMeter
 {
     public const float FullMeterNoiseRadius = 300f;
     public const float DecayPerSecond = 0.75f;
-    public const float PeakHoldDuration = 0.15f;
+    public const float PeakHoldDuration = 0.35f;
 
     private float _holdTimer;
 

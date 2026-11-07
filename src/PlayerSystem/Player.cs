@@ -54,7 +54,7 @@ public sealed class Player
         // Silent crouch or standing still produces zero footstep noise
         if (moveDirection == Vector2.Zero || CurrentStance.NoiseRadius <= 0f)
         {
-            _stepTimer = 0f;
+            _stepTimer = Math.Max(0f, _stepTimer - deltaTime);
             return;
         }
 

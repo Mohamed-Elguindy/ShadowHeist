@@ -74,5 +74,25 @@ public sealed class NoiseEmissionTests
         // Assert
         Assert.Null(capturedEvent);
     }
+
+    [Fact]
+    public void Player_MaintainsStepCadence_AcrossBriefInputPauses()
+    {
+        var player = new Player(new Vector2(100f, 100f));
+        var bus = new GameEventBus();
+        int stepCount = 0;
+        bus.Subscribe<NoiseEmittedEvent>(_ => stepCount++);
+
+        var walkInput = CreateInputCommand(moveDir: new Vector2(1f, 0f));
+        var idleInput = CreateInputCommand(moveDir: Vector2.Zero);
+
+        player.Update(walkInput, 0.05f, Array.Empty<RectangleBounds>(), bus);
+        Assert.Equal(1, stepCount);
+
+        player.Update(idleInput, 0.05f, Array.Empty<RectangleBounds>(), bus);
+        player.Update(walkInput, 0.05f, Array.Empty<RectangleBounds>(), bus);
+
+        Assert.Equal(1, stepCount);
+    }
 }
 
