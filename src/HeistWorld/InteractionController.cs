@@ -1,4 +1,3 @@
-using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Interfaces;
 using ShadowHeist.HeistWorld.Interactables;
@@ -13,10 +12,7 @@ public sealed class InteractionController
     {
         IInteractable? nearby = InteractableQuery.FindInPlayerRange(context);
 
-        // TODO (After Mahmoud's Week 1, Ticket #3 — feat/mahmoud-input-provider):
-        // Replace direct Raylib.IsKeyDown / Raylib.IsKeyPressed calls with IInputProvider / PlayerInputCommand
-        // (and add IsInteractHeld to PlayerInputCommand alongside IsInteractPressed).
-        if (nearby is IHoldInteractable holdable && Raylib.IsKeyDown(KeyboardKey.E))
+        if (nearby is IHoldInteractable holdable && context.CurrentInput.IsInteractHeld)
         {
             HoldNearbyObject(holdable, deltaTime, context);
             return;
@@ -24,7 +20,7 @@ public sealed class InteractionController
 
         CancelActiveHold();
 
-        if (Raylib.IsKeyPressed(KeyboardKey.E))
+        if (context.CurrentInput.IsInteractPressed)
         {
             PressNearbyObject(nearby, context);
         }

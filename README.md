@@ -8,6 +8,19 @@ A **Gritty 2D Top-Down Tactical Stealth Heist** game built in C# (`.NET 8` + `Ra
 
 ---
 
+## 🎮 Default Controls
+
+| Action | Control Key | Description |
+| :--- | :--- | :--- |
+| **Move** | `W`, `A`, `S`, `D` / Arrow Keys | Top-down directional movement |
+| **Aim / Orient** | Mouse Cursor | Smooth 360° mouse-aim rotation |
+| **Crouch / Sneak** | `Left Ctrl` (Toggle) | Lowers footstep noise and speed |
+| **Sprint** | `Left Shift` (Hold) | Increases speed, creates loud noise |
+| **Interact / Hold** | `E` | Open vaults, loot crates, bypass keypads |
+| **Use Gadget** | `Q` / `Space` / Right Click | Throws coin / EMP grenade / fires pistol |
+
+---
+
 ## 👥 Team Subsystem Ownership
 
 To prevent merge conflicts and enforce clean separation of concerns, each engineer owns **one dedicated C# namespace and directory**:
