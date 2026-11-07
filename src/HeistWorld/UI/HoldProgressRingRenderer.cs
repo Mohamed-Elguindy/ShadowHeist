@@ -8,6 +8,7 @@ public static class HoldProgressRingRenderer
     private const float InnerRadius = 22f;
     private const float OuterRadius = 26f;
     private const float StartAngleDegrees = -90f;
+    private const float FullCircleDegrees = 360f;
     private const int CircleSegments = 36;
 
     private static readonly Color TrackColor = new(255, 255, 255, 45);
@@ -21,12 +22,12 @@ public static class HoldProgressRingRenderer
             return;
         }
 
-        Raylib.DrawRing(center, InnerRadius, OuterRadius, 0f, 360f, CircleSegments, TrackColor);
+        Raylib.DrawRing(center, InnerRadius, OuterRadius, 0f, FullCircleDegrees, CircleSegments, TrackColor);
 
         float clamped = Math.Clamp(progress, 0f, 1f);
-        float endAngle = StartAngleDegrees + (clamped * 360f);
+        float endAngle = StartAngleDegrees + (clamped * FullCircleDegrees);
         Raylib.DrawRing(center, InnerRadius, OuterRadius, StartAngleDegrees, endAngle, CircleSegments, FillColor);
 
-        Raylib.DrawRingLines(center, InnerRadius, OuterRadius, 0f, 360f, CircleSegments, OutlineColor);
+        Raylib.DrawRingLines(center, InnerRadius, OuterRadius, 0f, FullCircleDegrees, CircleSegments, OutlineColor);
     }
 }

@@ -26,7 +26,9 @@ public static class SoundMeterBarRenderer
 
     public static void Draw(float level)
     {
-        if (level <= 0f)
+        float clampedLevel = Math.Clamp(level, 0f, 1f);
+        int fillWidth = (int)(BarWidth * clampedLevel);
+        if (fillWidth <= 0)
         {
             return;
         }
@@ -46,14 +48,7 @@ public static class SoundMeterBarRenderer
         int barX = labelX + labelWidth + Spacing;
         int barY = boxY + (BoxHeight - BarHeight) / 2;
         Raylib.DrawRectangle(barX, barY, BarWidth, BarHeight, TrackBackground);
-
-        float clampedLevel = Math.Clamp(level, 0f, 1f);
-        int fillWidth = (int)(BarWidth * clampedLevel);
-        if (fillWidth > 0)
-        {
-            Raylib.DrawRectangle(barX, barY, fillWidth, BarHeight, ResolveFillColor(clampedLevel));
-        }
-
+        Raylib.DrawRectangle(barX, barY, fillWidth, BarHeight, ResolveFillColor(clampedLevel));
         Raylib.DrawRectangleLines(barX, barY, BarWidth, BarHeight, TrackBorder);
     }
 

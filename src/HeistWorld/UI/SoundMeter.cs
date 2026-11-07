@@ -23,31 +23,42 @@ public sealed class SoundMeter
 
     public void Update(float deltaTime)
     {
-        if (_holdTimer > 0f)
-        {
-            float holdTimeUsed = Math.Min(_holdTimer, deltaTime);
-            _holdTimer -= holdTimeUsed;
-            float remainingDelta = deltaTime - holdTimeUsed;
+        float activeHoldDelta = ConsumeHoldTime(deltaTime);
+        MoveTowardsTarget(activeHoldDelta);
 
-            if (Level < _targetLevel)
-            {
-                Level = Math.Min(_targetLevel, Level + (AttackPerSecond * holdTimeUsed));
-            }
-            else if (Level > _targetLevel)
-            {
-                Level = Math.Max(_targetLevel, Level - (DecayPerSecond * holdTimeUsed));
-            }
-
-            if (_holdTimer <= 0f)
-            {
-                _targetLevel = 0f;
-                Level = Math.Max(0f, Level - (DecayPerSecond * remainingDelta));
-            }
-        }
-        else
+        if (_holdTimer <= 0f)
         {
             _targetLevel = 0f;
-            Level = Math.Max(0f, Level - (DecayPerSecond * deltaTime));
+            MoveTowardsTarget(deltaTime - activeHoldDelta);
+        }
+    }
+
+    private float ConsumeHoldTime(float deltaTime)
+    {
+        if (_holdTimer <= 0f)
+        {
+            return 0f;
+        }
+
+        float consumed = Math.Min(_holdTimer, deltaTime);
+        _holdTimer -= consumed;
+        return consumed;
+    }
+
+    private void MoveTowardsTarget(float deltaTime)
+    {
+        if (deltaTime <= 0f)
+        {
+            return;
+        }
+
+        if (Level < _targetLevel)
+        {
+            Level = Math.Min(_targetLevel, Level + (AttackPerSecond * deltaTime));
+        }
+        else if (Level > _targetLevel)
+        {
+            Level = Math.Max(_targetLevel, Level - (DecayPerSecond * deltaTime));
         }
     }
 
@@ -62,9 +73,8 @@ public sealed class SoundMeter
         if (incomingTarget >= _targetLevel || _holdTimer <= 0f)
         {
             _targetLevel = incomingTarget;
+            _holdTimer = PeakHoldDuration;
         }
-
-        _holdTimer = PeakHoldDuration;
     }
 
     private static bool IsRelevantNoise(NoiseEmittedEvent noise) =>

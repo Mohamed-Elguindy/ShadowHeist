@@ -12,8 +12,7 @@ public sealed class SoundMeterTests
     [Fact]
     public void InitialState_LevelIsZero()
     {
-        var bus = new GameEventBus();
-        var meter = new SoundMeter(bus);
+        var meter = new SoundMeter(new GameEventBus());
 
         Assert.Equal(0f, meter.Level);
         Assert.Equal(0f, meter.TargetLevel);
@@ -51,8 +50,7 @@ public sealed class SoundMeterTests
         const float attackTime = 0.1f;
         meter.Update(attackTime);
 
-        float expected = SoundMeter.AttackPerSecond * attackTime;
-        Assert.Equal(expected, meter.Level, 0.001f);
+        Assert.Equal(SoundMeter.AttackPerSecond * attackTime, meter.Level, 0.001f);
     }
 
     [Fact]
@@ -74,15 +72,27 @@ public sealed class SoundMeterTests
         var meter = new SoundMeter(bus);
         bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius * 0.5f, "Test"));
         meter.Update(0.30f);
-        Assert.Equal(0.5f, meter.Level, 0.001f);
-
         bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius * 0.5f, "Test"));
 
         const float decayDelta = 0.2f;
         meter.Update(SoundMeter.PeakHoldDuration + decayDelta);
 
-        float expected = 0.5f - (SoundMeter.DecayPerSecond * decayDelta);
-        Assert.Equal(expected, meter.Level, 0.001f);
+        Assert.Equal(0.5f - (SoundMeter.DecayPerSecond * decayDelta), meter.Level, 0.001f);
+    }
+
+    [Fact]
+    public void NoiseEmitted_QuieterNoiseDuringHold_DoesNotLowerTargetOrExtendHold()
+    {
+        var bus = new GameEventBus();
+        var meter = new SoundMeter(bus);
+        bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius * 0.8f, "Loud"));
+        meter.Update(0.20f);
+
+        bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius * 0.3f, "Quiet"));
+        Assert.Equal(0.8f, meter.TargetLevel, 0.001f);
+
+        meter.Update(0.20f);
+        Assert.Equal(0f, meter.TargetLevel);
     }
 
     [Fact]
@@ -111,35 +121,22 @@ public sealed class SoundMeterTests
 
         bus.Publish(new NoiseEmittedEvent(TestOrigin, sprintRadius, "SprintStep2"));
         meter.Update(0.25f);
-        float step2Level = meter.Level;
 
         Assert.True(step1Level < target);
-        Assert.True(step2Level > step1Level);
-        Assert.Equal(target, step2Level, 0.001f);
-    }
-
-    [Fact]
-    public void NoiseEmitted_IgnoresZeroOrNegativeRadiusNoise()
-    {
-        var bus = new GameEventBus();
-        var meter = new SoundMeter(bus);
-
-        bus.Publish(new NoiseEmittedEvent(TestOrigin, 0f, "Silent"));
-        bus.Publish(new NoiseEmittedEvent(TestOrigin, -10f, "Invalid"));
-
-        Assert.Equal(0f, meter.TargetLevel);
-        Assert.Equal(0f, meter.Level);
+        Assert.Equal(target, meter.Level, 0.001f);
     }
 
     [Theory]
-    [InlineData(NoiseCategory.Distraction)]
-    [InlineData(NoiseCategory.Environment)]
-    public void NoiseEmitted_IgnoresNonPlayerCategoryNoise(NoiseCategory category)
+    [InlineData(0f, NoiseCategory.Player)]
+    [InlineData(-10f, NoiseCategory.Player)]
+    [InlineData(200f, NoiseCategory.Distraction)]
+    [InlineData(200f, NoiseCategory.Environment)]
+    public void NoiseEmitted_IgnoresIrrelevantNoise(float radius, NoiseCategory category)
     {
         var bus = new GameEventBus();
         var meter = new SoundMeter(bus);
 
-        bus.Publish(new NoiseEmittedEvent(TestOrigin, 200f, "ExternalNoise", category));
+        bus.Publish(new NoiseEmittedEvent(TestOrigin, radius, "Ignored", category));
 
         Assert.Equal(0f, meter.TargetLevel);
         Assert.Equal(0f, meter.Level);
