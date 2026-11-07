@@ -231,8 +231,8 @@ Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where ev
 | **#16** | 🔦 Ali | Create `LaserTripwire.cs` (red beam that stops at walls/player and fires `AlarmTriggeredEvent`) | Raycasting & Events |
 
 > [!NOTE]
-> **Known limitation / Revisit at #20 (Noise Attribution in Core):**
-> In Ticket #10, the sound meter reacts to all `NoiseEmittedEvent` occurrences (player footsteps and crate opening). When Ticket #20 (`CoinGadget`) starts in Week 3, Guindy will raise Option 1 with the team: add an attribution field (e.g., `NoiseSource Source` or `bool IsPlayerNoise`) to `NoiseEmittedEvent` in `src/Core/Events/`. Because this is a shared-contract change, the team must agree to it before anyone edits `Core`. This will allow the sound meter to cleanly distinguish player stealth detectability from remote coin distraction noises.
+> **Noise Attribution Contract (`NoiseCategory` in Core):**
+> `NoiseEmittedEvent` includes `NoiseCategory Category = NoiseCategory.Player` (`Player`, `Distraction`, `Environment`). `SoundMeter` filters exclusively for `NoiseCategory.Player`, while `GuardAI` reacts to all audible categories. In Ticket #20 (`CoinGadget`), pass `NoiseCategory.Distraction` so remote coin throws lure guards without spiking the player's personal stealth meter.
 
 > [!TIP]
 > **Coordinate Space Architecture (#10 HUD $\leftrightarrow$ #18 Camera2D):**
@@ -249,7 +249,7 @@ Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where ev
 | **#17** | 👤 Guindy | Create `FuseBox.cs` & `LaserSwitch.cs : IInteractable` (disables linked room lights/lasers) | Loose coupling via IDs |
 | **#18** | 👤 Guindy | Implement Camera Controller with smooth follow, screen-shake on alarm, and Right-Click peek *(Coordinate world overlay rendering with #10 ring/prompts)* | Clean `Camera2D` math |
 | **#19** | 🎮 Mahmoud | Build `PlayerInventory.cs` using `List<LootItem>`, `Dictionary`, and **LINQ** (`Sum` for loot weight slowdown) | C# Collections, LINQ & Encapsulation |
-| **#20** | 🎮 Mahmoud | Implement `IGadget` Strategy Pattern: `CoinGadget.cs` (throwable distraction) & `EmpGadget.cs` (disables electronics) *(Revisit #10 noise attribution in Core with team)* | Strategy Pattern (`IGadget`) |
+| **#20** | 🎮 Mahmoud | Implement `IGadget` Strategy Pattern: `CoinGadget.cs` (throwable distraction) & `EmpGadget.cs` (disables electronics) *(Pass `NoiseCategory.Distraction` on `NoiseEmittedEvent`)* | Strategy Pattern (`IGadget`) |
 | **#21** | 🧠 Hatem | Implement `AlertChaseState.cs` (guard spots player, raises alarm, chases last seen position) | Complete Finite State Machine |
 | **#22** | 🧠 Hatem | Add Guard Detection Meter (0% $\rightarrow$ 100% fill before instant alarm, scales with distance) | Clean timer/interpolation |
 | **#23** | 🔦 Ali | Implement `ShadowRenderer.cs` using `RenderTexture2D` darkness mask + flashlight cutouts | Custom rendering pipeline |

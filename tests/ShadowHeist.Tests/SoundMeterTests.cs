@@ -130,4 +130,18 @@ public sealed class SoundMeterTests
         Assert.Equal(0f, meter.TargetLevel);
         Assert.Equal(0f, meter.Level);
     }
+
+    [Theory]
+    [InlineData(NoiseCategory.Distraction)]
+    [InlineData(NoiseCategory.Environment)]
+    public void NoiseEmitted_IgnoresNonPlayerCategoryNoise(NoiseCategory category)
+    {
+        var bus = new GameEventBus();
+        var meter = new SoundMeter(bus);
+
+        bus.Publish(new NoiseEmittedEvent(TestOrigin, 200f, "ExternalNoise", category));
+
+        Assert.Equal(0f, meter.TargetLevel);
+        Assert.Equal(0f, meter.Level);
+    }
 }

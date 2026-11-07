@@ -67,5 +67,6 @@ public sealed class SoundMeter
         _holdTimer = PeakHoldDuration;
     }
 
-    private static bool IsRelevantNoise(NoiseEmittedEvent noise) => noise.Radius > 0f;
+    private static bool IsRelevantNoise(NoiseEmittedEvent noise) =>
+        noise.Category == NoiseCategory.Player && noise.Radius > 0f;
 }
