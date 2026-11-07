@@ -53,15 +53,28 @@ public sealed class SoundMeterTests
     }
 
     [Fact]
-    public void Update_DecaysLinearly()
+    public void Update_HoldsPeakDuringHoldDuration()
     {
         var bus = new GameEventBus();
         var meter = new SoundMeter(bus);
         bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius, "Test"));
 
-        meter.Update(0.5f);
+        meter.Update(SoundMeter.PeakHoldDuration / 2f);
 
-        float expected = 1f - (SoundMeter.DecayPerSecond * 0.5f);
+        Assert.Equal(1f, meter.Level);
+    }
+
+    [Fact]
+    public void Update_DecaysLinearlyAfterHoldDuration()
+    {
+        var bus = new GameEventBus();
+        var meter = new SoundMeter(bus);
+        bus.Publish(new NoiseEmittedEvent(TestOrigin, SoundMeter.FullMeterNoiseRadius, "Test"));
+
+        const float decayDelta = 0.5f;
+        meter.Update(SoundMeter.PeakHoldDuration + decayDelta);
+
+        float expected = 1f - (SoundMeter.DecayPerSecond * decayDelta);
         Assert.Equal(expected, meter.Level, 0.001f);
     }
 

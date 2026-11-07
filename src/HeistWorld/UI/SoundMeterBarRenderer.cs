@@ -14,7 +14,7 @@ public static class SoundMeterBarRenderer
     private const int Padding = 8;
     private const int Spacing = 10;
     private const float QuietLevelLimit = 0.35f;
-    private const float LoudLevelStart = 0.75f;
+    private const float LoudLevelStart = 0.70f;
 
     private static readonly Color PanelBackground = new(15, 23, 42, 220);
     private static readonly Color PanelBorder = new(56, 189, 248, 180);
