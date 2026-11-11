@@ -230,6 +230,15 @@ Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where ev
 | **#15** | 🔦 Ali | Implement `VisionRaycaster.cs` (computes guard vision cone polygon clipped by walls) | Ray-segment math |
 | **#16** | 🔦 Ali | Create `LaserTripwire.cs` (red beam that stops at walls/player and fires `AlarmTriggeredEvent`) | Raycasting & Events |
 
+> [!NOTE]
+> **Noise Attribution Contract (`NoiseCategory` in Core):**
+> `NoiseEmittedEvent` includes `NoiseCategory Category = NoiseCategory.Player` (`Player`, `Distraction`, `Environment`). `SoundMeter` filters exclusively for `NoiseCategory.Player`, while `GuardAI` reacts to all audible categories. In Ticket #20 (`CoinGadget`), pass `NoiseCategory.Distraction` so remote coin throws lure guards without spiking the player's personal stealth meter.
+
+> [!TIP]
+> **Coordinate Space Architecture (#10 HUD $\leftrightarrow$ #18 Camera2D):**
+> - **Screen-Space HUD:** Elements like `SoundMeterBarRenderer`, Cash Counter, and UI Menus render directly in screen pixel coordinates (outside `BeginMode2D`).
+> - **World-Space Overlays:** Elements like `HoldProgressRingRenderer` and interaction prompts take world positions (`Vector2 center`). In Week 2 (static viewport), world equals screen. When Ticket #18 (`Camera2D`) lands in Week 3, world overlays will be rendered either inside the camera pass (`BeginMode2D`) or projected via `Raylib.GetWorldToScreen2D(worldPos, camera)`.
+
 ---
 
 ### 🗓️ Week 3: Inventory/LINQ, Heist Gadgets, Alert Chase & 2D Shadow Casting
@@ -238,9 +247,9 @@ Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where ev
 | Ticket | Owner | Task Description | Engineering Focus |
 | :--- | :--- | :--- | :--- |
 | **#17** | 👤 Guindy | Create `FuseBox.cs` & `LaserSwitch.cs : IInteractable` (disables linked room lights/lasers) | Loose coupling via IDs |
-| **#18** | 👤 Guindy | Implement Camera Controller with smooth follow, screen-shake on alarm, and Right-Click peek | Clean `Camera2D` math |
+| **#18** | 👤 Guindy | Implement Camera Controller with smooth follow, screen-shake on alarm, and Right-Click peek *(Coordinate world overlay rendering with #10 ring/prompts)* | Clean `Camera2D` math |
 | **#19** | 🎮 Mahmoud | Build `PlayerInventory.cs` using `List<LootItem>`, `Dictionary`, and **LINQ** (`Sum` for loot weight slowdown) | C# Collections, LINQ & Encapsulation |
-| **#20** | 🎮 Mahmoud | Implement `IGadget` Strategy Pattern: `CoinGadget.cs` (throwable distraction) & `EmpGadget.cs` (disables electronics) | Strategy Pattern (`IGadget`) |
+| **#20** | 🎮 Mahmoud | Implement `IGadget` Strategy Pattern: `CoinGadget.cs` (throwable distraction) & `EmpGadget.cs` (disables electronics) *(Pass `NoiseCategory.Distraction` on `NoiseEmittedEvent`)* | Strategy Pattern (`IGadget`) |
 | **#21** | 🧠 Hatem | Implement `AlertChaseState.cs` (guard spots player, raises alarm, chases last seen position) | Complete Finite State Machine |
 | **#22** | 🧠 Hatem | Add Guard Detection Meter (0% $\rightarrow$ 100% fill before instant alarm, scales with distance) | Clean timer/interpolation |
 | **#23** | 🔦 Ali | Implement `ShadowRenderer.cs` using `RenderTexture2D` darkness mask + flashlight cutouts | Custom rendering pipeline |
