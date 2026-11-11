@@ -10,8 +10,8 @@ public sealed class MapRenderer : IDisposable
     private const string WallTexturePath = "assets/sprites/wall_reinforced_concrete.png";
     private const float WallTileSegmentSize = 64f;
 
-    private static readonly Color FallbackFloorColorEven = new(20, 26, 36, 255);
-    private static readonly Color FallbackFloorColorOdd = new(16, 21, 30, 255);
+    private static readonly Color FallbackFloorColorEven = new(168, 176, 188, 255);
+    private static readonly Color FallbackFloorColorOdd = new(152, 160, 174, 255);
     private static readonly Color FallbackWallColor = new(58, 66, 82, 255);
     private static readonly Color FallbackWallOutlineColor = new(88, 98, 118, 255);
     private static readonly Color GetawayZoneFillColor = new(24, 160, 98, 36);
