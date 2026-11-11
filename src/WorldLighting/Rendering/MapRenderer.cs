@@ -2,7 +2,7 @@ using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
 
-namespace ShadowHeist.WorldLighting;
+namespace ShadowHeist.WorldLighting.Rendering;
 
 public sealed class MapRenderer : IDisposable
 {

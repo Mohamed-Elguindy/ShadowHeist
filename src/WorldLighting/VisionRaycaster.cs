@@ -39,7 +39,7 @@ public static class VisionRaycaster
 
     public static Vector2 CastRay(Vector2 origin, Vector2 direction, float maxDistance, IEnumerable<RectangleBounds> walls)
     {
-        if (maxDistance <= 0f || direction.LengthSquared() < ParallelEpsilon)
+        if (maxDistance <= 0f || direction.LengthSquared() < ParallelEpsilon || IsOriginInsideAnyWall(origin, walls))
         {
             return origin;
         }
@@ -82,6 +82,21 @@ public static class VisionRaycaster
     {
         float radians = angleDegrees * DegToRad;
         return new Vector2(MathF.Cos(radians), MathF.Sin(radians));
+    }
+
+    private static bool IsOriginInsideAnyWall(Vector2 origin, IEnumerable<RectangleBounds> walls)
+    {
+        foreach (var wall in walls)
+        {
+            if (wall.Width > 0f && wall.Height > 0f &&
+                origin.X >= wall.X && origin.X <= wall.X + wall.Width &&
+                origin.Y >= wall.Y && origin.Y <= wall.Y + wall.Height)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static float FindClosestWallHitDistance(Vector2 origin, Vector2 direction, float maxDistance, IEnumerable<RectangleBounds> walls)

@@ -1,6 +1,7 @@
 using System.Numerics;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Interfaces;
+using ShadowHeist.WorldLighting.Rendering;
 
 namespace ShadowHeist.WorldLighting;
 
@@ -14,12 +15,8 @@ namespace ShadowHeist.WorldLighting;
 public sealed class WorldLightingModule : IGameSystem, IDisposable
 {
     private const string Level1MapPath = "assets/maps/level1_city_bank.json";
-    private const string HallLaserId = "laser_hall";
     private const float RadToDeg = 180f / MathF.PI;
     private const float AimDistanceEpsilonSquared = 0.001f;
-
-    private static readonly Vector2 HallLaserOrigin = new(336f, 386f);
-    private static readonly Vector2 HallLaserDirection = Vector2.UnitY;
 
     private readonly MapRenderer _mapRenderer = new();
     private readonly LightingEffectRenderer _lightingRenderer = new();
@@ -69,7 +66,15 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
     private void SpawnInitialLasers()
     {
         _lasers.Clear();
-        _lasers.Add(new LaserTripwire(HallLaserId, HallLaserOrigin, HallLaserDirection));
+        if (_currentMap is null)
+        {
+            return;
+        }
+
+        foreach (var spawn in _currentMap.Lasers)
+        {
+            _lasers.Add(new LaserTripwire(spawn.Id, spawn.Origin, spawn.Direction));
+        }
     }
 
     private void UpdateAimAngle(Vector2 playerPosition, Vector2 aimWorldPosition)

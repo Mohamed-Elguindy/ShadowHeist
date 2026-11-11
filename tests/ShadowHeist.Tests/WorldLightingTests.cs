@@ -8,7 +8,7 @@ namespace ShadowHeist.Tests;
 
 public sealed class WorldLightingTests
 {
-    private const float FloatTolerance = 0.01f;
+    private const float FloatTolerance = 0.001f;
 
     [Fact]
     public void LoadFromJson_ValidJson_PopulatesMapDataAndContext()
@@ -25,6 +25,9 @@ public sealed class WorldLightingTests
           "walls": [
             { "x": 0, "y": 0, "width": 1280, "height": 32 },
             { "x": 320, "y": 160, "width": 640, "height": 32 }
+          ],
+          "lasers": [
+            { "id": "laser_hall", "x": 336, "y": 386, "direction": { "x": 0, "y": 1 } }
           ]
         }
         """;
@@ -38,6 +41,9 @@ public sealed class WorldLightingTests
         Assert.Equal(new Vector2(128f, 640f), context.PlayerPosition);
         Assert.Equal(new RectangleBounds(64f, 640f, 128f, 96f), mapData.GetawayZone);
         Assert.Equal(2, context.Walls.Count);
+        Assert.Single(mapData.Lasers);
+        Assert.Equal("laser_hall", mapData.Lasers[0].Id);
+        Assert.Equal(new Vector2(336f, 386f), mapData.Lasers[0].Origin);
     }
 
     [Fact]
@@ -139,6 +145,17 @@ public sealed class WorldLightingTests
     }
 
     [Fact]
+    public void CastRay_WhenOriginIsInsideWall_ReturnsOriginImmediately()
+    {
+        var wall = new RectangleBounds(100f, 100f, 80f, 80f);
+        var originInsideWall = new Vector2(140f, 140f);
+
+        Vector2 hitPoint = VisionRaycaster.CastRay(originInsideWall, Vector2.UnitX, maxDistance: 300f, new[] { wall });
+
+        Assert.Equal(originInsideWall, hitPoint);
+    }
+
+    [Fact]
     public void ComputeVisionCone_ReturnsOriginPlusClippedFanVertices()
     {
         var origin = new Vector2(100f, 100f);
@@ -177,6 +194,25 @@ public sealed class WorldLightingTests
         Assert.True(context.IsAlarmTriggered);
         Assert.NotNull(publishedEvent);
         Assert.Equal("LaserTripwire:laser_vault", publishedEvent.Value.Reason);
+    }
+
+    [Fact]
+    public void LaserTripwire_WhenUpdatedMultipleTimesOnBeam_PublishesEventOnlyOnce()
+    {
+        using var context = new GameContext();
+        context.Walls.Add(new RectangleBounds(0f, 500f, 600f, 32f));
+        context.PlayerPosition = new Vector2(200f, 300f);
+
+        int publishedCount = 0;
+        context.EventBus.Subscribe<AlarmTriggeredEvent>(_ => publishedCount++);
+
+        var laser = new LaserTripwire("laser_vault", new Vector2(200f, 100f), Vector2.UnitY);
+
+        laser.Update(context, actorRadius: 18f);
+        laser.Update(context, actorRadius: 18f);
+
+        Assert.Equal(1, publishedCount);
+        Assert.True(laser.HasTriggeredAlarm);
     }
 
     [Fact]

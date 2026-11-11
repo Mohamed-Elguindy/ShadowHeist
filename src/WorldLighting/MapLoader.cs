@@ -7,6 +7,7 @@ namespace ShadowHeist.WorldLighting;
 public static class MapLoader
 {
     private const string DefaultLevelName = "Level 1: City Central Bank";
+    private const string DefaultHallLaserId = "laser_hall";
     private const int DefaultTileSize = 64;
     private const int DefaultGridWidth = 20;
     private const int DefaultGridHeight = 12;
@@ -16,6 +17,8 @@ public static class MapLoader
     private static readonly RectangleBounds DefaultGetawayZone = new(64f, 640f, 128f, 96f);
     private static readonly RectangleBounds DefaultVaultTopWall = new(320f, 160f, 640f, 32f);
     private static readonly RectangleBounds DefaultLobbyDividerWall = new(320f, 160f, 32f, 224f);
+    private static readonly Vector2 DefaultHallLaserOrigin = new(336f, 386f);
+    private static readonly Vector2 DefaultHallLaserDirection = Vector2.UnitY;
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
@@ -55,6 +58,7 @@ public static class MapLoader
         Vector2 playerSpawn = dto?.PlayerSpawn ?? DefaultPlayerSpawn;
         RectangleBounds getawayZone = ResolveGetawayZone(dto?.GetawayZone);
         List<RectangleBounds> walls = BuildWalls(dto?.Walls, gridWidth * tileSize, gridHeight * tileSize);
+        List<LaserSpawnData> lasers = BuildLasers(dto?.Lasers);
 
         return new LevelMapData(
             levelName,
@@ -63,7 +67,8 @@ public static class MapLoader
             gridHeight,
             playerSpawn,
             getawayZone,
-            walls);
+            walls,
+            lasers);
     }
 
     private static RectangleBounds ResolveGetawayZone(RectangleBounds? zone)
@@ -107,6 +112,33 @@ public static class MapLoader
             new(mapPixelWidth - OuterWallThickness, 0f, OuterWallThickness, mapPixelHeight),
             DefaultVaultTopWall,
             DefaultLobbyDividerWall
+        };
+    }
+
+    private static List<LaserSpawnData> BuildLasers(List<LaserSpawnDto>? laserDtos)
+    {
+        var lasers = new List<LaserSpawnData>();
+
+        if (laserDtos is not null)
+        {
+            foreach (var dto in laserDtos)
+            {
+                if (!string.IsNullOrWhiteSpace(dto.Id))
+                {
+                    Vector2 direction = dto.Direction ?? DefaultHallLaserDirection;
+                    lasers.Add(new LaserSpawnData(dto.Id, new Vector2(dto.X, dto.Y), direction));
+                }
+            }
+        }
+
+        if (lasers.Count > 0)
+        {
+            return lasers;
+        }
+
+        return new List<LaserSpawnData>
+        {
+            new(DefaultHallLaserId, DefaultHallLaserOrigin, DefaultHallLaserDirection)
         };
     }
 

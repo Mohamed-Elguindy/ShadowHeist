@@ -1,7 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
 
-namespace ShadowHeist.WorldLighting;
+namespace ShadowHeist.WorldLighting.Rendering;
 
 public sealed class LightingEffectRenderer : IDisposable
 {
