@@ -35,17 +35,28 @@ public static class SoundMeterBarRenderer
 
         int labelWidth = Raylib.MeasureText(LabelText, LabelFontSize);
         int boxWidth = Padding + labelWidth + Spacing + BarWidth + Padding;
-        int boxX = MarginLeft;
-        int boxY = MarginTop;
 
+        DrawPanelBox(MarginLeft, MarginTop, boxWidth);
+        DrawNoiseLabel(MarginLeft, MarginTop);
+        DrawMeterTrackAndFill(MarginLeft, MarginTop, labelWidth, fillWidth, clampedLevel);
+    }
+
+    private static void DrawPanelBox(int boxX, int boxY, int boxWidth)
+    {
         Raylib.DrawRectangle(boxX, boxY, boxWidth, BoxHeight, PanelBackground);
         Raylib.DrawRectangleLines(boxX, boxY, boxWidth, BoxHeight, PanelBorder);
+    }
 
+    private static void DrawNoiseLabel(int boxX, int boxY)
+    {
         int labelX = boxX + Padding;
         int labelY = boxY + (BoxHeight - LabelFontSize) / 2;
         Raylib.DrawText(LabelText, labelX, labelY, LabelFontSize, Color.RayWhite);
+    }
 
-        int barX = labelX + labelWidth + Spacing;
+    private static void DrawMeterTrackAndFill(int boxX, int boxY, int labelWidth, int fillWidth, float clampedLevel)
+    {
+        int barX = boxX + Padding + labelWidth + Spacing;
         int barY = boxY + (BoxHeight - BarHeight) / 2;
         Raylib.DrawRectangle(barX, barY, BarWidth, BarHeight, TrackBackground);
         Raylib.DrawRectangle(barX, barY, fillWidth, BarHeight, ResolveFillColor(clampedLevel));

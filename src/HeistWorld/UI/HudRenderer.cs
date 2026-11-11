@@ -16,7 +16,6 @@ public sealed class HudRenderer
 
     public HudRenderer(SoundMeter soundMeter)
     {
-        ArgumentNullException.ThrowIfNull(soundMeter);
         _soundMeter = soundMeter;
     }
 

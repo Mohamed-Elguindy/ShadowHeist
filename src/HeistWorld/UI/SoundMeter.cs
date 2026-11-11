@@ -17,7 +17,6 @@ public sealed class SoundMeter
 
     public SoundMeter(GameEventBus eventBus)
     {
-        ArgumentNullException.ThrowIfNull(eventBus);
         eventBus.Subscribe<NoiseEmittedEvent>(OnNoiseEmitted);
     }
 
