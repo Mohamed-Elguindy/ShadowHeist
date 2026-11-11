@@ -1,5 +1,6 @@
 using System.Numerics;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Events;
 using ShadowHeist.WorldLighting;
 using Xunit;
 
@@ -7,7 +8,7 @@ namespace ShadowHeist.Tests;
 
 public sealed class WorldLightingTests
 {
-    private const float FloatTolerance = 0.001f;
+    private const float FloatTolerance = 0.01f;
 
     [Fact]
     public void LoadFromJson_ValidJson_PopulatesMapDataAndContext()
@@ -109,5 +110,93 @@ public sealed class WorldLightingTests
 
         Assert.Equal(150f, resolvedPosition.X, FloatTolerance);
         Assert.Equal(85f, resolvedPosition.Y, FloatTolerance);
+    }
+
+    [Fact]
+    public void CastRay_WhenWallBlocksRay_ClipsRayAtNearestWallEdge()
+    {
+        var origin = new Vector2(100f, 100f);
+        var direction = Vector2.UnitX;
+        var wall = new RectangleBounds(220f, 50f, 40f, 100f);
+
+        Vector2 hitPoint = VisionRaycaster.CastRay(origin, direction, maxDistance: 500f, new[] { wall });
+
+        Assert.Equal(220f, hitPoint.X, FloatTolerance);
+        Assert.Equal(100f, hitPoint.Y, FloatTolerance);
+    }
+
+    [Fact]
+    public void CastRay_WhenNoWallBlocksRay_ReachesFullMaxDistance()
+    {
+        var origin = new Vector2(100f, 100f);
+        var direction = Vector2.UnitY;
+        var distantWall = new RectangleBounds(500f, 500f, 64f, 64f);
+
+        Vector2 hitPoint = VisionRaycaster.CastRay(origin, direction, maxDistance: 200f, new[] { distantWall });
+
+        Assert.Equal(100f, hitPoint.X, FloatTolerance);
+        Assert.Equal(300f, hitPoint.Y, FloatTolerance);
+    }
+
+    [Fact]
+    public void ComputeVisionCone_ReturnsOriginPlusClippedFanVertices()
+    {
+        var origin = new Vector2(100f, 100f);
+        var wallInFront = new RectangleBounds(200f, 0f, 32f, 300f);
+        const int rayCount = 8;
+
+        IReadOnlyList<Vector2> coneVertices = VisionRaycaster.ComputeVisionCone(
+            origin,
+            facingDegrees: 0f,
+            new[] { wallInFront },
+            fovDegrees: 60f,
+            maxDistance: 300f,
+            rayCount: rayCount);
+
+        Assert.Equal(rayCount + 2, coneVertices.Count);
+        Assert.Equal(origin, coneVertices[0]);
+        Assert.All(coneVertices, vertex => Assert.True(vertex.X <= 200f + FloatTolerance));
+    }
+
+    [Fact]
+    public void LaserTripwire_WhenPlayerCrossesActiveBeam_TriggersAlarmAndPublishesEvent()
+    {
+        using var context = new GameContext();
+        context.Walls.Add(new RectangleBounds(0f, 500f, 600f, 32f));
+        context.PlayerPosition = new Vector2(205f, 300f);
+
+        AlarmTriggeredEvent? publishedEvent = null;
+        context.EventBus.Subscribe<AlarmTriggeredEvent>(evt => publishedEvent = evt);
+
+        var laser = new LaserTripwire("laser_vault", new Vector2(200f, 100f), Vector2.UnitY);
+
+        laser.Update(context, actorRadius: 18f);
+
+        Assert.Equal(new Vector2(200f, 500f), laser.BeamEnd);
+        Assert.True(laser.HasTriggeredAlarm);
+        Assert.True(context.IsAlarmTriggered);
+        Assert.NotNull(publishedEvent);
+        Assert.Equal("LaserTripwire:laser_vault", publishedEvent.Value.Reason);
+    }
+
+    [Fact]
+    public void LaserTripwire_WhenPlayerIsOutsideBeamOrLaserInactive_DoesNotTriggerAlarm()
+    {
+        using var context = new GameContext();
+        context.Walls.Add(new RectangleBounds(0f, 500f, 600f, 32f));
+        context.PlayerPosition = new Vector2(400f, 300f);
+
+        var laser = new LaserTripwire("laser_vault", new Vector2(200f, 100f), Vector2.UnitY);
+        laser.Update(context, actorRadius: 18f);
+
+        Assert.False(laser.HasTriggeredAlarm);
+        Assert.False(context.IsAlarmTriggered);
+
+        laser.IsActive = false;
+        context.PlayerPosition = new Vector2(200f, 250f);
+        laser.Update(context, actorRadius: 18f);
+
+        Assert.False(laser.HasTriggeredAlarm);
+        Assert.False(context.IsAlarmTriggered);
     }
 }

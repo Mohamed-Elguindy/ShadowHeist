@@ -1,3 +1,4 @@
+using System.Numerics;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Interfaces;
 
@@ -13,14 +14,26 @@ namespace ShadowHeist.WorldLighting;
 public sealed class WorldLightingModule : IGameSystem, IDisposable
 {
     private const string Level1MapPath = "assets/maps/level1_city_bank.json";
+    private const string HallLaserId = "laser_hall";
+    private const float RadToDeg = 180f / MathF.PI;
+    private const float AimDistanceEpsilonSquared = 0.001f;
+
+    private static readonly Vector2 HallLaserOrigin = new(336f, 386f);
+    private static readonly Vector2 HallLaserDirection = Vector2.UnitY;
 
     private readonly MapRenderer _mapRenderer = new();
+    private readonly LightingEffectRenderer _lightingRenderer = new();
+    private readonly List<LaserTripwire> _lasers = new();
+    private IReadOnlyList<Vector2> _visionConeVertices = Array.Empty<Vector2>();
     private LevelMapData? _currentMap;
+    private float _currentAimDegrees;
 
     public void Init(GameContext context)
     {
         _currentMap = MapLoader.LoadFromFile(Level1MapPath, context);
         _mapRenderer.LoadTextures();
+        _lightingRenderer.LoadTextures();
+        SpawnInitialLasers();
     }
 
     public void Update(float deltaTime, GameContext context)
@@ -30,16 +43,51 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
             CollisionHelper.DefaultActorRadius,
             context.Walls);
 
-        // TODO (Ticket #15 & #16 - Ali): Update VisionRaycaster and LaserTripwire beams
+        UpdateAimAngle(context.PlayerPosition, context.CurrentInput.AimWorldPosition);
+        _visionConeVertices = VisionRaycaster.ComputeVisionCone(
+            context.PlayerPosition,
+            _currentAimDegrees,
+            context.Walls);
+
+        UpdateLasers(context);
     }
 
     public void Draw(GameContext context)
     {
         _mapRenderer.Draw(_currentMap, context.Walls);
+        _lightingRenderer.Draw(_visionConeVertices, _lasers);
+
+        // TODO (Ticket #23 & #24 - Ali): Draw ShadowRenderer darkness mask and BrokenGlassTile hazards
     }
 
     public void Dispose()
     {
         _mapRenderer.Dispose();
+        _lightingRenderer.Dispose();
+    }
+
+    private void SpawnInitialLasers()
+    {
+        _lasers.Clear();
+        _lasers.Add(new LaserTripwire(HallLaserId, HallLaserOrigin, HallLaserDirection));
+    }
+
+    private void UpdateAimAngle(Vector2 playerPosition, Vector2 aimWorldPosition)
+    {
+        Vector2 toTarget = aimWorldPosition - playerPosition;
+        if (toTarget.LengthSquared() < AimDistanceEpsilonSquared)
+        {
+            return;
+        }
+
+        _currentAimDegrees = MathF.Atan2(toTarget.Y, toTarget.X) * RadToDeg;
+    }
+
+    private void UpdateLasers(GameContext context)
+    {
+        foreach (var laser in _lasers)
+        {
+            laser.Update(context);
+        }
     }
 }
