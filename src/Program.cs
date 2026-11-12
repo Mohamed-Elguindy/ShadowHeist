@@ -3,6 +3,7 @@ using ShadowHeist.Core;
 using ShadowHeist.GuardAI;
 using ShadowHeist.HeistWorld;
 using ShadowHeist.PlayerSystem;
+using ShadowHeist.Viewport3D;
 using ShadowHeist.WorldLighting;
 
 namespace ShadowHeist;
@@ -25,8 +26,10 @@ public static class Program
         using var context = new GameContext();
         context.RegisterSystem(new WorldLightingModule()); // Ali (Map & Floor)
         context.RegisterSystem(new PlayerSystemModule());  // Mahmoud (Input & Player)
-        context.RegisterSystem(new GuardAiModule());       // Hatem (Guards)
+        var guardModule = new GuardAiModule();             // Hatem (Guards)
+        context.RegisterSystem(guardModule);
         context.RegisterSystem(new HeistWorldModule());    // Guindy (Interactions & HUD)
+        context.RegisterSystem(new Viewport3DModule(guardModule)); // 3D tactical view test room (F5)
 
         context.InitializeAll();
 
