@@ -9,9 +9,12 @@ uniform mat4 matModel;
 
 out vec2 fragTexCoord;
 out vec3 fragNormal;
+out vec3 fragWorldPos;
 
 void main()
 {
+    vec4 worldPos = matModel * vec4(vertexPosition, 1.0);
+    fragWorldPos = worldPos.xyz;
     fragTexCoord = vertexTexCoord;
     fragNormal = normalize(mat3(matModel) * vertexNormal);
     gl_Position = mvp * vec4(vertexPosition, 1.0);
