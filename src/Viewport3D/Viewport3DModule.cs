@@ -3,13 +3,13 @@ using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Interfaces;
 using ShadowHeist.GuardAI;
+using ShadowHeist.HeistWorld.Interactables;
 using ShadowHeist.WorldLighting;
 
 namespace ShadowHeist.Viewport3D;
 
 /// <summary>
 /// 3D tactical isometric presentation module (F5 toggles 2D/3D, F6 toggles Follow/Overview).
-/// Purely read-only observer of GameContext, GuardAiModule, and WorldLightingModule.
 /// </summary>
 public sealed class Viewport3DModule : IGameSystem, IDisposable
 {
@@ -18,6 +18,8 @@ public sealed class Viewport3DModule : IGameSystem, IDisposable
     private readonly Scene3DRenderer _scene = new();
     private Camera3D _camera;
     private Vector3 _cameraFocus;
+    private Vector2? _lastAimPoint;
+    private float _lastRotationDegrees;
     private bool _is3DMode = true;
     private bool _isOverviewCamera;
     private bool _hasFocus;
@@ -32,18 +34,21 @@ public sealed class Viewport3DModule : IGameSystem, IDisposable
     public void Init(GameContext context)
     {
         _scene.Load(context);
+        _hasFocus = false;
         _camera = new Camera3D
         {
             Up = Vector3.UnitY,
             FovY = Viewport3DConfig.CameraFieldOfView,
             Projection = CameraProjection.Perspective
         };
+        context.Is3DRenderingActive = _is3DMode;
     }
 
     public void Update(float deltaTime, GameContext context)
     {
         if (Raylib.IsKeyPressed(KeyboardKey.F5)) _is3DMode = !_is3DMode;
         if (Raylib.IsKeyPressed(KeyboardKey.F6)) _isOverviewCamera = !_isOverviewCamera;
+        context.Is3DRenderingActive = _is3DMode;
 
         float wheel = Raylib.GetMouseWheelMove();
         if (MathF.Abs(wheel) > 0.01f)
@@ -52,6 +57,7 @@ public sealed class Viewport3DModule : IGameSystem, IDisposable
         }
 
         UpdateCamera(deltaTime, context);
+        UpdateMouseAim(context);
         _scene.Update(deltaTime, context, _guards.Guards, _camera.Position);
     }
 
@@ -59,18 +65,19 @@ public sealed class Viewport3DModule : IGameSystem, IDisposable
     {
         if (!_is3DMode)
         {
-            HudOverlay3D.DrawHintBar("[F5] 3D VIEW");
+            HudOverlay3D.DrawHintBar("[F5] 3D VIEW   |   [R] RESTART");
             return;
         }
 
-        // Flush earlier 2D systems before clearing color + depth buffers for the 3D pass.
         Rlgl.DrawRenderBatchActive();
         Color sky = context.IsAlarmTriggered ? Viewport3DConfig.AlarmSkyColor : Viewport3DConfig.SkyColor;
         Raylib.ClearBackground(sky);
 
-        IReadOnlyList<RectangleBounds> visualWalls = _world.CurrentMap?.Walls ?? context.Walls;
+        IReadOnlyList<RectangleBounds> architecturalWalls = _world.CurrentMap?.Walls ?? context.Walls;
+        IReadOnlyList<RectangleBounds> visionBlockers = BuildVisionBlockers(architecturalWalls, context);
+
         Raylib.BeginMode3D(_camera);
-        _scene.Draw(context, visualWalls, _guards.Guards, ReadPlayerRotation(context));
+        _scene.Draw(context, architecturalWalls, visionBlockers, _guards.Guards, ReadPlayerRotation(context));
         Raylib.EndMode3D();
 
         HudOverlay3D.DrawFullHud(context, _camera, _isOverviewCamera);
@@ -98,17 +105,51 @@ public sealed class Viewport3DModule : IGameSystem, IDisposable
         _camera.Position = _cameraFocus + desiredOffset;
     }
 
+    private void UpdateMouseAim(GameContext context)
+    {
+        if (!_is3DMode)
+        {
+            context.AimWorldOverride = null;
+            return;
+        }
+
+        _lastRotationDegrees = ReadPlayerRotation(context);
+        context.AimWorldOverride = _lastAimPoint;
+    }
+
     private float ReadPlayerRotation(GameContext context)
     {
         Ray ray = Raylib.GetMouseRay(Raylib.GetMousePosition(), _camera);
-        if (MathF.Abs(ray.Direction.Y) < 0.0001f)
+        if (ray.Direction.Y < -0.001f)
         {
-            return 0f;
+            float hitDistance = -ray.Position.Y / ray.Direction.Y;
+            if (hitDistance > 0f && hitDistance < 5000f)
+            {
+                Vector3 hit = ray.Position + ray.Direction * hitDistance;
+                _lastAimPoint = new Vector2(hit.X, hit.Z);
+            }
         }
 
-        float hitDistance = -ray.Position.Y / ray.Direction.Y;
-        Vector3 hit = ray.Position + ray.Direction * hitDistance;
-        Vector2 toCursor = new Vector2(hit.X, hit.Z) - context.PlayerPosition;
-        return toCursor == Vector2.Zero ? 0f : MathF.Atan2(toCursor.Y, toCursor.X) * Raylib.RAD2DEG;
+        if (_lastAimPoint is not Vector2 aimPoint) return _lastRotationDegrees;
+        Vector2 toCursor = aimPoint - context.PlayerPosition;
+        if (toCursor.LengthSquared() < 1f) return _lastRotationDegrees;
+
+        _lastRotationDegrees = MathF.Atan2(toCursor.Y, toCursor.X) * Raylib.RAD2DEG;
+        return _lastRotationDegrees;
+    }
+
+    private static IReadOnlyList<RectangleBounds> BuildVisionBlockers(
+        IReadOnlyList<RectangleBounds> architecturalWalls,
+        GameContext context)
+    {
+        List<RectangleBounds>? blockers = null;
+        foreach (VaultDoor door in context.Interactables.OfType<VaultDoor>())
+        {
+            if (door.IsOpen) continue;
+            blockers ??= new List<RectangleBounds>(architecturalWalls);
+            blockers.Add(door.DoorBounds);
+        }
+
+        return blockers ?? architecturalWalls;
     }
 }

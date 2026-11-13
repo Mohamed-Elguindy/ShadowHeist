@@ -5,7 +5,7 @@ using ShadowHeist.Core;
 namespace ShadowHeist.Viewport3D;
 
 /// <summary>
-/// Renders multi-zone cel-shaded 3D bank floors, cutaway concrete walls, pillars, and outlined furniture.
+/// Renders multi-zone cel-shaded 3D bank floors, cutaway concrete walls, pillars, and centered furniture.
 /// </summary>
 public sealed class FloorWallsFurnitureRenderer
 {
@@ -14,7 +14,7 @@ public sealed class FloorWallsFurnitureRenderer
     private const string SteelFloorPath = "assets/sprites/floor_vault_steel.png";
     private const string WallTexturePath = "assets/sprites/wall_reinforced_concrete.png";
     private const string FurnitureFolder = "assets/models/furniture";
-    private const float WallPanelLength = 128f;
+    private const float WallPanelLength = 64f;
     private const float RugLiftY = 1.2f;
 
     private readonly Dictionary<string, LoadedModel> _furniture = new();
@@ -59,10 +59,6 @@ public sealed class FloorWallsFurnitureRenderer
             for (float x = 0f; x < Viewport3DConfig.MapWidth; x += step)
                 if (SelectFloorSlab(x + step * 0.5f, z + step * 0.5f) is Model tileModel)
                     Raylib.DrawModel(tileModel, new Vector3(x + step / 2f, y, z + step / 2f), 1f, Color.White);
-
-        Vector2 min = Viewport3DConfig.VaultZoneMin;
-        Vector2 max = Viewport3DConfig.VaultZoneMax;
-        Raylib.DrawCube(new Vector3((min.X + max.X) / 2f, 0.4f, max.Y), max.X - min.X, 0.8f, 5f, new Color(56, 189, 248, 120));
     }
 
     private Model? SelectFloorSlab(float cx, float cz)
@@ -87,14 +83,17 @@ public sealed class FloorWallsFurnitureRenderer
     {
         foreach (RectangleBounds wall in walls)
         {
-            bool isCutaway = wall.X < Viewport3DConfig.LeftCutawayMaxX || wall.Y > Viewport3DConfig.BottomCutawayMinY;
+            bool isWestOuter = wall.X < Viewport3DConfig.LeftCutawayMaxX && wall.Height > wall.Width;
+            bool isSouthOuter = wall.Y > Viewport3DConfig.BottomCutawayMinY && wall.Width > wall.Height;
+            bool isCutaway = isWestOuter || isSouthOuter;
             float height = isCutaway ? Viewport3DConfig.CutawayWallHeight : Viewport3DConfig.WallHeight;
             DrawSegmentedWall(wall, height, isCutaway);
         }
 
         DrawCornerPillar(336f, 176f);
-        DrawCornerPillar(336f, 384f);
-        DrawCornerPillar(960f, 176f);
+        DrawCornerPillar(336f, 400f);
+        DrawCornerPillar(944f, 176f);
+        DrawCornerPillar(944f, 400f);
     }
 
     private void DrawSegmentedWall(RectangleBounds wall, float height, bool isCutaway)
@@ -148,7 +147,7 @@ public sealed class FloorWallsFurnitureRenderer
             float extraY = isRug ? RugLiftY : 0f;
             var pos = new Vector3(spec.Position.X, item.BaseOffsetY + extraY, spec.Position.Y);
             float outline = isRug ? 0f : 0.012f;
-            _library.DrawOutlined(item.Model, pos, spec.RotationDegrees, item.Scale, Color.White, outline);
+            _library.DrawCenteredProp(item, pos, spec.RotationDegrees, Color.White, outline);
         }
     }
 }

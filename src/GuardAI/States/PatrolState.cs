@@ -50,13 +50,23 @@ public sealed class PatrolState : IGuardState
 
     public IGuardState Update(float deltaTime, GameContext context)
     {
+        if (GuardSensorHelper.TrySpotIntruder(_guard, _waypoints, context, out IGuardState alertState))
+        {
+            return alertState;
+        }
+
+        if (_guard.ConsumeHeardNoise() is Vector2 noiseOrigin)
+        {
+            return new SuspiciousState(_guard, _waypoints, noiseOrigin);
+        }
+
         if (_isWaiting)
         {
             UpdateWaiting(deltaTime);
             return this;
         }
 
-        UpdatePatrolMovement(deltaTime);
+        UpdatePatrolMovement(deltaTime, context.Walls);
         return this;
     }
 
@@ -71,7 +81,7 @@ public sealed class PatrolState : IGuardState
         }
     }
 
-    private void UpdatePatrolMovement(float deltaTime)
+    private void UpdatePatrolMovement(float deltaTime, IReadOnlyList<RectangleBounds> walls)
     {
         var toTarget = TargetWaypoint - _guard.Position;
         float distance = toTarget.Length();
@@ -87,6 +97,6 @@ public sealed class PatrolState : IGuardState
 
         var direction = Vector2.Normalize(toTarget);
         _guard.RotateToward(direction, deltaTime, TurnRate);
-        _guard.Position += direction * step;
+        GuardSensorHelper.MoveWithCollision(_guard, direction * step, walls);
     }
 }

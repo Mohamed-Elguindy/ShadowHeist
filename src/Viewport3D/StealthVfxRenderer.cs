@@ -8,7 +8,7 @@ using ShadowHeist.HeistWorld.Interactables;
 namespace ShadowHeist.Viewport3D;
 
 /// <summary>
-/// Renders 3D stealth VFX: wall-clipped flashlight cones, sound ripples, lamp pools, and loot sparks.
+/// Renders 3D stealth VFX: wall-clipped flashlight cones, sound ripples, lamp pools, loot sparks, and aim reticle.
 /// </summary>
 public sealed class StealthVfxRenderer
 {
@@ -43,19 +43,22 @@ public sealed class StealthVfxRenderer
             else _sparks[i] = s;
         }
 
+        if (_collectedCrates.Count > 0 && context.StolenCash == 0) _collectedCrates.Clear();
+
         foreach (LootCrate crate in context.Interactables.OfType<LootCrate>())
         {
             if (crate.IsCollected && _collectedCrates.Add(crate.Id)) SpawnLootBurst(crate.Position);
         }
     }
 
-    public void Draw(IReadOnlyList<RectangleBounds> walls, GameContext context, IReadOnlyList<Guard> guards, float timeSeconds)
+    public void Draw(IReadOnlyList<RectangleBounds> visionBlockers, GameContext context, IReadOnlyList<Guard> guards, float timeSeconds)
     {
         DrawLampGlows();
-        DrawVaultSecurityLasers(timeSeconds);
+        DrawVaultSecurityLasers(context, timeSeconds);
         DrawRipples();
         DrawSparks();
-        DrawWallClippedCones(guards, walls, context.IsAlarmTriggered, timeSeconds);
+        DrawWallClippedCones(guards, visionBlockers, context.IsAlarmTriggered, timeSeconds);
+        DrawAimReticle(context.PlayerPosition, context.AimWorldOverride, timeSeconds);
     }
 
     private void OnNoiseEmitted(NoiseEmittedEvent evt)
@@ -86,11 +89,19 @@ public sealed class StealthVfxRenderer
         }
     }
 
-    private static void DrawVaultSecurityLasers(float timeSeconds)
+    private static void DrawVaultSecurityLasers(GameContext context, float timeSeconds)
     {
+        VaultDoor? door = context.Interactables.OfType<VaultDoor>().FirstOrDefault();
+        if (door is not { IsLocked: true }) return;
+
         byte alpha = (byte)(150 + 75 * MathF.Sin(timeSeconds * 4.5f));
         Color beam = new((byte)244, (byte)63, (byte)94, alpha);
-        for (int i = 0; i < 3; i++) Raylib.DrawLine3D(new Vector3(900f, 76f + i * 7f, 236f), new Vector3(900f, 76f + i * 7f, 324f), beam);
+        for (int i = 0; i < 3; i++)
+        {
+            float y = 24f + i * 18f;
+            Raylib.DrawLine3D(new Vector3(door.Position.X - 16f, y, door.Position.Y - 40f),
+                              new Vector3(door.Position.X - 16f, y, door.Position.Y + 40f), beam);
+        }
     }
 
     private void DrawRipples()
@@ -110,6 +121,15 @@ public sealed class StealthVfxRenderer
             float t = s.Age / SparkLifetimeSeconds;
             Raylib.DrawCube(s.Position, 5f, 5f, 5f, new Color((byte)248, (byte)196, (byte)44, (byte)(255 * (1f - t))));
         }
+    }
+
+    private static void DrawAimReticle(Vector2 playerPos, Vector2? aimPoint, float timeSeconds)
+    {
+        if (aimPoint is not Vector2 aim) return;
+
+        float pulse = 10f + MathF.Sin(timeSeconds * 5f) * 1.5f;
+        Raylib.DrawCylinderWires(new Vector3(aim.X, 1.5f, aim.Y), pulse, pulse, 0.5f, 18, new Color(56, 225, 255, 190));
+        Raylib.DrawLine3D(new Vector3(playerPos.X, 22f, playerPos.Y), new Vector3(aim.X, 2f, aim.Y), new Color(56, 225, 255, 65));
     }
 
     private static void DrawWallClippedCones(IReadOnlyList<Guard> guards, IReadOnlyList<RectangleBounds> walls, bool alarm, float t)

@@ -4,6 +4,13 @@ using ShadowHeist.Core.Interfaces;
 
 namespace ShadowHeist.Core;
 
+public enum HeistOutcome
+{
+    Playing,
+    Escaped,
+    Caught
+}
+
 /// <summary>
 /// Shared dependency container &amp; state context passed to all IGameSystem modules.
 /// </summary>
@@ -16,8 +23,13 @@ public sealed class GameContext : IDisposable
     public List<RectangleBounds> Walls { get; } = new();
 
     public Vector2 PlayerPosition { get; set; } = new(160f, 360f);
+    public float PlayerRotationDegrees { get; set; }
+    public bool IsPlayerSneaking { get; set; }
+    public Vector2? AimWorldOverride { get; set; }
+    public bool Is3DRenderingActive { get; set; }
     public int StolenCash { get; set; }
     public bool IsAlarmTriggered { get; set; }
+    public HeistOutcome Outcome { get; set; } = HeistOutcome.Playing;
     public PlayerInputCommand CurrentInput { get; set; }
 
     public void RegisterSystem(IGameSystem system)
@@ -48,6 +60,20 @@ public sealed class GameContext : IDisposable
         {
             system.Draw(this);
         }
+    }
+
+    public void RestartMission()
+    {
+        Interactables.Clear();
+        Walls.Clear();
+        EventBus.ClearSubscribers();
+        StolenCash = 0;
+        IsAlarmTriggered = false;
+        Outcome = HeistOutcome.Playing;
+        CurrentInput = default;
+        AimWorldOverride = null;
+        IsPlayerSneaking = false;
+        InitializeAll();
     }
 
     public void Dispose()

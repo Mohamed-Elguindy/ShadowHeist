@@ -15,9 +15,10 @@ public sealed class HudRenderer
     {
         DrawStolenCashBanner(context.StolenCash);
         DrawContextualPrompt(context);
+        DrawOutcomeOverlay(context.Outcome);
     }
 
-    private static void DrawStolenCashBanner(int stolenCash)
+    public static void DrawStolenCashBanner(int stolenCash)
     {
         string text = $"STOLEN CASH: ${stolenCash:N0} / ${TargetHeistGoal:N0}";
         int textWidth = Raylib.MeasureText(text, CashFontSize);
@@ -34,6 +35,30 @@ public sealed class HudRenderer
         Raylib.DrawText(text, boxX + 14, boxY + 8, CashFontSize, textColor);
     }
 
+    public static void DrawOutcomeOverlay(HeistOutcome outcome)
+    {
+        if (outcome == HeistOutcome.Playing) return;
+
+        bool won = outcome == HeistOutcome.Escaped;
+        string title = won ? "HEIST COMPLETE — ESCAPED!" : "BUSTED — CAUGHT BY SECURITY!";
+        string subtitle = "Press [R] to Restart Mission";
+        Color accent = won ? new Color(74, 222, 128, 255) : new Color(244, 63, 94, 255);
+
+        int w = Raylib.GetScreenWidth();
+        int h = Raylib.GetScreenHeight();
+        int titleW = Raylib.MeasureText(title, 34);
+        int subW = Raylib.MeasureText(subtitle, 20);
+        int panelW = Math.Max(titleW, subW) + 64;
+        int panelH = 110;
+        int px = (w - panelW) / 2;
+        int py = (h - panelH) / 2;
+
+        Raylib.DrawRectangle(px, py, panelW, panelH, new Color(10, 14, 24, 235));
+        Raylib.DrawRectangleLines(px, py, panelW, panelH, accent);
+        Raylib.DrawText(title, (w - titleW) / 2, py + 22, 34, accent);
+        Raylib.DrawText(subtitle, (w - subW) / 2, py + 68, 20, Color.RayWhite);
+    }
+
     private static void DrawContextualPrompt(GameContext context)
     {
         IInteractable? activeItem = InteractableQuery.FindInPlayerRange(context);
@@ -48,16 +73,13 @@ public sealed class HudRenderer
     private static void DrawPromptBox(string prompt, Vector2 worldPosition)
     {
         int textWidth = Raylib.MeasureText(prompt, PromptFontSize);
-        int promptX = (int)worldPosition.X - textWidth / 2;
-        int promptY = (int)worldPosition.Y - 45;
-
-        int boxX = promptX - 10;
-        int boxY = promptY - 5;
         int boxW = textWidth + 20;
         int boxH = PromptFontSize + 10;
+        int boxX = Math.Clamp((int)worldPosition.X - boxW / 2, 8, Math.Max(8, Raylib.GetScreenWidth() - boxW - 8));
+        int boxY = Math.Clamp((int)worldPosition.Y - 50, 8, Math.Max(8, Raylib.GetScreenHeight() - boxH - 8));
 
         Raylib.DrawRectangle(boxX, boxY, boxW, boxH, new Color(0, 0, 0, 200));
         Raylib.DrawRectangleLines(boxX, boxY, boxW, boxH, Color.White);
-        Raylib.DrawText(prompt, promptX, promptY, PromptFontSize, Color.Yellow);
+        Raylib.DrawText(prompt, boxX + 10, boxY + 5, PromptFontSize, Color.Yellow);
     }
 }

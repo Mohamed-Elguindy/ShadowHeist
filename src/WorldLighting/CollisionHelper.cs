@@ -19,12 +19,75 @@ public static class CollisionHelper
         }
 
         Vector2 resolvedPosition = actorPosition;
-        foreach (var wall in walls)
+        for (int pass = 0; pass < 2; pass++)
         {
-            resolvedPosition = ResolveSingleWallCollision(resolvedPosition, actorRadius, wall);
+            foreach (var wall in walls)
+            {
+                resolvedPosition = ResolveSingleWallCollision(resolvedPosition, actorRadius, wall);
+            }
         }
 
         return resolvedPosition;
+    }
+
+    public static bool HasLineOfSight(Vector2 from, Vector2 to, IReadOnlyList<RectangleBounds> walls)
+    {
+        Vector2 delta = to - from;
+        float dist = delta.Length();
+        if (dist <= 0.001f) return true;
+        float hit = CastRayAgainstWalls(from, delta / dist, dist, walls);
+        return hit >= dist - 0.5f;
+    }
+
+    public static float CastRayAgainstWalls(
+        Vector2 origin,
+        Vector2 direction,
+        float maxDistance,
+        IReadOnlyList<RectangleBounds> walls)
+    {
+        float closest = maxDistance;
+        foreach (RectangleBounds wall in walls)
+        {
+            if (TryIntersectRayAabb(origin, direction, wall, out float dist) && dist < closest)
+            {
+                closest = dist;
+            }
+        }
+
+        return closest;
+    }
+
+    private static bool TryIntersectRayAabb(Vector2 origin, Vector2 dir, RectangleBounds box, out float hitDistance)
+    {
+        hitDistance = float.MaxValue;
+        float tMin = 0f;
+        float tMax = float.MaxValue;
+
+        if (!ClipAxis(origin.X, dir.X, box.X, box.X + box.Width, ref tMin, ref tMax) ||
+            !ClipAxis(origin.Y, dir.Y, box.Y, box.Y + box.Height, ref tMin, ref tMax))
+        {
+            return false;
+        }
+
+        hitDistance = tMin;
+        return tMin >= 0f;
+    }
+
+    private static bool ClipAxis(float origin, float dir, float min, float max, ref float tMin, ref float tMax)
+    {
+        if (MathF.Abs(dir) < 0.00001f)
+        {
+            return origin >= min && origin <= max;
+        }
+
+        float inv = 1f / dir;
+        float t1 = (min - origin) * inv;
+        float t2 = (max - origin) * inv;
+        if (t1 > t2) (t1, t2) = (t2, t1);
+
+        tMin = MathF.Max(tMin, t1);
+        tMax = MathF.Min(tMax, t2);
+        return tMin <= tMax;
     }
 
     public static Vector2 ResolveSingleWallCollision(

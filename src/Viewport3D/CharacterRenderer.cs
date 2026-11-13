@@ -6,7 +6,7 @@ using ShadowHeist.GuardAI;
 namespace ShadowHeist.Viewport3D;
 
 /// <summary>
-/// Renders outlined 6-part stylized 3D thief and guard characters with stride, sneak crouch, and alert cues.
+/// Renders outlined 6-part stylized 3D thief and guard characters with stride, sneak crouch, and state badges.
 /// </summary>
 public sealed class CharacterRenderer
 {
@@ -23,7 +23,6 @@ public sealed class CharacterRenderer
     private ToonModelLibrary? _library;
     private CharacterRig? _thiefRig;
     private CharacterRig? _guardRig;
-    private bool _isPlayerSneaking;
 
     public void Load(ToonModelLibrary library)
     {
@@ -35,9 +34,6 @@ public sealed class CharacterRenderer
 
     public void Update(float deltaTime, GameContext context, IReadOnlyList<Guard> guards)
     {
-        if (context.CurrentInput.IsSprintHeld) _isPlayerSneaking = false;
-        else if (context.CurrentInput.IsSneakToggled) _isPlayerSneaking = !_isPlayerSneaking;
-
         UpdateActorState("player", context.PlayerPosition, deltaTime);
         foreach (Guard guard in guards) UpdateActorState(guard.Id, guard.Position, deltaTime);
     }
@@ -49,17 +45,20 @@ public sealed class CharacterRenderer
         {
             Color ring = context.CurrentInput.IsSprintHeld ? Color.Orange : new Color(56, 225, 255, 190);
             DrawShadowAndRing(context.PlayerPosition, ring);
-            DrawCharacter(_library, thief, context.PlayerPosition, playerRotationDegrees, GetAnim("player"), _isPlayerSneaking, false, timeSeconds);
+            DrawCharacter(_library, thief, context.PlayerPosition, playerRotationDegrees, GetAnim("player"), context.IsPlayerSneaking, false, timeSeconds);
         }
 
         if (_guardRig is CharacterRig guardRig)
         {
-            Color ring = context.IsAlarmTriggered ? new Color(244, 63, 94, 210) : new Color(255, 208, 92, 175);
             foreach (Guard guard in guards)
             {
+                string state = guard.CurrentState.StateName;
+                Color ring = state == "Alert"
+                    ? new Color(244, 63, 94, 225)
+                    : state == "Suspicious" ? new Color(250, 204, 21, 210) : new Color(255, 208, 92, 165);
                 DrawShadowAndRing(guard.Position, ring);
                 DrawCharacter(_library, guardRig, guard.Position, guard.RotationDegrees, GetAnim(guard.Id), false, true, timeSeconds);
-                DrawAwarenessBadge(guard.Position, context.IsAlarmTriggered, timeSeconds);
+                DrawAwarenessBadge(guard.Position, state, timeSeconds);
             }
         }
     }
@@ -73,6 +72,13 @@ public sealed class CharacterRenderer
         }
 
         float dist = Vector2.Distance(position, state.PreviousPosition);
+        if (dist > 120f)
+        {
+            state.PreviousPosition = position;
+            state.NormalizedSpeed = 0f;
+            return;
+        }
+
         state.NormalizedSpeed = MathF.Min(1.5f, deltaTime > 0.0001f ? (dist / deltaTime) / 150f : 0f);
         if (dist > 0.05f) state.StridePhase += dist * 0.14f;
         state.PreviousPosition = position;
@@ -88,13 +94,17 @@ public sealed class CharacterRenderer
         Raylib.DrawCylinderWires(shadowCenter + new Vector3(0f, 0.6f, 0f), Viewport3DConfig.ShadowRadius + 2f, Viewport3DConfig.ShadowRadius + 2f, 0.4f, 20, ringColor);
     }
 
-    private static void DrawAwarenessBadge(Vector2 pos, bool alarm, float t)
+    private static void DrawAwarenessBadge(Vector2 pos, string stateName, float t)
     {
-        float y = 84f + MathF.Sin(t * (alarm ? 10f : 3f)) * 2.5f;
+        bool alert = stateName == "Alert";
+        bool suspicious = stateName == "Suspicious";
+        float y = 84f + MathF.Sin(t * (alert ? 10f : 3f)) * 2.5f;
         Vector3 top = new(pos.X, y, pos.Y);
-        Color col = alarm ? new Color(244, 63, 94, 245) : new Color(255, 214, 78, 210);
-        Raylib.DrawCylinderEx(top, top + new Vector3(0f, alarm ? 12f : 6f, 0f), 0.5f, alarm ? 4.5f : 3.2f, 6, col);
-        if (alarm) Raylib.DrawSphere(top + new Vector3(0f, -4f, 0f), 2.5f, col);
+        Color col = alert
+            ? new Color(244, 63, 94, 245)
+            : suspicious ? new Color(250, 204, 21, 240) : new Color(255, 214, 78, 175);
+        Raylib.DrawCylinderEx(top, top + new Vector3(0f, alert ? 12f : 6f, 0f), 0.5f, alert ? 4.5f : 3.2f, 6, col);
+        if (alert || suspicious) Raylib.DrawSphere(top + new Vector3(0f, -4f, 0f), 2.5f, col);
     }
 
     private static void DrawCharacter(ToonModelLibrary lib, CharacterRig rig, Vector2 pos, float rotDeg, ActorAnimState state, bool isSneak, bool isGuard, float t)

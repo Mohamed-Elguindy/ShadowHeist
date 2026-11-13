@@ -17,14 +17,20 @@ public sealed class Scene3DRenderer : IDisposable
     private readonly CharacterRenderer _characters = new();
     private readonly StealthVfxRenderer _vfx = new();
     private float _elapsedSeconds;
+    private bool _assetsLoaded;
 
     public void Load(GameContext context)
     {
-        _library.LoadShader();
-        _environment.Load(_library);
-        _decor.Load(_library);
-        _props.Load(_library);
-        _characters.Load(_library);
+        if (!_assetsLoaded)
+        {
+            _library.LoadShader();
+            _environment.Load(_library);
+            _decor.Load(_library);
+            _props.Load(_library);
+            _characters.Load(_library);
+            _assetsLoaded = true;
+        }
+
         _vfx.SubscribeEvents(context.EventBus);
     }
 
@@ -40,12 +46,13 @@ public sealed class Scene3DRenderer : IDisposable
     public void Draw(
         GameContext context,
         IReadOnlyList<RectangleBounds> architecturalWalls,
+        IReadOnlyList<RectangleBounds> visionBlockers,
         IReadOnlyList<Guard> guards,
         float playerRotationDegrees)
     {
         _environment.Draw(architecturalWalls, _elapsedSeconds);
         _decor.Draw(_elapsedSeconds);
-        _vfx.Draw(architecturalWalls, context, guards, _elapsedSeconds);
+        _vfx.Draw(visionBlockers, context, guards, _elapsedSeconds);
         _props.Draw(context, _elapsedSeconds);
         _characters.Draw(context, guards, playerRotationDegrees, _elapsedSeconds);
     }

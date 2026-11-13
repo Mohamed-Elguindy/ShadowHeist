@@ -14,7 +14,7 @@ public sealed class PropsRenderer
     private const string CrateTexturePath = "assets/sprites/prop_loot_crate.png";
     private const float CrateSize = 36f;
     private const float CrateHeight = 28f;
-    private const float VaultFrameWidth = 84f;
+    private const float VaultFrameWidth = 92f;
     private const float VaultFrameHeight = 88f;
     private const float VaultDoorOpenSpeed = 160f;
     private const float KeypadHeight = 46f;
@@ -80,14 +80,14 @@ public sealed class PropsRenderer
     private void DrawVaultDoor(VaultDoor door, float timeSeconds)
     {
         var center = new Vector3(door.Position.X, 0f, door.Position.Y);
-        Raylib.DrawCube(center + new Vector3(0f, VaultFrameHeight * 0.5f, -VaultFrameWidth * 0.5f), 18f, VaultFrameHeight, 12f, DarkSteelColor);
-        Raylib.DrawCube(center + new Vector3(0f, VaultFrameHeight * 0.5f, VaultFrameWidth * 0.5f), 18f, VaultFrameHeight, 12f, DarkSteelColor);
-        Raylib.DrawCube(center + new Vector3(0f, VaultFrameHeight + 5f, 0f), 22f, 14f, VaultFrameWidth + 14f, SteelColor);
+        Raylib.DrawCube(center + new Vector3(0f, VaultFrameHeight * 0.5f, -VaultFrameWidth * 0.5f), 32f, VaultFrameHeight, 12f, DarkSteelColor);
+        Raylib.DrawCube(center + new Vector3(0f, VaultFrameHeight * 0.5f, VaultFrameWidth * 0.5f), 32f, VaultFrameHeight, 12f, DarkSteelColor);
+        Raylib.DrawCube(center + new Vector3(0f, VaultFrameHeight + 5f, 0f), 34f, 14f, VaultFrameWidth + 14f, SteelColor);
 
         float rad = _vaultSwingDegrees * Raylib.DEG2RAD;
-        Vector3 leafPos = center + new Vector3(MathF.Sin(rad) * 34f, VaultFrameHeight * 0.48f, -VaultFrameWidth * 0.44f + MathF.Cos(rad) * 34f);
-        float w = MathF.Abs(MathF.Cos(rad)) * 14f + MathF.Abs(MathF.Sin(rad)) * (VaultFrameWidth - 14f);
-        float l = MathF.Abs(MathF.Sin(rad)) * 14f + MathF.Abs(MathF.Cos(rad)) * (VaultFrameWidth - 14f);
+        Vector3 leafPos = center + new Vector3(MathF.Sin(rad) * 40f, VaultFrameHeight * 0.48f, -40f + MathF.Cos(rad) * 40f);
+        float w = MathF.Abs(MathF.Cos(rad)) * 16f + MathF.Abs(MathF.Sin(rad)) * 80f;
+        float l = MathF.Abs(MathF.Sin(rad)) * 16f + MathF.Abs(MathF.Cos(rad)) * 80f;
 
         Color doorTint = door.IsLocked ? SteelColor : new Color(172, 198, 212, 255);
         Raylib.DrawCube(leafPos, w, VaultFrameHeight - 6f, l, doorTint);
@@ -95,13 +95,13 @@ public sealed class PropsRenderer
 
         if (_vaultSwingDegrees < 40f)
         {
-            Vector3 wc = leafPos + new Vector3(-9f, 0f, 0f);
-            Raylib.DrawCylinderEx(wc + new Vector3(-3f, 0f, 0f), wc + new Vector3(2f, 0f, 0f), 13f, 13f, 12, BrassColor);
+            Vector3 wc = leafPos + new Vector3(9f, 0f, 0f);
+            Raylib.DrawCylinderEx(wc + new Vector3(-2f, 0f, 0f), wc + new Vector3(3f, 0f, 0f), 13f, 13f, 12, BrassColor);
         }
 
         Color status = door.IsOpen ? EmeraldGlowColor : (door.IsLocked ? RedAlertColor : CyanGlowColor);
         byte alpha = (byte)(255 * (0.6f + 0.4f * MathF.Sin(timeSeconds * 5f)));
-        Raylib.DrawSphere(center + new Vector3(-8f, VaultFrameHeight + 16f, 0f), 6f, new Color(status.R, status.G, status.B, alpha));
+        Raylib.DrawSphere(center + new Vector3(12f, VaultFrameHeight + 16f, 0f), 6f, new Color(status.R, status.G, status.B, alpha));
     }
 
     private static void DrawKeypad(KeypadTerminal keypad, Vector2 playerPos, float timeSeconds)

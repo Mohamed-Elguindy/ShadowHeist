@@ -123,4 +123,59 @@ public sealed class GuardAiTests
         float normalized = (result + 360f) % 360f;
         Assert.Equal(5f, normalized, precision: 1);
     }
+
+    [Fact]
+    public void Guard_TransitionsToAlertAndTriggersAlarm_WhenPlayerVisibleInCone()
+    {
+        using var context = new GameContext { PlayerPosition = new Vector2(200f, 100f) };
+        var guard = new Guard("guard_1", new Vector2(100f, 100f), new[] { new Vector2(400f, 100f) })
+        {
+            RotationDegrees = 0f
+        };
+
+        guard.Update(0.05f, context);
+
+        Assert.IsType<AlertChaseState>(guard.CurrentState);
+        Assert.True(context.IsAlarmTriggered);
+    }
+
+    [Fact]
+    public void Guard_DoesNotAlert_WhenWallBlocksLineOfSight()
+    {
+        using var context = new GameContext { PlayerPosition = new Vector2(220f, 100f) };
+        context.Walls.Add(new RectangleBounds(150f, 60f, 20f, 80f));
+        var guard = new Guard("guard_1", new Vector2(100f, 100f), new[] { new Vector2(400f, 100f) })
+        {
+            RotationDegrees = 0f
+        };
+
+        guard.Update(0.05f, context);
+
+        Assert.IsType<PatrolState>(guard.CurrentState);
+        Assert.False(context.IsAlarmTriggered);
+    }
+
+    [Fact]
+    public void Guard_TransitionsToSuspicious_WhenNoiseNotified()
+    {
+        using var context = new GameContext();
+        var guard = new Guard("guard_1", new Vector2(100f, 100f), new[] { new Vector2(400f, 100f) });
+        guard.NotifyNoise(new Vector2(180f, 150f));
+
+        guard.Update(0.05f, context);
+
+        Assert.IsType<SuspiciousState>(guard.CurrentState);
+    }
+
+    [Fact]
+    public void AlertChaseState_TriggersCaughtOutcome_WhenGuardReachesPlayer()
+    {
+        using var context = new GameContext { PlayerPosition = new Vector2(110f, 100f) };
+        var guard = new Guard("guard_1", new Vector2(100f, 100f), new[] { new Vector2(400f, 100f) });
+
+        guard.Update(0.05f, context);
+        guard.Update(0.05f, context);
+
+        Assert.Equal(HeistOutcome.Caught, context.Outcome);
+    }
 }

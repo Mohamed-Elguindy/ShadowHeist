@@ -16,12 +16,18 @@ public sealed class HeistWorldRenderer : IDisposable
 
     private readonly SpriteDrawer _sprites = new();
     private readonly IReadOnlyList<LootCrate> _crates;
-    private readonly VaultDoor _vaultDoor;
-    private readonly KeypadTerminal _keypad;
+    private VaultDoor _vaultDoor;
+    private KeypadTerminal _keypad;
 
     public HeistWorldRenderer(IReadOnlyList<LootCrate> crates, VaultDoor vaultDoor, KeypadTerminal keypad)
     {
         _crates = crates;
+        _vaultDoor = vaultDoor;
+        _keypad = keypad;
+    }
+
+    public void SetTargets(VaultDoor vaultDoor, KeypadTerminal keypad)
+    {
         _vaultDoor = vaultDoor;
         _keypad = keypad;
     }

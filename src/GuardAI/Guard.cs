@@ -12,6 +12,7 @@ public sealed class Guard
 {
     private const float DefaultMoveSpeed = 80f;
     private const float DefaultTurnRate = 360f;
+    private Vector2? _pendingNoiseOrigin;
 
     public string Id { get; }
     public Vector2 Position { get; set; }
@@ -85,5 +86,14 @@ public sealed class Guard
         }
 
         return current + MathF.Sign(diff) * maxDelta;
+    }
+
+    public void NotifyNoise(Vector2 origin) => _pendingNoiseOrigin = origin;
+
+    public Vector2? ConsumeHeardNoise()
+    {
+        Vector2? heard = _pendingNoiseOrigin;
+        _pendingNoiseOrigin = null;
+        return heard;
     }
 }

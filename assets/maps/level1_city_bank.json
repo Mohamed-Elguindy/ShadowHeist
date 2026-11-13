@@ -13,79 +13,84 @@
     "width": 128,
     "height": 96
   },
+  "walls": [
+    { "x": 0, "y": 0, "width": 1280, "height": 32 },
+    { "x": 0, "y": 736, "width": 1280, "height": 32 },
+    { "x": 0, "y": 0, "width": 32, "height": 768 },
+    { "x": 1248, "y": 0, "width": 32, "height": 768 },
+    { "x": 320, "y": 160, "width": 640, "height": 32 },
+    { "x": 320, "y": 384, "width": 640, "height": 32 },
+    { "x": 320, "y": 160, "width": 32, "height": 256 },
+    { "x": 928, "y": 160, "width": 32, "height": 80 },
+    { "x": 928, "y": 336, "width": 32, "height": 80 }
+  ],
   "obstacles": [
-    { "kind": "sofa", "x": 74, "y": 388, "width": 44, "height": 104 },
-    { "kind": "table", "x": 160, "y": 404, "width": 44, "height": 72 },
-    { "kind": "chair", "x": 156, "y": 317, "width": 52, "height": 46 },
-    { "kind": "chair", "x": 156, "y": 517, "width": 52, "height": 46 },
-    { "kind": "lamp", "x": 72, "y": 333, "width": 24, "height": 24 },
-    { "kind": "plant", "x": 82, "y": 218, "width": 28, "height": 28 },
-    { "kind": "plant", "x": 262, "y": 206, "width": 28, "height": 28 },
-    { "kind": "plant", "x": 72, "y": 72, "width": 24, "height": 24 },
-    { "kind": "table", "x": 610, "y": 56, "width": 60, "height": 36 },
-    { "kind": "plant", "x": 1176, "y": 72, "width": 24, "height": 24 },
-    { "kind": "counter", "x": 498, "y": 520, "width": 124, "height": 40 },
-    { "kind": "chair", "x": 534, "y": 593, "width": 52, "height": 46 },
-    { "kind": "sofa", "x": 753, "y": 610, "width": 104, "height": 44 },
-    { "kind": "table", "x": 769, "y": 528, "width": 72, "height": 44 },
-    { "kind": "lamp", "x": 884, "y": 620, "width": 24, "height": 24 },
-    { "kind": "plant", "x": 1161, "y": 636, "width": 28, "height": 28 },
-    { "kind": "table", "x": 1173, "y": 350, "width": 26, "height": 60 }
+    { "kind": "sofa", "x": 64.0, "y": 387.5, "width": 43.9, "height": 105.0 },
+    { "kind": "table", "x": 134.2, "y": 404.0, "width": 43.6, "height": 72.0 },
+    { "kind": "chair", "x": 130.0, "y": 314.2, "width": 52.0, "height": 43.5 },
+    { "kind": "chair", "x": 130.0, "y": 522.2, "width": 52.0, "height": 43.5 },
+    { "kind": "lamp", "x": 76.8, "y": 335.6, "width": 14.5, "height": 16.7 },
+    { "kind": "plant", "x": 70.9, "y": 221.6, "width": 18.3, "height": 20.8 },
+    { "kind": "plant", "x": 262.9, "y": 209.7, "width": 18.2, "height": 20.7 },
+    { "kind": "plant", "x": 60.5, "y": 60.5, "width": 23.0, "height": 23.0 },
+    { "kind": "table", "x": 610.0, "y": 39.5, "width": 60.0, "height": 25.0 },
+    { "kind": "plant", "x": 1196.1, "y": 61.7, "width": 23.8, "height": 20.6 },
+    { "kind": "counter", "x": 498.0, "y": 516.0, "width": 124.0, "height": 40.0 },
+    { "kind": "chair", "x": 534.0, "y": 582.2, "width": 52.0, "height": 43.5 },
+    { "kind": "sofa", "x": 777.5, "y": 624.0, "width": 105.0, "height": 43.9 },
+    { "kind": "table", "x": 794.0, "y": 544.2, "width": 72.0, "height": 43.6 },
+    { "kind": "lamp", "x": 904.8, "y": 637.6, "width": 14.5, "height": 16.7 },
+    { "kind": "plant", "x": 1190.9, "y": 678.4, "width": 18.2, "height": 19.2 },
+    { "kind": "table", "x": 1211.5, "y": 350.0, "width": 25.0, "height": 60.0 }
   ],
   "interactables": [
     {
-      "type": "KeypadTerminal",
-      "id": "kp_vault",
-      "x": 704,
-      "y": 256,
-      "targetId": "door_vault"
-    },
-    {
-      "type": "VaultDoor",
-      "id": "door_vault",
-      "x": 832,
-      "y": 256
-    },
-    {
       "type": "LootCrate",
-      "id": "loot_1",
-      "x": 960,
-      "y": 192,
+      "id": "loot_vault_1",
+      "x": 460,
+      "y": 288,
       "cashValue": 250000
     },
     {
-      "type": "FuseBox",
-      "id": "fuse_main",
-      "x": 384,
-      "y": 128,
-      "targetId": "laser_hall"
+      "type": "LootCrate",
+      "id": "loot_vault_2",
+      "x": 720,
+      "y": 288,
+      "cashValue": 250000
+    },
+    {
+      "type": "VaultDoor",
+      "id": "vault_door",
+      "x": 944,
+      "y": 288
+    },
+    {
+      "type": "KeypadTerminal",
+      "id": "vault_keypad",
+      "x": 988,
+      "y": 368,
+      "targetId": "vault_door"
     }
   ],
   "guards": [
     {
-      "name": "Guard_Lobby",
+      "name": "guard_vault_patrol_alpha",
+      "moveSpeed": 75,
       "waypoints": [
-        {
-          "x": 320,
-          "y": 320
-        },
-        {
-          "x": 640,
-          "y": 320
-        }
+        { "x": 410, "y": 228 },
+        { "x": 860, "y": 228 },
+        { "x": 860, "y": 348 },
+        { "x": 410, "y": 348 }
       ]
     },
     {
-      "name": "Guard_Vault",
+      "name": "guard_corridor_patrol_beta",
+      "moveSpeed": 65,
       "waypoints": [
-        {
-          "x": 768,
-          "y": 512
-        },
-        {
-          "x": 768,
-          "y": 220
-        }
+        { "x": 1060, "y": 104 },
+        { "x": 1060, "y": 480 },
+        { "x": 420, "y": 480 },
+        { "x": 1060, "y": 480 }
       ]
     }
   ]

@@ -15,7 +15,10 @@ public static class MapLoader
     private static readonly Vector2 DefaultPlayerSpawn = new(128f, 640f);
     private static readonly RectangleBounds DefaultGetawayZone = new(64f, 640f, 128f, 96f);
     private static readonly RectangleBounds DefaultVaultTopWall = new(320f, 160f, 640f, 32f);
-    private static readonly RectangleBounds DefaultLobbyDividerWall = new(320f, 160f, 32f, 224f);
+    private static readonly RectangleBounds DefaultVaultBottomWall = new(320f, 384f, 640f, 32f);
+    private static readonly RectangleBounds DefaultLobbyDividerWall = new(320f, 160f, 32f, 256f);
+    private static readonly RectangleBounds DefaultVaultEastUpperWall = new(928f, 160f, 32f, 80f);
+    private static readonly RectangleBounds DefaultVaultEastLowerWall = new(928f, 336f, 32f, 80f);
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
@@ -56,6 +59,8 @@ public static class MapLoader
         RectangleBounds getawayZone = ResolveGetawayZone(dto?.GetawayZone);
         List<RectangleBounds> walls = BuildWalls(dto?.Walls, gridWidth * tileSize, gridHeight * tileSize);
         List<MapPropObstacle> obstacles = ParseObstacles(dto?.Obstacles);
+        List<MapInteractableDto> interactables = dto?.Interactables ?? new List<MapInteractableDto>();
+        List<MapGuardDto> guards = dto?.Guards?.FindAll(g => g.Waypoints is { Count: > 0 }) ?? new List<MapGuardDto>();
 
         return new LevelMapData(
             levelName,
@@ -65,7 +70,9 @@ public static class MapLoader
             playerSpawn,
             getawayZone,
             walls,
-            obstacles);
+            obstacles,
+            interactables,
+            guards);
     }
 
     private static RectangleBounds ResolveGetawayZone(RectangleBounds? zone)
@@ -108,7 +115,10 @@ public static class MapLoader
             new(0f, 0f, OuterWallThickness, mapPixelHeight),
             new(mapPixelWidth - OuterWallThickness, 0f, OuterWallThickness, mapPixelHeight),
             DefaultVaultTopWall,
-            DefaultLobbyDividerWall
+            DefaultVaultBottomWall,
+            DefaultLobbyDividerWall,
+            DefaultVaultEastUpperWall,
+            DefaultVaultEastLowerWall
         };
     }
 

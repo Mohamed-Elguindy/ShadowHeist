@@ -11,8 +11,8 @@ public sealed class BankDecorRenderer
     private const string VanModelPath = "assets/models/props/getaway_van.obj";
     private const float VanLength = 148f;
 
-    private static readonly Vector2 VanPosition = new(134f, 804f);
-    private static readonly Vector2 TellerPos = new(560f, 540f);
+    private static readonly Vector2 VanPosition = new(134f, 828f);
+    private static readonly Vector2 TellerPos = new(560f, 536f);
     private static readonly Color AsphaltColor = new(22, 26, 34, 255);
     private static readonly Color WalnutColor = new(126, 78, 48, 255);
     private static readonly Color MarbleTopColor = new(184, 194, 208, 255);
@@ -38,13 +38,13 @@ public sealed class BankDecorRenderer
 
     private void DrawGetawayVan(float timeSeconds)
     {
-        Raylib.DrawCube(new Vector3(VanPosition.X + 8f, -1.5f, VanPosition.Y - 4f), 220f, 3f, 130f, AsphaltColor);
-        Raylib.DrawCube(new Vector3(VanPosition.X + 8f, 0.2f, VanPosition.Y - 64f), 200f, 0.5f, 3f, new Color(246, 196, 54, 150));
+        Raylib.DrawCube(new Vector3(VanPosition.X + 8f, -1.5f, VanPosition.Y), 220f, 3f, 112f, AsphaltColor);
+        Raylib.DrawCube(new Vector3(VanPosition.X + 8f, 0.2f, VanPosition.Y - 54f), 200f, 0.5f, 3f, new Color(246, 196, 54, 150));
 
         if (_van is LoadedModel van && _library is not null)
         {
             Vector3 pos = new(VanPosition.X, van.BaseOffsetY, VanPosition.Y);
-            _library.DrawOutlined(van.Model, pos, 14f, van.Scale, Color.White, 0.045f);
+            _library.DrawCenteredProp(van, pos, 14f, Color.White, 0.045f);
             byte blink = (byte)(150 + 90 * MathF.Sin(timeSeconds * 4f));
             Raylib.DrawTriangle3D(pos + new Vector3(72f, 4f, -14f), pos + new Vector3(140f, 1f, -34f), pos + new Vector3(140f, 1f, 8f), new Color((byte)255, (byte)242, (byte)168, (byte)36));
             Raylib.DrawSphere(pos + new Vector3(-66f, 24f, -20f), 4f, new Color((byte)244, (byte)63, (byte)94, blink));
@@ -75,8 +75,8 @@ public sealed class BankDecorRenderer
 
     private static void DrawWallSecurityCameras(float timeSeconds)
     {
-        DrawSingleCamera(new Vector3(356f, 84f, 200f), 32f + MathF.Sin(timeSeconds * 1.3f) * 26f, timeSeconds);
-        DrawSingleCamera(new Vector3(956f, 84f, 200f), 148f + MathF.Cos(timeSeconds * 1.1f) * 26f, timeSeconds);
+        DrawSingleCamera(new Vector3(364f, 84f, 196f), 32f + MathF.Sin(timeSeconds * 1.3f) * 26f, timeSeconds);
+        DrawSingleCamera(new Vector3(916f, 84f, 196f), 148f + MathF.Cos(timeSeconds * 1.1f) * 26f, timeSeconds);
     }
 
     private static void DrawSingleCamera(Vector3 mount, float yawDeg, float timeSeconds)
@@ -92,7 +92,7 @@ public sealed class BankDecorRenderer
 
     private static void DrawWallCrestAndFusebox(float timeSeconds)
     {
-        // Vault Fusebox mounted cleanly on the vault south wall near (384, 196)
+        // Vault Fusebox mounted cleanly on the interior face of the vault north wall
         Vector3 fusePos = new(410f, 52f, 196f);
         Raylib.DrawCube(fusePos, 24f, 30f, 8f, new Color(46, 56, 72, 255));
         Raylib.DrawCubeWires(fusePos, 24f, 30f, 8f, Viewport3DConfig.OutlineColor);
@@ -100,7 +100,7 @@ public sealed class BankDecorRenderer
         byte led = (byte)(140 + 115 * MathF.Sin(timeSeconds * 6f));
         Raylib.DrawSphere(fusePos + new Vector3(6f, 9f, 5f), 2.3f, new Color((byte)74, (byte)222, (byte)128, led));
 
-        // Bank architectural accent plaque along the north concrete wall
+        // Bank architectural accent plaque mounted along the north concrete perimeter wall
         Vector3 plaquePos = new(640f, 60f, 35f);
         Raylib.DrawCube(plaquePos, 190f, 34f, 5f, new Color(28, 36, 52, 255));
         Raylib.DrawCubeWires(plaquePos, 190f, 34f, 5f, new Color(212, 162, 68, 255));

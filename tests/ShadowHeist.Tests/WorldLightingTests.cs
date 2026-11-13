@@ -132,4 +132,45 @@ public sealed class WorldLightingTests
         Assert.Single(mapData.Obstacles!);
         Assert.Contains(new RectangleBounds(74f, 388f, 44f, 104f), context.Walls);
     }
+
+    [Fact]
+    public void HasLineOfSight_ReturnsFalse_WhenWallIsBetweenPoints()
+    {
+        var walls = new[] { new RectangleBounds(150f, 50f, 32f, 200f) };
+
+        Assert.False(CollisionHelper.HasLineOfSight(new Vector2(100f, 150f), new Vector2(220f, 150f), walls));
+        Assert.True(CollisionHelper.HasLineOfSight(new Vector2(100f, 150f), new Vector2(130f, 150f), walls));
+    }
+
+    [Fact]
+    public void Level1CityBankJson_HasNoWallOverlapsWithObstaclesOrGuardWaypoints()
+    {
+        using var context = new GameContext();
+        string mapPath = Path.Combine(AppContext.BaseDirectory, "assets", "maps", "level1_city_bank.json");
+        LevelMapData mapData = MapLoader.LoadFromFile(mapPath, context);
+
+        Assert.NotNull(mapData.Obstacles);
+        Assert.NotNull(mapData.Guards);
+        Assert.NotNull(mapData.Interactables);
+
+        foreach (MapPropObstacle obstacle in mapData.Obstacles!)
+        {
+            RectangleBounds ob = obstacle.ToBounds();
+            foreach (RectangleBounds wall in mapData.Walls)
+            {
+                bool overlaps = ob.X < wall.X + wall.Width && ob.X + ob.Width > wall.X &&
+                                ob.Y < wall.Y + wall.Height && ob.Y + ob.Height > wall.Y;
+                Assert.False(overlaps, $"Obstacle {obstacle.Kind} at ({ob.X},{ob.Y}) overlaps wall ({wall.X},{wall.Y}).");
+            }
+        }
+
+        foreach (MapGuardDto guard in mapData.Guards!)
+        {
+            foreach (Vector2 wp in guard.Waypoints)
+            {
+                Vector2 resolved = CollisionHelper.ResolveWallCollision(wp, CollisionHelper.DefaultActorRadius, context.Walls);
+                Assert.Equal(wp, resolved);
+            }
+        }
+    }
 }
