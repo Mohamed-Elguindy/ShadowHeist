@@ -13,6 +13,25 @@
     "width": 128,
     "height": 96
   },
+  "obstacles": [
+    { "kind": "sofa", "x": 74, "y": 388, "width": 44, "height": 104 },
+    { "kind": "table", "x": 160, "y": 404, "width": 44, "height": 72 },
+    { "kind": "chair", "x": 156, "y": 317, "width": 52, "height": 46 },
+    { "kind": "chair", "x": 156, "y": 517, "width": 52, "height": 46 },
+    { "kind": "lamp", "x": 72, "y": 333, "width": 24, "height": 24 },
+    { "kind": "plant", "x": 82, "y": 218, "width": 28, "height": 28 },
+    { "kind": "plant", "x": 262, "y": 206, "width": 28, "height": 28 },
+    { "kind": "plant", "x": 72, "y": 72, "width": 24, "height": 24 },
+    { "kind": "table", "x": 610, "y": 56, "width": 60, "height": 36 },
+    { "kind": "plant", "x": 1176, "y": 72, "width": 24, "height": 24 },
+    { "kind": "counter", "x": 498, "y": 520, "width": 124, "height": 40 },
+    { "kind": "chair", "x": 534, "y": 593, "width": 52, "height": 46 },
+    { "kind": "sofa", "x": 753, "y": 610, "width": 104, "height": 44 },
+    { "kind": "table", "x": 769, "y": 528, "width": 72, "height": 44 },
+    { "kind": "lamp", "x": 884, "y": 620, "width": 24, "height": 24 },
+    { "kind": "plant", "x": 1161, "y": 636, "width": 28, "height": 28 },
+    { "kind": "table", "x": 1173, "y": 350, "width": 26, "height": 60 }
+  ],
   "interactables": [
     {
       "type": "KeypadTerminal",

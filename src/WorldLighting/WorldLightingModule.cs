@@ -17,6 +17,8 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
     private readonly MapRenderer _mapRenderer = new();
     private LevelMapData? _currentMap;
 
+    public LevelMapData? CurrentMap => _currentMap;
+
     public void Init(GameContext context)
     {
         _currentMap = MapLoader.LoadFromFile(Level1MapPath, context);

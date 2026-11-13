@@ -37,11 +37,15 @@ public sealed class Scene3DRenderer : IDisposable
         _vfx.Update(deltaTime, context);
     }
 
-    public void Draw(GameContext context, IReadOnlyList<Guard> guards, float playerRotationDegrees)
+    public void Draw(
+        GameContext context,
+        IReadOnlyList<RectangleBounds> architecturalWalls,
+        IReadOnlyList<Guard> guards,
+        float playerRotationDegrees)
     {
-        _environment.Draw(context.Walls, _elapsedSeconds);
+        _environment.Draw(architecturalWalls, _elapsedSeconds);
         _decor.Draw(_elapsedSeconds);
-        _vfx.Draw(context, guards, _elapsedSeconds);
+        _vfx.Draw(architecturalWalls, context, guards, _elapsedSeconds);
         _props.Draw(context, _elapsedSeconds);
         _characters.Draw(context, guards, playerRotationDegrees, _elapsedSeconds);
     }

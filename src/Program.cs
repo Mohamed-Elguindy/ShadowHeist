@@ -24,12 +24,13 @@ public static class Program
         Raylib.SetTargetFPS(TargetFps);
 
         using var context = new GameContext();
-        context.RegisterSystem(new WorldLightingModule()); // Ali (Map & Floor)
+        var worldModule = new WorldLightingModule();       // Ali (Map & Floor)
+        context.RegisterSystem(worldModule);
         context.RegisterSystem(new PlayerSystemModule());  // Mahmoud (Input & Player)
         var guardModule = new GuardAiModule();             // Hatem (Guards)
         context.RegisterSystem(guardModule);
         context.RegisterSystem(new HeistWorldModule());    // Guindy (Interactions & HUD)
-        context.RegisterSystem(new Viewport3DModule(guardModule)); // 3D tactical view test room (F5)
+        context.RegisterSystem(new Viewport3DModule(guardModule, worldModule)); // 3D tactical view (F5)
 
         context.InitializeAll();
 

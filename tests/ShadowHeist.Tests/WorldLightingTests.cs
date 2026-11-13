@@ -110,4 +110,26 @@ public sealed class WorldLightingTests
         Assert.Equal(150f, resolvedPosition.X, FloatTolerance);
         Assert.Equal(85f, resolvedPosition.Y, FloatTolerance);
     }
+
+    [Fact]
+    public void LoadFromJson_WithObstacles_PopulatesMapObstaclesAndCollisionWalls()
+    {
+        using var context = new GameContext();
+        const string json = """
+        {
+          "levelName": "Bank Obstacles",
+          "tileSize": 64,
+          "width": 20,
+          "height": 12,
+          "obstacles": [
+            { "kind": "sofa", "x": 74, "y": 388, "width": 44, "height": 104 }
+          ]
+        }
+        """;
+
+        LevelMapData mapData = MapLoader.LoadFromJson(json, context);
+
+        Assert.Single(mapData.Obstacles!);
+        Assert.Contains(new RectangleBounds(74f, 388f, 44f, 104f), context.Walls);
+    }
 }

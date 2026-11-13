@@ -3,16 +3,18 @@ using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Interfaces;
 using ShadowHeist.GuardAI;
+using ShadowHeist.WorldLighting;
 
 namespace ShadowHeist.Viewport3D;
 
 /// <summary>
 /// 3D tactical isometric presentation module (F5 toggles 2D/3D, F6 toggles Follow/Overview).
-/// Purely read-only observer of GameContext and GuardAiModule.
+/// Purely read-only observer of GameContext, GuardAiModule, and WorldLightingModule.
 /// </summary>
 public sealed class Viewport3DModule : IGameSystem, IDisposable
 {
     private readonly GuardAiModule _guards;
+    private readonly WorldLightingModule _world;
     private readonly Scene3DRenderer _scene = new();
     private Camera3D _camera;
     private Vector3 _cameraFocus;
@@ -21,7 +23,11 @@ public sealed class Viewport3DModule : IGameSystem, IDisposable
     private bool _hasFocus;
     private float _zoom = 1f;
 
-    public Viewport3DModule(GuardAiModule guards) => _guards = guards;
+    public Viewport3DModule(GuardAiModule guards, WorldLightingModule world)
+    {
+        _guards = guards;
+        _world = world;
+    }
 
     public void Init(GameContext context)
     {
@@ -62,8 +68,9 @@ public sealed class Viewport3DModule : IGameSystem, IDisposable
         Color sky = context.IsAlarmTriggered ? Viewport3DConfig.AlarmSkyColor : Viewport3DConfig.SkyColor;
         Raylib.ClearBackground(sky);
 
+        IReadOnlyList<RectangleBounds> visualWalls = _world.CurrentMap?.Walls ?? context.Walls;
         Raylib.BeginMode3D(_camera);
-        _scene.Draw(context, _guards.Guards, ReadPlayerRotation(context));
+        _scene.Draw(context, visualWalls, _guards.Guards, ReadPlayerRotation(context));
         Raylib.EndMode3D();
 
         HudOverlay3D.DrawFullHud(context, _camera, _isOverviewCamera);

@@ -43,9 +43,10 @@ public sealed class MapRenderer : IDisposable
         {
             DrawFloorTiles(currentMap);
             DrawGetawayZone(currentMap.GetawayZone);
+            MapObstacleRenderer.DrawObstacles(currentMap.Obstacles);
         }
 
-        DrawWalls(walls);
+        DrawWalls(currentMap?.Walls ?? walls);
     }
 
     public void Dispose()

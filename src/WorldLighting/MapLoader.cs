@@ -55,6 +55,7 @@ public static class MapLoader
         Vector2 playerSpawn = dto?.PlayerSpawn ?? DefaultPlayerSpawn;
         RectangleBounds getawayZone = ResolveGetawayZone(dto?.GetawayZone);
         List<RectangleBounds> walls = BuildWalls(dto?.Walls, gridWidth * tileSize, gridHeight * tileSize);
+        List<MapPropObstacle> obstacles = ParseObstacles(dto?.Obstacles);
 
         return new LevelMapData(
             levelName,
@@ -63,7 +64,8 @@ public static class MapLoader
             gridHeight,
             playerSpawn,
             getawayZone,
-            walls);
+            walls,
+            obstacles);
     }
 
     private static RectangleBounds ResolveGetawayZone(RectangleBounds? zone)
@@ -110,10 +112,20 @@ public static class MapLoader
         };
     }
 
+    private static List<MapPropObstacle> ParseObstacles(List<MapPropObstacle>? dtos) =>
+        dtos is null ? new List<MapPropObstacle>() : dtos.FindAll(o => o.Width > 0f && o.Height > 0f);
+
     private static void ApplyToContext(LevelMapData mapData, GameContext context)
     {
         context.PlayerPosition = mapData.PlayerSpawn;
         context.Walls.Clear();
         context.Walls.AddRange(mapData.Walls);
+        if (mapData.Obstacles is not null)
+        {
+            foreach (MapPropObstacle obstacle in mapData.Obstacles)
+            {
+                context.Walls.Add(obstacle.ToBounds());
+            }
+        }
     }
 }

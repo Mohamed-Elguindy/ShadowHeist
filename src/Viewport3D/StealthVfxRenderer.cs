@@ -49,13 +49,13 @@ public sealed class StealthVfxRenderer
         }
     }
 
-    public void Draw(GameContext context, IReadOnlyList<Guard> guards, float timeSeconds)
+    public void Draw(IReadOnlyList<RectangleBounds> walls, GameContext context, IReadOnlyList<Guard> guards, float timeSeconds)
     {
         DrawLampGlows();
         DrawVaultSecurityLasers(timeSeconds);
         DrawRipples();
         DrawSparks();
-        DrawWallClippedCones(guards, context.Walls, context.IsAlarmTriggered, timeSeconds);
+        DrawWallClippedCones(guards, walls, context.IsAlarmTriggered, timeSeconds);
     }
 
     private void OnNoiseEmitted(NoiseEmittedEvent evt)
