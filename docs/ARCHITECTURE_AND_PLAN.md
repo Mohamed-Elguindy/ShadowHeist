@@ -255,6 +255,12 @@ Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where ev
 | **#23** | 🔦 Ali | Implement `ShadowRenderer.cs` darkness mask & 3D directional/ambient lighting pass | Custom rendering pipeline |
 | **#24** | 🔦 Ali | Add `BrokenGlassTile` floor hazard (multiplies footstep noise) + emissive keypad glow overlays | Layered rendering order |
 
+> [!NOTE]
+> **Week 3 Architecture Decisions (#17 & #18 — Guindy):**
+> - **Draw-Pass Split (Option B):** Separate world rendering (`BeginMode2D` / `BeginMode3D` via `ICameraProvider`) from screen-space HUD rendering (`IHudDrawable.DrawHud`). `HudRenderer` renders screen-space UI (Cash Banner, `SoundMeterBarRenderer`) outside camera mode, while `WorldOverlayRenderer` renders world-space `[E]` prompts and `HoldProgressRingRenderer`. `KeyboardInputProvider` converts mouse screen coordinates to world aim via `GameContext.Camera.ScreenToWorld`, and `PlayerInputCommand` adds `IsPeekHeld` (default `false`).
+> - **Power Mechanism (#17):** Use **`PowerStateChangedEvent(string TargetGroupId, bool IsPowered)`** on `GameEventBus` as the single decoupled mechanism (no redundant `IPowerable` interface). `FuseBox` is a **one-shot** `[E] Cut Power` interactable, while `LaserSwitch` is a **toggle** (`[E] Disable Lasers` / `[E] Enable Lasers`); both compose a shared `PowerSwitchBehavior`.
+> - **Branching:** Finish Week 2 first, then implement **#17** (`feat/guindy-fusebox-laserswitch`) and **#18** (`feat/guindy-camera-controller`) as separate branches and PRs.
+
 ---
 
 ### 🗓️ Week 4: Unit Testing, Security Cameras, Menus & Final 3D Polish
