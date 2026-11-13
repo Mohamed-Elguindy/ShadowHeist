@@ -263,19 +263,25 @@ Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where ev
 
 ---
 
-### 🗓️ Week 4: Unit Testing, Security Cameras, Menus & Final 3D Polish
-**Goal:** Write automated `xUnit` tests on decoupled C# logic, add `SecurityCamera` & `SuppressedPistol`, build Level 2, and complete the full 2D/3D game loop.
+### 🗓️ Week 4: Menus, Security Cameras, Level 2, Audio/Bloom & Final 3D Polish
+**Goal:** Build the full front-to-back game flow (**Start Game Menu**, **Level Select**, **Pause Menu**, **Mission Debriefing**), add `SecurityCamera` & `SuppressedPistol`, build Level 2, and lock quality with automated `xUnit` tests.
 
 | Ticket | Owner | Task Description | Engineering Focus |
 | :--- | :--- | :--- | :--- |
-| **#25** | 👤 Guindy | Implement `GameStateManager` (`MainMenu` $\rightarrow$ `Playing` $\rightarrow$ `Paused` $\rightarrow$ `Victory` / `Busted`) + 3D `GetawayVanZone` extraction | High-level State Machine |
-| **#26** | 👤 Guindy | Build Mission Summary Screen (Time, Stolen Loot, Stealth Rating `S/A/B/C`) + Architecture `README.md` | Documentation & UI states |
+| **#25** | 👤 Guindy | Implement `GameStateManager` (`MainMenu` $\rightarrow$ `LevelSelect` $\rightarrow$ `Playing` $\rightarrow$ `Paused` $\rightarrow$ `Victory` / `Busted`) + Start Game Menu UI, Pause Menu (`Esc`), Controls Overlay, and 3D `GetawayVanZone` extraction | High-level State Machine & UI Screens |
+| **#26** | 👤 Guindy | Build Mission Summary Screen (`SummaryScreen.cs`: Time Elapsed, Stolen Loot, Alarm Count, Stealth Rating `S/A/B/C`, Next Level / Retry / Main Menu buttons) + Architecture `README.md` | Documentation & UI States |
 | **#27** | 🎮 Mahmoud | Add `SuppressedPistol.cs : IGadget` (limited ammo to shoot out light bulbs or stun guards, with 3D tracer line) | Extending `IGadget` cleanly |
 | **#28** | 🎮 Mahmoud | Write **5 `xUnit` Unit Tests** testing `PlayerInventory` weight math, stance transitions, and gadget charges | Automated Unit Testing (`xUnit`) |
 | **#29** | 🧠 Hatem | Create `SecurityCamera.cs` (wall-mounted in 3D with sweeping volumetric vision cone; disabled by EMP/FuseBox) | Reusing `VisionRaycaster` |
 | **#30** | 🧠 Hatem | Write **5 `xUnit` Unit Tests** verifying `AStarPathfinder` shortest paths and `Guard` state transitions | Automated Unit Testing (`xUnit`) |
 | **#31** | 🔦 Ali | Build **Level 1 (City Bank)** and **Level 2 (Luxury Penthouse)** JSON maps + multi-zone floor textures (`marble`, `slate`, `vault_steel`) | Content pipeline |
 | **#32** | 🔦 Ali | Add Bloom shader (`BeginShaderMode` post-processing over 3D/2D scene) and `AudioManager` (`IDisposable` sound cleanup) | Resource lifecycle (`IDisposable`) |
+
+> [!NOTE]
+> **Week 4 Game Loop & Menu UX Requirements (#25 & #26 — Guindy):**
+> - **Start Game Menu (`MainMenuScreen`):** Interactive background camera slowly orbiting the 3D bank lobby; buttons for **Start Heist**, **Select Level** (Level 1: City Bank / Level 2: Penthouse), **Controls & Guide**, and **Quit**.
+> - **In-Game Pause Menu (`Esc` / `P`):** Freezes simulation delta time and offers **Resume**, **Restart Mission (`R`)**, **Toggle 2D/3D (`F5`)**, **Mute Audio**, and **Back to Main Menu**.
+> - **End-of-Run Debriefing (`SummaryScreen`):** Triggered by `HeistOutcome.Escaped` or `HeistOutcome.Caught`; displays cash stolen, mission timer, alerts triggered, stealth grade (`S` = ghost, `A` = unseen loot, `B` = alarm/escaped, `C` = caught), and **Next Level / Play Again / Main Menu** actions.
 
 ---
 
@@ -332,20 +338,26 @@ To ensure dark-clothed characters (`player_sneak.png`, `guard_patrol.png`, `guar
 
 ### 5.3 Step-by-Step Team Execution Plan After Week 2 PRs Merge
 
-1. **Step 1 — Merge Pending Week 2 PRs into `main`:**
-   * Merge `feat/guindy-sound-meter-hud` (Tickets #9 & #10), `feat/ali-vision-raycaster` (Tickets #15 & #16), and `feat/hatem-suspicious-state` (Tickets #13 & #14).
-2. **Step 2 — Add `ViewportMode` & `Camera3D` to `GameContext` (Guindy — Ticket #33):**
-   * Add `public bool Is3DMode { get; set; } = true;` (toggled by `[F5]`) and `public Camera3D Camera3D { get; set; }` to `GameContext`.
-   * In the main draw loop, when `Is3DMode` is active, wrap world rendering in `Raylib.BeginMode3D(context.Camera3D)` ... `Raylib.EndMode3D()`, followed by screen-space HUD (`HudRenderer`).
-3. **Step 3 — Upgrade Each Module's Renderer for 3D (Parallel Branches, Zero Conflicts):**
-   * **Ali (`src/WorldLighting/` — Ticket #34):** Add `Draw3D` to `MapRenderer` and `LightingEffectRenderer` (textured 3D ground plane tiles, extruded 3D concrete walls, 3D laser beams, and 3D floor-projected vision cones).
-   * **Mahmoud (`src/PlayerSystem/` — Ticket #35):** Add `Draw3D` to `PlayerRenderer` using `Raylib.DrawBillboardPro` (or `DrawPlane` with rotation on the ground plane) + 3D footstep noise rings.
-   * **Hatem (`src/GuardAI/` — Ticket #36):** Add `Draw3D` to `GuardRenderer` using `Raylib.DrawBillboardPro` + 3D overhead `?`/`!` detection indicators.
-   * **Guindy (`src/HeistWorld/` — Ticket #33 & #17):** Add `Draw3D` to `HeistWorldRenderer` (3D vault door block, keypad wall plate, loot crate prop) and project `HoldProgressRingRenderer` via `GetWorldToScreen`.
+1. **Step 1 — Merge Pending Week 2 & Early 3D PRs into `main`:**
+   * Merge pending Week 2 PRs (`#10` Sound Meter HUD, `#13/#14` Guard `SuspiciousState` + `AStarPathfinder`, `#15/#16` `VisionRaycaster` + `LaserTripwire`) along with `feat/guindy-3d-test-room` (3D cel-shaded `Viewport3D`, centered furniture colliders, enclosed vault, `AlertChaseState`, live 2D/3D `[F5]`/`[F6]` toggle, and win/loss `[R]` restart loop).
+2. **Step 2 — Reconcile Shared Modules Post-Merge (No Duplicate Logic):**
+   * Wire `SuspiciousState` and `AlertChaseState` to route through Hatem's `AStarPathfinder` grid around walls & `obstacles`.
+   * Connect `GuardSensorHelper` and [`StealthVfxRenderer`](src/Viewport3D/StealthVfxRenderer.cs) directly to Ali's `VisionRaycaster` and `LaserTripwire` entities (disabling vault doorway lasers via switches/EMP).
+   * Display Guindy's animated **Sound Meter** & **Hold Progress Ring** across both 2D [`HudRenderer`](src/HeistWorld/UI/HudRenderer.cs) and [`HudOverlay3D`](src/Viewport3D/HudOverlay3D.cs).
+3. **Step 3 — Deliver Week 3 Gameplay & 3D Extensions (Parallel Branches, Zero Conflicts):**
+   * **Guindy (`src/HeistWorld/` & `src/Viewport3D/` — #17, #18):** Connect `FuseBox` & `LaserSwitch` via `PowerStateChangedEvent` and upgrade `CameraController` (alarm shake & peek).
+   * **Mahmoud (`src/PlayerSystem/` — #19, #20):** Add `PlayerInventory` (LINQ loot weight slowdown) and 3D `CoinGadget` / `EmpGadget` (`IGadget`).
+   * **Hatem (`src/GuardAI/` — #21, #22):** Integrate `AStarPathfinder` chase/search and smooth `0% -> 100%` Guard Detection Meter with 3D overhead `?`/`!` gauges.
+   * **Ali (`src/WorldLighting/` — #23, #24):** Add `ShadowRenderer` darkness mask and `BrokenGlassTile` noise hazards.
+4. **Step 4 — Deliver Week 4 Menus, Cameras, Level 2 & Polish:**
+   * **Guindy (#25, #26):** Ship `GameStateManager` (**Start Game Menu**, **Level Select**, **Pause Menu**, **Mission Debriefing with `S/A/B/C` Stealth Rank**) + updated `README.md`.
+   * **Mahmoud (#27, #28):** Ship `SuppressedPistol` (light/stun shots) + inventory/gadget unit tests.
+   * **Hatem (#29, #30):** Ship sweeping `SecurityCamera` sensors + pathfinding/AI unit tests.
+   * **Ali (#31, #32):** Ship `level2_penthouse.json`, `bloom.fs` post-processing, and `AudioManager`.
 
 ---
 
 ### 🎓 Academic & Graduation Project Defense Note
 When defending the project in front of professors and committee evaluators:
-> *"Right after finishing our core 2D simulation in Week 2, we pivoted the presentation layer to 3D for Weeks 3 and 4, and added a live `[F5]` switch that toggles between 2D Blueprint Mode and 3D Isometric Mode in real-time. Notice that not a single line of Guard AI, A\* pathfinding, vision raycasting, or player stance logic had to be rewritten — all 49+ unit tests pass identically in both 2D and 3D because our business logic is 100% agnostic of how graphics are rendered."*
+> *"Right after finishing our core 2D simulation in Week 2, we pivoted the presentation layer to 3D for Weeks 3 and 4, and added a live `[F5]` switch that toggles between 2D Blueprint Mode and 3D Isometric Mode in real-time. Notice that not a single line of Guard AI, A\* pathfinding, vision raycasting, or player stance logic had to be rewritten — all 57+ unit tests pass identically in both 2D and 3D because our business logic is 100% agnostic of how graphics are rendered."*
 
