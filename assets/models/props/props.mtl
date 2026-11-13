@@ -1,0 +1,4 @@
+newmtl van_mat
+Ka 0 0 0
+Kd 1 1 1
+map_Kd props_palette.png

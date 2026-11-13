@@ -7,7 +7,7 @@ using ShadowHeist.HeistWorld.Interactables;
 namespace ShadowHeist.Viewport3D;
 
 /// <summary>
-/// Renders detailed 3D interactable props: textured loot crates, hinged vault door, and hacking keypad.
+/// Renders detailed 3D interactable props: loot crates, hinged vault door, and hacking keypad + link beam.
 /// </summary>
 public sealed class PropsRenderer
 {
@@ -51,13 +51,13 @@ public sealed class PropsRenderer
         {
             if (item is LootCrate crate) DrawLootCrate(crate, timeSeconds);
             else if (item is VaultDoor door) DrawVaultDoor(door, timeSeconds);
-            else if (item is KeypadTerminal keypad) DrawKeypad(keypad, timeSeconds);
+            else if (item is KeypadTerminal keypad) DrawKeypad(keypad, context.PlayerPosition, timeSeconds);
         }
     }
 
     private void DrawLootCrate(LootCrate crate, float timeSeconds)
     {
-        var basePos = new Vector3(crate.Position.X, CrateHeight * 0.5f, crate.Position.Y);
+        Raylib.DrawCylinder(new Vector3(crate.Position.X, 0.4f, crate.Position.Y), 24f, 24f, 0.5f, 12, new Color(0, 0, 0, 95));
         float bodyHeight = crate.IsCollected ? CrateHeight * 0.65f : CrateHeight;
         var bodyCenter = new Vector3(crate.Position.X, bodyHeight * 0.5f, crate.Position.Y);
 
@@ -71,8 +71,9 @@ public sealed class PropsRenderer
         if (!crate.IsCollected)
         {
             float bob = MathF.Sin(timeSeconds * 3.2f) * 2.5f;
-            Raylib.DrawCube(basePos + new Vector3(-6f, CrateHeight * 0.62f + bob, 0f), 11f, 7f, 18f, GoldColor);
-            Raylib.DrawCube(basePos + new Vector3(7f, CrateHeight * 0.58f + bob, 2f), 10f, 6f, 16f, CashColor);
+            var top = new Vector3(crate.Position.X, CrateHeight * 1.12f + bob, crate.Position.Y);
+            Raylib.DrawCube(top + new Vector3(-6f, 0f, 0f), 11f, 7f, 18f, GoldColor);
+            Raylib.DrawCube(top + new Vector3(7f, -1f, 2f), 10f, 6f, 16f, CashColor);
         }
     }
 
@@ -103,9 +104,10 @@ public sealed class PropsRenderer
         Raylib.DrawSphere(center + new Vector3(-8f, VaultFrameHeight + 16f, 0f), 6f, new Color(status.R, status.G, status.B, alpha));
     }
 
-    private static void DrawKeypad(KeypadTerminal keypad, float timeSeconds)
+    private static void DrawKeypad(KeypadTerminal keypad, Vector2 playerPos, float timeSeconds)
     {
         var pos = new Vector3(keypad.Position.X, KeypadHeight * 0.5f, keypad.Position.Y);
+        Raylib.DrawCylinder(new Vector3(keypad.Position.X, 0.4f, keypad.Position.Y), 15f, 15f, 0.5f, 10, new Color(0, 0, 0, 95));
         Raylib.DrawCube(pos, 18f, KeypadHeight, 18f, KeypadBodyColor);
         Raylib.DrawCubeWires(pos, 18f, KeypadHeight, 18f, Viewport3DConfig.OutlineColor);
 
@@ -118,6 +120,8 @@ public sealed class PropsRenderer
             float fillW = 34f * keypad.HoldProgress;
             Raylib.DrawCube(bar, 38f, 7f, 4f, KeypadBodyColor);
             Raylib.DrawCube(bar + new Vector3((fillW - 34f) * 0.5f, 0f, 0.5f), fillW, 5f, 4f, GoldColor);
+            Raylib.DrawLine3D(new Vector3(playerPos.X, 40f, playerPos.Y), pos + new Vector3(0f, 12f, 0f), CyanGlowColor);
+            Raylib.DrawCylinderWires(new Vector3(keypad.Position.X, 2f, keypad.Position.Y), 28f + MathF.Sin(timeSeconds * 8f) * 4f, 28f, 1f, 18, CyanGlowColor);
         }
 
         byte ledAlpha = (byte)(keypad.IsHacked ? 255f : 150f + 100f * MathF.Sin(timeSeconds * 4f));

@@ -5,7 +5,7 @@ using ShadowHeist.Core;
 namespace ShadowHeist.Viewport3D;
 
 /// <summary>
-/// Renders multi-zone cel-shaded 3D bank floors, cutaway concrete walls, pillars, and lobby furniture.
+/// Renders multi-zone cel-shaded 3D bank floors, cutaway concrete walls, pillars, and outlined furniture.
 /// </summary>
 public sealed class FloorWallsFurnitureRenderer
 {
@@ -18,6 +18,7 @@ public sealed class FloorWallsFurnitureRenderer
     private const float RugLiftY = 1.2f;
 
     private readonly Dictionary<string, LoadedModel> _furniture = new();
+    private ToonModelLibrary? _library;
     private Model? _marbleSlab;
     private Model? _slateSlab;
     private Model? _steelSlab;
@@ -25,6 +26,7 @@ public sealed class FloorWallsFurnitureRenderer
 
     public void Load(ToonModelLibrary library)
     {
+        _library = library;
         float tile = Viewport3DConfig.FloorTileSize;
         float thick = Viewport3DConfig.FloorThickness;
         _marbleSlab = library.LoadTexturedBox(MarbleFloorPath, tile, thick, tile);
@@ -110,9 +112,7 @@ public sealed class FloorWallsFurnitureRenderer
             var center = new Vector3(segX, height * 0.5f, segZ);
 
             if (_wallUnitBox is Model box)
-            {
                 Raylib.DrawModelEx(box, center, Vector3.UnitY, 0f, new Vector3(segW, height, segL), Viewport3DConfig.WallTint);
-            }
 
             if (!isCutaway)
             {
@@ -134,12 +134,21 @@ public sealed class FloorWallsFurnitureRenderer
 
     private void DrawFurniture()
     {
+        if (_library is null) return;
         foreach (FurnitureSpec spec in Viewport3DConfig.LobbyFurniture)
         {
             if (!_furniture.TryGetValue(spec.AssetKey, out LoadedModel item)) continue;
-            float extraY = spec.AssetKey == "rugRectangle" ? RugLiftY : 0f;
+            bool isRug = spec.AssetKey == "rugRectangle";
+            if (!isRug)
+            {
+                float radius = spec.TargetMaxExtent * 0.42f;
+                Raylib.DrawCylinder(new Vector3(spec.Position.X, 0.35f, spec.Position.Y), radius, radius, 0.5f, 14, new Color(0, 0, 0, 88));
+            }
+
+            float extraY = isRug ? RugLiftY : 0f;
             var pos = new Vector3(spec.Position.X, item.BaseOffsetY + extraY, spec.Position.Y);
-            Raylib.DrawModelEx(item.Model, pos, Vector3.UnitY, spec.RotationDegrees, new Vector3(item.Scale), Color.White);
+            float outline = isRug ? 0f : 0.012f;
+            _library.DrawOutlined(item.Model, pos, spec.RotationDegrees, item.Scale, Color.White, outline);
         }
     }
 }

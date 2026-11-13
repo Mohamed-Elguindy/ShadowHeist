@@ -6,7 +6,7 @@ using ShadowHeist.GuardAI;
 namespace ShadowHeist.Viewport3D;
 
 /// <summary>
-/// Renders articulated 6-part cel-shaded 3D thief and guard characters with stride, sneak crouch, and held gear.
+/// Renders outlined 6-part stylized 3D thief and guard characters with stride, sneak crouch, and alert cues.
 /// </summary>
 public sealed class CharacterRenderer
 {
@@ -15,16 +15,19 @@ public sealed class CharacterRenderer
     private const string GuardSkinPath = "assets/models/characters/skin_guard.png";
     private const float HipHeightUnits = 6f;
     private const float TorsoHeightUnits = 6f;
-    private const float ShoulderOffsetXUnits = 2f;
-    private const float ShoulderOffsetYUnits = 5.5f;
+    private const float ShoulderX = 2.0f;
+    private const float ShoulderY = 5.5f;
+    private const float LimbOutline = 0.21f;
 
     private readonly Dictionary<string, ActorAnimState> _animStates = new();
+    private ToonModelLibrary? _library;
     private CharacterRig? _thiefRig;
     private CharacterRig? _guardRig;
     private bool _isPlayerSneaking;
 
     public void Load(ToonModelLibrary library)
     {
+        _library = library;
         float scale = Viewport3DConfig.CharacterUnitScale;
         _thiefRig = library.LoadCharacterRig(CharDir, ThiefSkinPath, scale);
         _guardRig = library.LoadCharacterRig(CharDir, GuardSkinPath, scale);
@@ -41,11 +44,12 @@ public sealed class CharacterRenderer
 
     public void Draw(GameContext context, IReadOnlyList<Guard> guards, float playerRotationDegrees, float timeSeconds)
     {
+        if (_library is null) return;
         if (_thiefRig is CharacterRig thief)
         {
             Color ring = context.CurrentInput.IsSprintHeld ? Color.Orange : new Color(56, 225, 255, 190);
             DrawShadowAndRing(context.PlayerPosition, ring);
-            DrawCharacter(thief, context.PlayerPosition, playerRotationDegrees, GetAnim("player"), _isPlayerSneaking, false, timeSeconds);
+            DrawCharacter(_library, thief, context.PlayerPosition, playerRotationDegrees, GetAnim("player"), _isPlayerSneaking, false, timeSeconds);
         }
 
         if (_guardRig is CharacterRig guardRig)
@@ -54,7 +58,8 @@ public sealed class CharacterRenderer
             foreach (Guard guard in guards)
             {
                 DrawShadowAndRing(guard.Position, ring);
-                DrawCharacter(guardRig, guard.Position, guard.RotationDegrees, GetAnim(guard.Id), false, true, timeSeconds);
+                DrawCharacter(_library, guardRig, guard.Position, guard.RotationDegrees, GetAnim(guard.Id), false, true, timeSeconds);
+                DrawAwarenessBadge(guard.Position, context.IsAlarmTriggered, timeSeconds);
             }
         }
     }
@@ -83,7 +88,16 @@ public sealed class CharacterRenderer
         Raylib.DrawCylinderWires(shadowCenter + new Vector3(0f, 0.6f, 0f), Viewport3DConfig.ShadowRadius + 2f, Viewport3DConfig.ShadowRadius + 2f, 0.4f, 20, ringColor);
     }
 
-    private static void DrawCharacter(CharacterRig rig, Vector2 pos, float rotDeg, ActorAnimState state, bool isSneak, bool isGuard, float t)
+    private static void DrawAwarenessBadge(Vector2 pos, bool alarm, float t)
+    {
+        float y = 84f + MathF.Sin(t * (alarm ? 10f : 3f)) * 2.5f;
+        Vector3 top = new(pos.X, y, pos.Y);
+        Color col = alarm ? new Color(244, 63, 94, 245) : new Color(255, 214, 78, 210);
+        Raylib.DrawCylinderEx(top, top + new Vector3(0f, alarm ? 12f : 6f, 0f), 0.5f, alarm ? 4.5f : 3.2f, 6, col);
+        if (alarm) Raylib.DrawSphere(top + new Vector3(0f, -4f, 0f), 2.5f, col);
+    }
+
+    private static void DrawCharacter(ToonModelLibrary lib, CharacterRig rig, Vector2 pos, float rotDeg, ActorAnimState state, bool isSneak, bool isGuard, float t)
     {
         float s = rig.Scale;
         float speed = MathF.Min(1f, state.NormalizedSpeed);
@@ -94,47 +108,41 @@ public sealed class CharacterRenderer
         Rlgl.PushMatrix();
         Rlgl.Translatef(pos.X, hipY, pos.Y);
         Rlgl.Rotatef(90f - rotDeg, 0f, 1f, 0f);
-
-        DrawLimb(rig.LegLeft, new Vector3(s, 0f, 0f), legSwing, s);
-        DrawLimb(rig.LegRight, new Vector3(-s, 0f, 0f), -legSwing, s);
+        DrawLimb(lib, rig.LegLeft, new Vector3(s, 0f, 0f), legSwing, s);
+        DrawLimb(lib, rig.LegRight, new Vector3(-s, 0f, 0f), -legSwing, s);
 
         Rlgl.PushMatrix();
         Rlgl.Rotatef(lean, 1f, 0f, 0f);
-        Raylib.DrawModel(rig.Body, Vector3.Zero, s, Color.White);
-        DrawLimb(rig.Head, new Vector3(0f, TorsoHeightUnits * s, 0f), -lean * 0.6f, s);
-        DrawLimb(rig.ArmLeft, new Vector3(ShoulderOffsetXUnits * s, ShoulderOffsetYUnits * s, 0f), -legSwing * 0.85f, s);
-        DrawRightArm(rig, new Vector3(-ShoulderOffsetXUnits * s, ShoulderOffsetYUnits * s, 0f), isGuard ? -68f - legSwing * 0.2f : (isSneak ? -48f : -legSwing * 0.85f), isGuard, s);
+        lib.DrawOutlined(rig.Body, Vector3.Zero, 0f, s, Color.White, LimbOutline);
+        DrawLimb(lib, rig.Head, new Vector3(0f, TorsoHeightUnits * s, 0f), -lean * 0.6f, s);
+        DrawLimb(lib, rig.ArmLeft, new Vector3(ShoulderX * s, ShoulderY * s, 0f), -legSwing * 0.85f, s);
+        DrawRightArm(lib, rig, new Vector3(-ShoulderX * s, ShoulderY * s, 0f), isGuard ? -68f - legSwing * 0.2f : (isSneak ? -48f : -legSwing * 0.85f), isGuard, s);
         Rlgl.PopMatrix();
         Rlgl.PopMatrix();
     }
 
-    private static void DrawLimb(Model part, Vector3 pivot, float pitchDegrees, float scale)
+    private static void DrawLimb(ToonModelLibrary lib, Model part, Vector3 pivot, float pitchDeg, float scale)
     {
         Rlgl.PushMatrix();
         Rlgl.Translatef(pivot.X, pivot.Y, pivot.Z);
-        Rlgl.Rotatef(pitchDegrees, 1f, 0f, 0f);
-        Raylib.DrawModel(part, Vector3.Zero, scale, Color.White);
+        Rlgl.Rotatef(pitchDeg, 1f, 0f, 0f);
+        lib.DrawOutlined(part, Vector3.Zero, 0f, scale, Color.White, LimbOutline);
         Rlgl.PopMatrix();
     }
 
-    private static void DrawRightArm(CharacterRig rig, Vector3 pivot, float pitchDegrees, bool isGuard, float scale)
+    private static void DrawRightArm(ToonModelLibrary lib, CharacterRig rig, Vector3 pivot, float pitchDeg, bool isGuard, float scale)
     {
         Rlgl.PushMatrix();
         Rlgl.Translatef(pivot.X, pivot.Y, pivot.Z);
-        Rlgl.Rotatef(pitchDegrees, 1f, 0f, 0f);
-        Raylib.DrawModel(rig.ArmRight, Vector3.Zero, scale, Color.White);
-
+        Rlgl.Rotatef(pitchDeg, 1f, 0f, 0f);
+        lib.DrawOutlined(rig.ArmRight, Vector3.Zero, 0f, scale, Color.White, LimbOutline);
         Vector3 hand = new(-scale, -5.2f * scale, 0.8f * scale);
         if (isGuard)
         {
             Raylib.DrawCylinderEx(hand, hand + new Vector3(0f, -12f, 2f), 2.2f, 3.2f, 8, new Color(24, 28, 36, 255));
             Raylib.DrawSphere(hand + new Vector3(0f, -13f, 2.2f), 2.8f, new Color(255, 240, 160, 235));
         }
-        else
-        {
-            Raylib.DrawCube(hand + new Vector3(0f, -4f, 4f), 2.5f, 3.5f, 11f, new Color(22, 26, 34, 255));
-        }
-
+        else Raylib.DrawCube(hand + new Vector3(0f, -4f, 4f), 2.5f, 3.5f, 11f, new Color(22, 26, 34, 255));
         Rlgl.PopMatrix();
     }
 

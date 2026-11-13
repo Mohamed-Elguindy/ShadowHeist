@@ -34,7 +34,7 @@ public static class Viewport3DConfig
     public const float MaxZoom = 1.65f;
     public const float ZoomStep = 0.1f;
 
-    public static readonly Vector3 FollowCameraOffset = new(-180f, 390f, 320f);
+    public static readonly Vector3 FollowCameraOffset = new(-200f, 410f, 350f);
     public static readonly Vector3 OverviewTarget = new(630f, 0f, 385f);
     public static readonly Vector3 OverviewCameraOffset = new(-105f, 500f, 340f);
     public static readonly Vector2 VaultZoneMin = new(320f, 160f);
@@ -61,7 +61,6 @@ public static class Viewport3DConfig
         new("plantSmall1", new Vector2(84f, 84f), 0f, 34f),
         new("sideTableDrawers", new Vector2(640f, 74f), 0f, 60f),
         new("plantSmall1", new Vector2(1188f, 84f), 45f, 34f),
-        new("table", new Vector2(560f, 540f), 0f, 105f),
         new("loungeChair", new Vector2(560f, 616f), 180f, 52f),
         new("rugRectangle", new Vector2(805f, 575f), 0f, 165f),
         new("loungeSofa", new Vector2(805f, 632f), 180f, 105f),

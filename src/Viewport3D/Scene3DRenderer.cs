@@ -12,6 +12,7 @@ public sealed class Scene3DRenderer : IDisposable
 {
     private readonly ToonModelLibrary _library = new();
     private readonly FloorWallsFurnitureRenderer _environment = new();
+    private readonly BankDecorRenderer _decor = new();
     private readonly PropsRenderer _props = new();
     private readonly CharacterRenderer _characters = new();
     private readonly StealthVfxRenderer _vfx = new();
@@ -21,6 +22,7 @@ public sealed class Scene3DRenderer : IDisposable
     {
         _library.LoadShader();
         _environment.Load(_library);
+        _decor.Load(_library);
         _props.Load(_library);
         _characters.Load(_library);
         _vfx.SubscribeEvents(context.EventBus);
@@ -29,15 +31,16 @@ public sealed class Scene3DRenderer : IDisposable
     public void Update(float deltaTime, GameContext context, IReadOnlyList<Guard> guards, Vector3 cameraPosition)
     {
         _elapsedSeconds += deltaTime;
-        _library.UpdateFrameUniforms(cameraPosition, context.IsAlarmTriggered, _elapsedSeconds);
+        _library.UpdateFrameUniforms(cameraPosition, context, guards, _elapsedSeconds);
         _props.Update(deltaTime, context);
         _characters.Update(deltaTime, context, guards);
-        _vfx.Update(deltaTime);
+        _vfx.Update(deltaTime, context);
     }
 
     public void Draw(GameContext context, IReadOnlyList<Guard> guards, float playerRotationDegrees)
     {
         _environment.Draw(context.Walls, _elapsedSeconds);
+        _decor.Draw(_elapsedSeconds);
         _vfx.Draw(context, guards, _elapsedSeconds);
         _props.Draw(context, _elapsedSeconds);
         _characters.Draw(context, guards, playerRotationDegrees, _elapsedSeconds);
