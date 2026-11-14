@@ -12,11 +12,13 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
     private const string VaultDoorId = "vault_door";
 
     private readonly InteractionController _interaction = new();
-    private readonly HudRenderer _hud = new();
     private readonly HeistWorldRenderer _renderer;
     private readonly List<LootCrate> _crates;
     private readonly VaultDoor _vaultDoor;
     private readonly KeypadTerminal _keypad;
+
+    private SoundMeter? _soundMeter;
+    private HudRenderer? _hud;
 
     public HeistWorldModule()
     {
@@ -28,17 +30,22 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
 
     public void Init(GameContext context)
     {
+        _soundMeter = new SoundMeter(context.EventBus);
+        _hud = new HudRenderer(_soundMeter);
         _renderer.LoadSprites();
         RegisterInteractables(context);
     }
 
-    public void Update(float deltaTime, GameContext context) =>
+    public void Update(float deltaTime, GameContext context)
+    {
+        _soundMeter?.Update(deltaTime);
         _interaction.HandlePlayerInteraction(deltaTime, context);
+    }
 
     public void Draw(GameContext context)
     {
         _renderer.DrawWorldObjects();
-        _hud.DrawHudOverlay(context);
+        _hud?.DrawHudOverlay(context);
     }
 
     public void Dispose() => _renderer.Dispose();

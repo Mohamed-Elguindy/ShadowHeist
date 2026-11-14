@@ -10,9 +10,11 @@ public sealed class InteractionController
 
     public void HandlePlayerInteraction(float deltaTime, GameContext context)
     {
-        IInteractable? nearby = InteractableQuery.FindInPlayerRange(context);
+        IHoldInteractable? holdable = context.CurrentInput.IsInteractHeld
+            ? ResolveHoldTarget(context)
+            : null;
 
-        if (nearby is IHoldInteractable holdable && context.CurrentInput.IsInteractHeld)
+        if (holdable is not null)
         {
             HoldNearbyObject(holdable, deltaTime, context);
             return;
@@ -22,8 +24,18 @@ public sealed class InteractionController
 
         if (context.CurrentInput.IsInteractPressed)
         {
-            PressNearbyObject(nearby, context);
+            PressNearbyObject(InteractableQuery.FindInPlayerRange(context), context);
         }
+    }
+
+    private IHoldInteractable? ResolveHoldTarget(GameContext context)
+    {
+        if (_activeHold is not null && _activeHold.CanInteract(context.PlayerPosition))
+        {
+            return _activeHold;
+        }
+
+        return InteractableQuery.FindHoldInRange(context);
     }
 
     private void HoldNearbyObject(IHoldInteractable holdable, float deltaTime, GameContext context)
