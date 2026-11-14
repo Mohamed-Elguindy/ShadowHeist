@@ -1,6 +1,7 @@
 # 🕵️‍♂️ ShadowHeist (`Raylib-cs`)
 
-A **Gritty 2D Top-Down Tactical Stealth Heist** game built in C# (`.NET 8` + `Raylib-cs`) following **SOLID Architecture, Design Patterns, and Strict GitHub Pull Request Workflows**.
+A **2D/3D Dual-Viewport Tactical Stealth Heist** game built in C# (`.NET 8` + `Raylib-cs`) following **SOLID Architecture, Design Patterns, and Strict GitHub Pull Request Workflows**.
+*(Post-Week 2 Update: Promoted the 3D Isometric Tactical Viewport `[F5]` toggle directly into Week 3 after completing Week 2 core simulation!)*
 
 📄 **Full 5-Page Engineering & Sprint Plan:**
 * [docs/ShadowHeist_Team_Engineering_Plan.pdf](docs/ShadowHeist_Team_Engineering_Plan.pdf)
@@ -18,6 +19,7 @@ A **Gritty 2D Top-Down Tactical Stealth Heist** game built in C# (`.NET 8` + `Ra
 | **Sprint** | `Left Shift` (Hold) | Increases speed, creates loud noise |
 | **Interact / Hold** | `E` | Open vaults, loot crates, bypass keypads |
 | **Use Gadget** | `Q` / `Space` / Right Click | Throws coin / EMP grenade / fires pistol |
+| **Toggle 2D / 3D View** | `F5` *(Week 3)* | Live switch between 2D Blueprint & 3D Isometric Tactical View |
 
 ---
 
