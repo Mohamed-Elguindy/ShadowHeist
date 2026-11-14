@@ -5,20 +5,20 @@ using ShadowHeist.GuardAI.States;
 namespace ShadowHeist.GuardAI.Rendering;
 
 /// <summary>
-/// Handles rendering of Guard entities, rotation transforms, and patrol/suspicious path gizmos.
+/// Handles rendering of Guard entities, rotation transforms, and patrol/pathfinding gizmos.
 /// </summary>
 public sealed class GuardRenderer : IDisposable
 {
     private const string GuardTexturePath = "assets/sprites/guard_patrol.png";
     private const float GuardSpriteSize = 48f;
     private const float WaypointDotRadius = 4f;
-    private const float InvestigationTargetRadius = 6f;
+    private const float TargetRingRadius = 6f;
     private const float ForwardGizmoLength = 30f;
     private const float DegToRad = MathF.PI / 180f;
 
     private static readonly Color PatrolLineColor = new(100, 116, 139, 120);
     private static readonly Color WaypointDotColor = new(245, 158, 11, 160);
-    private static readonly Color SuspiciousPathColor = new(250, 204, 21, 180);
+    private static readonly Color ActivePathColor = new(250, 204, 21, 180);
     private static readonly Color NoiseRingColor = new(250, 204, 21, 110);
 
     private Texture2D _guardTexture;
@@ -39,31 +39,23 @@ public sealed class GuardRenderer : IDisposable
 
     public void Draw(IEnumerable<Guard> guards)
     {
-        bool anySuspicious = false;
+        bool anyFollowingPath = false;
 
         foreach (var guard in guards)
         {
-            if (guard.CurrentState is SuspiciousState)
-            {
-                anySuspicious = true;
-            }
-
             DrawPatrolGizmos(guard);
-            DrawSuspiciousGizmos(guard);
 
-            if (_textureLoaded)
+            if (guard.CurrentState is IGuardPathState pathState)
             {
-                DrawGuardSprite(guard);
-            }
-            else
-            {
-                DrawFallbackGuard(guard);
+                anyFollowingPath = true;
+                DrawActivePathGizmos(guard.Position, pathState);
             }
 
-            DrawForwardFacingGizmo(guard);
+            DrawGuardBody(guard);
+            DrawForwardFacingGizmo(guard, guard.CurrentState is IGuardPathState);
         }
 
-        if (anySuspicious && _lastNoiseRadius > 0f)
+        if (anyFollowingPath && _lastNoiseRadius > 0f)
         {
             Raylib.DrawCircleLines((int)_lastNoiseOrigin.X, (int)_lastNoiseOrigin.Y, _lastNoiseRadius, NoiseRingColor);
         }
@@ -78,29 +70,28 @@ public sealed class GuardRenderer : IDisposable
         }
     }
 
-    private void DrawGuardSprite(Guard guard)
+    private void DrawGuardBody(Guard guard)
     {
-        var sourceRect = new Rectangle(0, 0, _guardTexture.Width, _guardTexture.Height);
-        var destRect = new Rectangle(guard.Position.X, guard.Position.Y, GuardSpriteSize, GuardSpriteSize);
-        var origin = new Vector2(GuardSpriteSize / 2f, GuardSpriteSize / 2f);
+        if (_textureLoaded)
+        {
+            var sourceRect = new Rectangle(0, 0, _guardTexture.Width, _guardTexture.Height);
+            var destRect = new Rectangle(guard.Position.X, guard.Position.Y, GuardSpriteSize, GuardSpriteSize);
+            var origin = new Vector2(GuardSpriteSize / 2f, GuardSpriteSize / 2f);
+            Raylib.DrawTexturePro(_guardTexture, sourceRect, destRect, origin, guard.RotationDegrees, Color.White);
+            return;
+        }
 
-        Raylib.DrawTexturePro(_guardTexture, sourceRect, destRect, origin, guard.RotationDegrees, Color.White);
-    }
-
-    private static void DrawFallbackGuard(Guard guard)
-    {
         Raylib.DrawCircleV(guard.Position, GuardSpriteSize / 2f, Color.Maroon);
         Raylib.DrawCircleLines((int)guard.Position.X, (int)guard.Position.Y, GuardSpriteSize / 2f, Color.Red);
     }
 
-    private static void DrawForwardFacingGizmo(Guard guard)
+    private static void DrawForwardFacingGizmo(Guard guard, bool isAlertedPath)
     {
         float angleRad = guard.RotationDegrees * DegToRad;
         var forward = new Vector2(MathF.Cos(angleRad), MathF.Sin(angleRad));
         var lineEnd = guard.Position + forward * ForwardGizmoLength;
 
-        Color gizmoColor = guard.CurrentState is SuspiciousState ? Color.Yellow : Color.Orange;
-        Raylib.DrawLineV(guard.Position, lineEnd, gizmoColor);
+        Raylib.DrawLineV(guard.Position, lineEnd, isAlertedPath ? Color.Yellow : Color.Orange);
     }
 
     private static void DrawPatrolGizmos(Guard guard)
@@ -121,26 +112,21 @@ public sealed class GuardRenderer : IDisposable
         }
     }
 
-    private static void DrawSuspiciousGizmos(Guard guard)
+    private static void DrawActivePathGizmos(Vector2 guardPos, IGuardPathState pathState)
     {
-        if (guard.CurrentState is not SuspiciousState suspicious)
+        Vector2 previous = guardPos;
+        for (int i = pathState.CurrentPathIndex; i < pathState.PathWaypoints.Count; i++)
         {
-            return;
-        }
-
-        Vector2 previous = guard.Position;
-        for (int i = suspicious.CurrentPathIndex; i < suspicious.PathWaypoints.Count; i++)
-        {
-            Vector2 current = suspicious.PathWaypoints[i];
-            Raylib.DrawLineV(previous, current, SuspiciousPathColor);
+            Vector2 current = pathState.PathWaypoints[i];
+            Raylib.DrawLineV(previous, current, ActivePathColor);
             previous = current;
         }
 
         Raylib.DrawCircleLines(
-            (int)suspicious.InvestigationTarget.X,
-            (int)suspicious.InvestigationTarget.Y,
-            InvestigationTargetRadius,
-            SuspiciousPathColor);
+            (int)pathState.TargetPosition.X,
+            (int)pathState.TargetPosition.Y,
+            TargetRingRadius,
+            ActivePathColor);
     }
 
     private void LoadTexture()

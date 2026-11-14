@@ -10,27 +10,28 @@ public static class AStarPathfinder
 {
     private const float StepCost = 1f;
 
+    private static IReadOnlyList<RectangleBounds>? _cachedWalls;
+    private static int _cachedWallCount;
+    private static float _cachedCellSize;
+    private static GridGraph? _cachedGraph;
+
     public static IReadOnlyList<Vector2> FindPath(
         Vector2 startWorld,
         Vector2 targetWorld,
         IReadOnlyList<RectangleBounds> walls,
         float cellSize = GridGraph.DefaultCellSize)
     {
-        ArgumentNullException.ThrowIfNull(walls);
-
         if (walls.Count == 0)
         {
             return new List<Vector2> { targetWorld };
         }
 
-        var graph = new GridGraph(walls, cellSize);
+        GridGraph graph = GetOrCreateGraph(walls, cellSize);
         return FindPath(graph, startWorld, targetWorld);
     }
 
     public static IReadOnlyList<Vector2> FindPath(GridGraph graph, Vector2 startWorld, Vector2 targetWorld)
     {
-        ArgumentNullException.ThrowIfNull(graph);
-
         GridCoord start = graph.FindNearestWalkable(graph.WorldToGrid(startWorld));
         GridCoord goal = graph.FindNearestWalkable(graph.WorldToGrid(targetWorld));
 
@@ -64,6 +65,23 @@ public static class AStarPathfinder
         return Array.Empty<Vector2>();
     }
 
+    private static GridGraph GetOrCreateGraph(IReadOnlyList<RectangleBounds> walls, float cellSize)
+    {
+        if (_cachedGraph is not null &&
+            ReferenceEquals(_cachedWalls, walls) &&
+            _cachedWallCount == walls.Count &&
+            MathF.Abs(_cachedCellSize - cellSize) < float.Epsilon)
+        {
+            return _cachedGraph;
+        }
+
+        _cachedWalls = walls;
+        _cachedWallCount = walls.Count;
+        _cachedCellSize = cellSize;
+        _cachedGraph = new GridGraph(walls, cellSize);
+        return _cachedGraph;
+    }
+
     private static void ExpandNeighbors(
         GridGraph graph,
         GridCoord current,
@@ -84,8 +102,7 @@ public static class AStarPathfinder
 
             cameFrom[neighbor] = current;
             gScore[neighbor] = tentativeG;
-            float fScore = tentativeG + ComputeHeuristic(neighbor, goal);
-            openSet.Enqueue(neighbor, fScore);
+            openSet.Enqueue(neighbor, tentativeG + ComputeHeuristic(neighbor, goal));
         }
     }
 
@@ -120,4 +137,3 @@ public static class AStarPathfinder
         return worldWaypoints;
     }
 }
-

@@ -49,7 +49,7 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
 
     public void Update(float deltaTime, GameContext context)
     {
-        if (_renderer is not null && Raylib.IsMouseButtonPressed(MouseButton.Left))
+        if (Raylib.IsWindowReady() && Raylib.IsMouseButtonPressed(MouseButton.Left))
         {
             Vector2 clickPos = Raylib.GetMousePosition();
             context.EventBus.Publish(new NoiseEmittedEvent(clickPos, DebugClickNoiseRadius, "DebugClickNoise"));

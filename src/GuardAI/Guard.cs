@@ -13,6 +13,7 @@ public sealed class Guard
 {
     private const float DefaultMoveSpeed = 80f;
     private const float DefaultTurnRate = 360f;
+    private const float WaypointReachThreshold = 6f;
     private const float DirectionEpsilonSquared = 0.0001f;
     private const float RadToDeg = 180f / MathF.PI;
     private const float FullCircleDegrees = 360f;
@@ -88,6 +89,31 @@ public sealed class Guard
         {
             TransitionTo(nextState);
         }
+    }
+
+    public bool StepAlongPath(IReadOnlyList<Vector2> path, ref int currentIndex, float deltaTime, float speedMultiplier = 1f)
+    {
+        if (currentIndex >= path.Count)
+        {
+            return true;
+        }
+
+        Vector2 targetNode = path[currentIndex];
+        Vector2 toTarget = targetNode - Position;
+        float distance = toTarget.Length();
+        float step = MoveSpeed * speedMultiplier * deltaTime;
+
+        if (distance <= WaypointReachThreshold || step >= distance)
+        {
+            Position = targetNode;
+            currentIndex++;
+            return currentIndex >= path.Count;
+        }
+
+        Vector2 direction = Vector2.Normalize(toTarget);
+        RotateToward(direction, deltaTime);
+        Position += direction * step;
+        return false;
     }
 
     public void RotateToward(Vector2 direction, float deltaTime, float turnRate = DefaultTurnRate)

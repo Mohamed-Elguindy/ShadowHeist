@@ -10,9 +10,7 @@ namespace ShadowHeist.GuardAI.States;
 /// </summary>
 public sealed class PatrolState : IGuardState
 {
-    private const float WaypointReachThreshold = 6f;
     private const float DefaultWaitDuration = 1.5f;
-    private const float TurnRate = 360f;
 
     private readonly Guard _guard;
     private readonly IReadOnlyList<Vector2> _waypoints;
@@ -87,28 +85,11 @@ public sealed class PatrolState : IGuardState
             _activePathIndex = 0;
         }
 
-        Vector2 currentNode = _activePath[_activePathIndex];
-        var toTarget = currentNode - _guard.Position;
-        float distance = toTarget.Length();
-        float step = _guard.MoveSpeed * deltaTime;
-
-        if (distance <= WaypointReachThreshold || step >= distance)
+        if (_guard.StepAlongPath(_activePath, ref _activePathIndex, deltaTime))
         {
-            _guard.Position = currentNode;
-            _activePathIndex++;
-
-            if (_activePathIndex >= _activePath.Count)
-            {
-                _guard.Position = TargetWaypoint;
-                _isWaiting = true;
-                _waitTimer = _waitDuration;
-            }
-
-            return;
+            _guard.Position = TargetWaypoint;
+            _isWaiting = true;
+            _waitTimer = _waitDuration;
         }
-
-        var direction = Vector2.Normalize(toTarget);
-        _guard.RotateToward(direction, deltaTime, TurnRate);
-        _guard.Position += direction * step;
     }
 }

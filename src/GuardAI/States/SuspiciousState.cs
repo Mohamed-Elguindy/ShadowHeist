@@ -9,12 +9,10 @@ namespace ShadowHeist.GuardAI.States;
 /// Suspicious behavior: triggered when a guard hears a NoiseEmittedEvent within range.
 /// Navigates to the noise origin via A* pathfinding, scans the area, then resumes PatrolState (Ticket #13 — Hatem).
 /// </summary>
-public sealed class SuspiciousState : IGuardState
+public sealed class SuspiciousState : IGuardPathState
 {
-    private const float WaypointReachThreshold = 6f;
     private const float DefaultInvestigateDuration = 2.5f;
     private const float SuspiciousSpeedMultiplier = 1.15f;
-    private const float MoveTurnRate = 360f;
     private const float ScanTurnSpeed = 90f;
     private const float ScanFrequencyRadians = 4f;
     private const float FullCircleDegrees = 360f;
@@ -31,6 +29,7 @@ public sealed class SuspiciousState : IGuardState
 
     public string StateName => "Suspicious";
     public Vector2 InvestigationTarget { get; private set; }
+    public Vector2 TargetPosition => InvestigationTarget;
     public IReadOnlyList<Vector2> PathWaypoints => _pathWaypoints;
     public int CurrentPathIndex => _currentPathIndex;
     public bool IsInvestigating => _isInvestigating;
@@ -80,7 +79,13 @@ public sealed class SuspiciousState : IGuardState
             return UpdateInvestigationScan(deltaTime);
         }
 
-        UpdatePathMovement(deltaTime);
+        if (_guard.StepAlongPath(_pathWaypoints, ref _currentPathIndex, deltaTime, SuspiciousSpeedMultiplier))
+        {
+            _guard.Position = InvestigationTarget;
+            _isInvestigating = true;
+            _investigateTimer = _investigateDuration;
+        }
+
         return this;
     }
 
@@ -114,43 +119,4 @@ public sealed class SuspiciousState : IGuardState
 
         return this;
     }
-
-    private void UpdatePathMovement(float deltaTime)
-    {
-        if (_currentPathIndex >= _pathWaypoints.Count)
-        {
-            BeginInvestigating();
-            return;
-        }
-
-        Vector2 targetNode = _pathWaypoints[_currentPathIndex];
-        Vector2 toTarget = targetNode - _guard.Position;
-        float distance = toTarget.Length();
-        float step = _guard.MoveSpeed * SuspiciousSpeedMultiplier * deltaTime;
-
-        if (distance <= WaypointReachThreshold || step >= distance)
-        {
-            _guard.Position = targetNode;
-            _currentPathIndex++;
-
-            if (_currentPathIndex >= _pathWaypoints.Count)
-            {
-                BeginInvestigating();
-            }
-
-            return;
-        }
-
-        Vector2 direction = Vector2.Normalize(toTarget);
-        _guard.RotateToward(direction, deltaTime, MoveTurnRate);
-        _guard.Position += direction * step;
-    }
-
-    private void BeginInvestigating()
-    {
-        _guard.Position = InvestigationTarget;
-        _isInvestigating = true;
-        _investigateTimer = _investigateDuration;
-    }
 }
-

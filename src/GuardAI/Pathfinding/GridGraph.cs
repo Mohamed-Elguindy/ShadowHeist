@@ -4,11 +4,6 @@ using ShadowHeist.Core;
 namespace ShadowHeist.GuardAI.Pathfinding;
 
 /// <summary>
-/// Immutable 2D grid coordinate (Column, Row) for tile-based pathfinding.
-/// </summary>
-public readonly record struct GridCoord(int Col, int Row);
-
-/// <summary>
 /// 2D walkability grid constructed from world-space wall bounds (Ticket #14 — Hatem).
 /// </summary>
 public sealed class GridGraph
@@ -42,7 +37,6 @@ public sealed class GridGraph
         float mapHeight = DefaultMapHeight,
         float clearance = DefaultClearance)
     {
-        ArgumentNullException.ThrowIfNull(walls);
         if (cellSize <= 0f)
         {
             throw new ArgumentOutOfRangeException(nameof(cellSize), "Cell size must be positive.");
@@ -136,16 +130,14 @@ public sealed class GridGraph
         {
             for (int dRow = -radius; dRow <= radius; dRow++)
             {
-                if (Math.Abs(dCol) != radius && Math.Abs(dRow) != radius)
+                if (Math.Abs(dCol) == radius || Math.Abs(dRow) == radius)
                 {
-                    continue;
-                }
-
-                var candidate = new GridCoord(origin.Col + dCol, origin.Row + dRow);
-                if (IsWalkable(candidate))
-                {
-                    result = candidate;
-                    return true;
+                    var candidate = new GridCoord(origin.Col + dCol, origin.Row + dRow);
+                    if (IsWalkable(candidate))
+                    {
+                        result = candidate;
+                        return true;
+                    }
                 }
             }
         }
@@ -154,4 +146,3 @@ public sealed class GridGraph
         return false;
     }
 }
-
