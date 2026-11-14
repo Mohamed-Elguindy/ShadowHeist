@@ -5,18 +5,23 @@ using ShadowHeist.WorldLighting;
 
 namespace ShadowHeist.HeistWorld;
 
-internal static class InteractableQuery
+public static class InteractableQuery
 {
-    public static IInteractable? FindInPlayerRange(GameContext context)
-    {
-        foreach (IInteractable item in context.Interactables)
-        {
-            if (!item.CanInteract(context.PlayerPosition)) continue;
-            if (HasUnobstructedAccess(context, item)) return item;
-        }
+    public static IInteractable? FindInPlayerRange(GameContext context) =>
+        InteractablesInRange(context).FirstOrDefault();
 
-        return null;
-    }
+    public static IHoldInteractable? FindHoldInRange(GameContext context) =>
+        HoldablesInRange(context).FirstOrDefault();
+
+    public static IHoldInteractable? FindHoldInProgress(GameContext context) =>
+        HoldablesInRange(context).FirstOrDefault(hold => hold.HoldProgress > 0f);
+
+    private static IEnumerable<IInteractable> InteractablesInRange(GameContext context) =>
+        context.Interactables
+            .Where(item => item.CanInteract(context.PlayerPosition) && HasUnobstructedAccess(context, item));
+
+    private static IEnumerable<IHoldInteractable> HoldablesInRange(GameContext context) =>
+        InteractablesInRange(context).OfType<IHoldInteractable>();
 
     private static bool HasUnobstructedAccess(GameContext context, IInteractable item)
     {

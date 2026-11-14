@@ -19,6 +19,11 @@ public sealed class PlayerRenderer : IDisposable
 
     public PlayerRenderer()
     {
+        if (!Raylib.IsWindowReady())
+        {
+            return;
+        }
+
         _texture = Raylib.LoadTexture(SpritePath);
         _hasTexture = _texture.Id > 0;
     }

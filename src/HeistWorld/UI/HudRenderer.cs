@@ -2,6 +2,7 @@ using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Interfaces;
+using ShadowHeist.HeistWorld.Interactables;
 
 namespace ShadowHeist.HeistWorld.UI;
 
@@ -11,11 +12,54 @@ public sealed class HudRenderer
     private const int CashFontSize = 20;
     private const int PromptFontSize = 16;
 
+    private readonly SoundMeter _soundMeter;
+
+    public HudRenderer(SoundMeter soundMeter)
+    {
+        _soundMeter = soundMeter;
+    }
+
     public void DrawHudOverlay(GameContext context)
     {
         DrawStolenCashBanner(context.StolenCash);
+        DrawAlarmBanner(context.IsAlarmTriggered, context.Outcome);
+        DrawSoundMeter();
+        DrawHoldProgressRing(context);
         DrawContextualPrompt(context);
         DrawOutcomeOverlay(context.Outcome);
+    }
+
+    public static void DrawAlarmBanner(bool isAlarmTriggered, HeistOutcome outcome)
+    {
+        if (!isAlarmTriggered || outcome != HeistOutcome.Playing) return;
+
+        const string text = "! ALARM TRIGGERED !";
+        const int fontSize = 20;
+        int textWidth = Raylib.MeasureText(text, fontSize);
+        int boxWidth = textWidth + 28;
+        int boxHeight = 36;
+        int boxX = (Raylib.GetScreenWidth() - boxWidth) / 2;
+        const int boxY = 20;
+
+        Raylib.DrawRectangle(boxX, boxY, boxWidth, boxHeight, new Color(48, 12, 22, 225));
+        Raylib.DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, new Color(244, 63, 94, 235));
+        Raylib.DrawText(text, boxX + 14, boxY + 8, fontSize, new Color(255, 110, 130, 255));
+    }
+
+    private void DrawSoundMeter()
+    {
+        SoundMeterBarRenderer.Draw(_soundMeter.Level);
+    }
+
+    private static void DrawHoldProgressRing(GameContext context)
+    {
+        IHoldInteractable? activeHold = InteractableQuery.FindHoldInProgress(context);
+        if (activeHold == null)
+        {
+            return;
+        }
+
+        HoldProgressRingRenderer.Draw(activeHold.Position, activeHold.HoldProgress);
     }
 
     public static void DrawStolenCashBanner(int stolenCash)

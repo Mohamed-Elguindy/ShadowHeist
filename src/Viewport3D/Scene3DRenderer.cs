@@ -2,6 +2,7 @@ using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.GuardAI;
+using ShadowHeist.WorldLighting;
 
 namespace ShadowHeist.Viewport3D;
 
@@ -16,12 +17,13 @@ public sealed class Scene3DRenderer : IDisposable
     private readonly PropsRenderer _props = new();
     private readonly CharacterRenderer _characters = new();
     private readonly StealthVfxRenderer _vfx = new();
+    private readonly LaserTripwire3DRenderer _lasers = new();
     private float _elapsedSeconds;
     private bool _assetsLoaded;
 
     public void Load(GameContext context)
     {
-        if (!_assetsLoaded)
+        if (!_assetsLoaded && Raylib.IsWindowReady())
         {
             _library.LoadShader();
             _environment.Load(_library);
@@ -48,11 +50,14 @@ public sealed class Scene3DRenderer : IDisposable
         IReadOnlyList<RectangleBounds> architecturalWalls,
         IReadOnlyList<RectangleBounds> visionBlockers,
         IReadOnlyList<Guard> guards,
+        IReadOnlyList<LaserTripwire> lasers,
+        RectangleBounds? getawayZone,
         float playerRotationDegrees)
     {
-        _environment.Draw(architecturalWalls, _elapsedSeconds);
+        _environment.Draw(architecturalWalls, getawayZone, _elapsedSeconds);
         _decor.Draw(_elapsedSeconds);
-        _vfx.Draw(visionBlockers, context, guards, _elapsedSeconds);
+        _vfx.Draw(visionBlockers, context, guards, playerRotationDegrees, _elapsedSeconds);
+        _lasers.Draw(lasers, _elapsedSeconds);
         _props.Draw(context, _elapsedSeconds);
         _characters.Draw(context, guards, playerRotationDegrees, _elapsedSeconds);
     }

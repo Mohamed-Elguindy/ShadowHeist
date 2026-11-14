@@ -9,6 +9,11 @@ public sealed class SpriteDrawer : IDisposable
 
     public void LoadTexture(string texturePath)
     {
+        if (!Raylib.IsWindowReady())
+        {
+            return;
+        }
+
         if (File.Exists(texturePath))
         {
             _textures[texturePath] = Raylib.LoadTexture(texturePath);

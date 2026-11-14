@@ -7,6 +7,7 @@ namespace ShadowHeist.WorldLighting;
 public static class MapLoader
 {
     private const string DefaultLevelName = "Level 1: City Central Bank";
+    private const string DefaultHallLaserId = "laser_hall";
     private const int DefaultTileSize = 64;
     private const int DefaultGridWidth = 20;
     private const int DefaultGridHeight = 12;
@@ -19,6 +20,8 @@ public static class MapLoader
     private static readonly RectangleBounds DefaultLobbyDividerWall = new(320f, 160f, 32f, 256f);
     private static readonly RectangleBounds DefaultVaultEastUpperWall = new(928f, 160f, 32f, 80f);
     private static readonly RectangleBounds DefaultVaultEastLowerWall = new(928f, 336f, 32f, 80f);
+    private static readonly Vector2 DefaultHallLaserOrigin = new(336f, 417f);
+    private static readonly Vector2 DefaultHallLaserDirection = Vector2.UnitY;
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
@@ -61,6 +64,7 @@ public static class MapLoader
         List<MapPropObstacle> obstacles = ParseObstacles(dto?.Obstacles);
         List<MapInteractableDto> interactables = dto?.Interactables ?? new List<MapInteractableDto>();
         List<MapGuardDto> guards = dto?.Guards?.FindAll(g => g.Waypoints is { Count: > 0 }) ?? new List<MapGuardDto>();
+        List<LaserSpawnData> lasers = BuildLasers(dto?.Lasers);
 
         return new LevelMapData(
             levelName,
@@ -72,7 +76,8 @@ public static class MapLoader
             walls,
             obstacles,
             interactables,
-            guards);
+            guards,
+            lasers);
     }
 
     private static RectangleBounds ResolveGetawayZone(RectangleBounds? zone)
@@ -124,6 +129,33 @@ public static class MapLoader
 
     private static List<MapPropObstacle> ParseObstacles(List<MapPropObstacle>? dtos) =>
         dtos is null ? new List<MapPropObstacle>() : dtos.FindAll(o => o.Width > 0f && o.Height > 0f);
+
+    private static List<LaserSpawnData> BuildLasers(List<LaserSpawnDto>? laserDtos)
+    {
+        var lasers = new List<LaserSpawnData>();
+
+        if (laserDtos is not null)
+        {
+            foreach (var dto in laserDtos)
+            {
+                if (!string.IsNullOrWhiteSpace(dto.Id))
+                {
+                    Vector2 direction = dto.Direction ?? DefaultHallLaserDirection;
+                    lasers.Add(new LaserSpawnData(dto.Id, new Vector2(dto.X, dto.Y), direction));
+                }
+            }
+        }
+
+        if (lasers.Count > 0)
+        {
+            return lasers;
+        }
+
+        return new List<LaserSpawnData>
+        {
+            new(DefaultHallLaserId, DefaultHallLaserOrigin, DefaultHallLaserDirection)
+        };
+    }
 
     private static void ApplyToContext(LevelMapData mapData, GameContext context)
     {

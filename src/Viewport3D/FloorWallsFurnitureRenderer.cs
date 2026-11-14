@@ -43,10 +43,10 @@ public sealed class FloorWallsFurnitureRenderer
         }
     }
 
-    public void Draw(IReadOnlyList<RectangleBounds> walls, float timeSeconds)
+    public void Draw(IReadOnlyList<RectangleBounds> walls, RectangleBounds? getawayZone, float timeSeconds)
     {
         DrawFloorZones();
-        DrawGetawayPad(timeSeconds);
+        DrawGetawayPad(getawayZone, timeSeconds);
         DrawWalls(walls);
         DrawFurniture();
     }
@@ -70,9 +70,11 @@ public sealed class FloorWallsFurnitureRenderer
         return _marbleSlab;
     }
 
-    private static void DrawGetawayPad(float timeSeconds)
+    private static void DrawGetawayPad(RectangleBounds? zone, float timeSeconds)
     {
-        Rectangle pad = Viewport3DConfig.GetawayZoneBounds;
+        Rectangle pad = zone is RectangleBounds z
+            ? new Rectangle(z.X, z.Y, z.Width, z.Height)
+            : Viewport3DConfig.GetawayZoneBounds;
         byte alpha = (byte)(110 * (0.65f + 0.35f * MathF.Sin(timeSeconds * 3f)));
         var center = new Vector3(pad.X + pad.Width / 2f, 0.5f, pad.Y + pad.Height / 2f);
         Raylib.DrawCube(center, pad.Width, 1f, pad.Height, new Color((byte)28, (byte)155, (byte)102, alpha));

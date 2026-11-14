@@ -2,7 +2,7 @@ using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
 
-namespace ShadowHeist.WorldLighting;
+namespace ShadowHeist.WorldLighting.Rendering;
 
 public sealed class MapRenderer : IDisposable
 {
@@ -24,6 +24,11 @@ public sealed class MapRenderer : IDisposable
 
     public void LoadTextures()
     {
+        if (!Raylib.IsWindowReady())
+        {
+            return;
+        }
+
         if (File.Exists(FloorTexturePath))
         {
             _floorTexture = Raylib.LoadTexture(FloorTexturePath);

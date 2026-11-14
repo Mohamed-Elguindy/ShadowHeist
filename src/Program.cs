@@ -30,8 +30,10 @@ public static class Program
         context.RegisterSystem(new PlayerSystemModule());  // Mahmoud (Input & Player)
         var guardModule = new GuardAiModule(worldModule);  // Hatem (Guards)
         context.RegisterSystem(guardModule);
-        context.RegisterSystem(new HeistWorldModule(worldModule)); // Guindy (Interactions & HUD)
-        context.RegisterSystem(new Viewport3DModule(guardModule, worldModule)); // 3D tactical view (F5)
+        var heistModule = new HeistWorldModule(worldModule); // Guindy (Interactions & HUD)
+        context.RegisterSystem(heistModule);
+        var viewportModule = new Viewport3DModule(guardModule, worldModule, heistModule); // 3D tactical view (F5)
+        context.RegisterSystem(viewportModule);
 
         context.InitializeAll();
 
@@ -43,7 +45,11 @@ public static class Program
             }
 
             Camera2D camera2D = BuildCamera2D(worldModule);
-            if (!context.Is3DRenderingActive)
+            if (context.Is3DRenderingActive)
+            {
+                viewportModule.SyncAimOverride(context);
+            }
+            else
             {
                 context.AimWorldOverride = Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), camera2D);
             }

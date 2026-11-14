@@ -43,6 +43,17 @@
     { "kind": "plant", "x": 1190.9, "y": 678.4, "width": 18.2, "height": 19.2 },
     { "kind": "table", "x": 1211.5, "y": 350.0, "width": 25.0, "height": 60.0 }
   ],
+  "lasers": [
+    {
+      "id": "laser_hall",
+      "x": 336,
+      "y": 417,
+      "direction": {
+        "x": 0,
+        "y": 1
+      }
+    }
+  ],
   "interactables": [
     {
       "type": "LootCrate",

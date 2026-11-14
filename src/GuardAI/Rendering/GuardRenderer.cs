@@ -92,6 +92,11 @@ public sealed class GuardRenderer : IDisposable
 
     private void LoadTexture()
     {
+        if (!Raylib.IsWindowReady())
+        {
+            return;
+        }
+
         if (File.Exists(GuardTexturePath))
         {
             _guardTexture = Raylib.LoadTexture(GuardTexturePath);

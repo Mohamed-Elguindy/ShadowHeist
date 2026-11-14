@@ -32,6 +32,7 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
         _renderer ??= new GuardRenderer();
         SpawnGuards();
         context.EventBus.Subscribe<NoiseEmittedEvent>(OnNoiseEmitted);
+        context.EventBus.Subscribe<AlarmTriggeredEvent>(OnAlarmTriggered);
     }
 
     public void Update(float deltaTime, GameContext context)
@@ -68,6 +69,19 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
             {
                 guard.NotifyNoise(evt.Origin);
             }
+        }
+    }
+
+    private void OnAlarmTriggered(AlarmTriggeredEvent evt)
+    {
+        if (!evt.Reason.StartsWith("LaserTripwire:", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        foreach (Guard guard in _guards)
+        {
+            guard.NotifyNoise(evt.TriggerPosition);
         }
     }
 

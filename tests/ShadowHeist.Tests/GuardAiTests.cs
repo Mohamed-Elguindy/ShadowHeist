@@ -178,4 +178,17 @@ public sealed class GuardAiTests
 
         Assert.Equal(HeistOutcome.Caught, context.Outcome);
     }
+
+    [Fact]
+    public void GuardAiModule_GuardsInvestigate_WhenLaserTripwireAlarmTriggers()
+    {
+        using var context = new GameContext();
+        var guardModule = new GuardAiModule();
+        guardModule.Init(context);
+
+        context.EventBus.Publish(new ShadowHeist.Core.Events.AlarmTriggeredEvent(new Vector2(336f, 500f), "LaserTripwire:laser_hall"));
+        guardModule.Update(0.05f, context);
+
+        Assert.All(guardModule.Guards, g => Assert.IsType<SuspiciousState>(g.CurrentState));
+    }
 }

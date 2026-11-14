@@ -3,6 +3,7 @@ using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Interfaces;
 using ShadowHeist.GuardAI;
+using ShadowHeist.HeistWorld;
 using ShadowHeist.HeistWorld.Interactables;
 using ShadowHeist.WorldLighting;
 
@@ -15,6 +16,7 @@ public sealed class Viewport3DModule : IGameSystem, IDisposable
 {
     private readonly GuardAiModule _guards;
     private readonly WorldLightingModule _world;
+    private readonly HeistWorldModule? _heist;
     private readonly Scene3DRenderer _scene = new();
     private Camera3D _camera;
     private Vector3 _cameraFocus;
@@ -25,10 +27,11 @@ public sealed class Viewport3DModule : IGameSystem, IDisposable
     private bool _hasFocus;
     private float _zoom = 1f;
 
-    public Viewport3DModule(GuardAiModule guards, WorldLightingModule world)
+    public Viewport3DModule(GuardAiModule guards, WorldLightingModule world, HeistWorldModule? heist = null)
     {
         _guards = guards;
         _world = world;
+        _heist = heist;
     }
 
     public void Init(GameContext context)
@@ -42,7 +45,11 @@ public sealed class Viewport3DModule : IGameSystem, IDisposable
             Projection = CameraProjection.Perspective
         };
         context.Is3DRenderingActive = _is3DMode;
+        UpdateCamera(0f, context);
+        SyncAimOverride(context);
     }
+
+    public void SyncAimOverride(GameContext context) => UpdateMouseAim(context);
 
     public void Update(float deltaTime, GameContext context)
     {
@@ -77,10 +84,17 @@ public sealed class Viewport3DModule : IGameSystem, IDisposable
         IReadOnlyList<RectangleBounds> visionBlockers = BuildVisionBlockers(architecturalWalls, context);
 
         Raylib.BeginMode3D(_camera);
-        _scene.Draw(context, architecturalWalls, visionBlockers, _guards.Guards, ReadPlayerRotation(context));
+        _scene.Draw(
+            context,
+            architecturalWalls,
+            visionBlockers,
+            _guards.Guards,
+            _world.Lasers,
+            _world.CurrentMap?.GetawayZone,
+            ReadPlayerRotation(context));
         Raylib.EndMode3D();
 
-        HudOverlay3D.DrawFullHud(context, _camera, _isOverviewCamera);
+        HudOverlay3D.DrawFullHud(context, _camera, _isOverviewCamera, _heist?.SoundMeterLevel ?? 0f);
     }
 
     public void Dispose() => _scene.Dispose();

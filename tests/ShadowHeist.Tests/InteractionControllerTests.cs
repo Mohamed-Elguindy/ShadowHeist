@@ -53,6 +53,24 @@ public sealed class InteractionControllerTests
     }
 
     [Fact]
+    public void HandlePlayerInteraction_HoldsKeypad_WhenLootCrateIsListedFirstAndOverlapping()
+    {
+        using var context = new GameContext();
+        var crate = new LootCrate("crate_1", new Vector2(100f, 100f), cashValue: 10_000);
+        var keypad = new KeypadTerminal("kp_1", new Vector2(100f, 100f), targetId: "door_1");
+        context.Interactables.Add(crate);
+        context.Interactables.Add(keypad);
+        context.PlayerPosition = new Vector2(100f, 100f);
+        context.CurrentInput = CreateInput(isHeld: true);
+
+        var controller = new InteractionController();
+        controller.HandlePlayerInteraction(deltaTime: 1.5f, context);
+
+        Assert.True(keypad.HoldProgress > 0.4f);
+        Assert.False(crate.IsCollected);
+    }
+
+    [Fact]
     public void HandlePlayerInteraction_CancelsActiveHold_WhenInteractReleased()
     {
         using var context = new GameContext();
@@ -72,5 +90,27 @@ public sealed class InteractionControllerTests
         controller.HandlePlayerInteraction(deltaTime: 0.016f, context);
 
         Assert.Equal(0f, keypad.HoldProgress);
+    }
+
+    [Fact]
+    public void Reset_ClearsActiveHoldReference_AfterMissionRestart()
+    {
+        using var context = new GameContext();
+        var staleKeypad = new KeypadTerminal("kp_stale", new Vector2(100f, 100f), targetId: "door_1");
+        context.Interactables.Add(staleKeypad);
+        context.PlayerPosition = new Vector2(100f, 100f);
+
+        var controller = new InteractionController();
+        context.CurrentInput = CreateInput(isHeld: true);
+        controller.HandlePlayerInteraction(deltaTime: 1.0f, context);
+
+        controller.Reset();
+        context.Interactables.Clear();
+        var freshKeypad = new KeypadTerminal("kp_fresh", new Vector2(100f, 100f), targetId: "door_1");
+        context.Interactables.Add(freshKeypad);
+
+        controller.HandlePlayerInteraction(deltaTime: 1.0f, context);
+
+        Assert.True(freshKeypad.HoldProgress > 0f);
     }
 }

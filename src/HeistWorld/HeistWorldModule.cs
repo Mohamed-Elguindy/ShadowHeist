@@ -14,14 +14,17 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
     private static readonly RectangleBounds DefaultGetawayZone = new(64f, 640f, 128f, 96f);
 
     private readonly InteractionController _interaction = new();
-    private readonly HudRenderer _hud = new();
     private readonly WorldLightingModule? _world;
     private readonly List<LootCrate> _crates = new();
     private VaultDoor _vaultDoor = null!;
     private KeypadTerminal _keypad = null!;
     private HeistWorldRenderer? _renderer;
+    private SoundMeter? _soundMeter;
+    private HudRenderer? _hud;
     private RectangleBounds _getawayZone = DefaultGetawayZone;
     private bool _spritesLoaded;
+
+    public float SoundMeterLevel => _soundMeter?.Level ?? 0f;
 
     public HeistWorldModule(WorldLightingModule? world = null)
     {
@@ -30,6 +33,10 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
 
     public void Init(GameContext context)
     {
+        _interaction.Reset();
+        _soundMeter = new SoundMeter(context.EventBus);
+        _hud = new HudRenderer(_soundMeter);
+
         BuildWorldObjects(context);
         _renderer ??= new HeistWorldRenderer(_crates, _vaultDoor, _keypad);
         _renderer.SetTargets(_vaultDoor, _keypad);
@@ -42,6 +49,7 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
 
     public void Update(float deltaTime, GameContext context)
     {
+        _soundMeter?.Update(deltaTime);
         if (context.Outcome != HeistOutcome.Playing) return;
 
         _interaction.HandlePlayerInteraction(deltaTime, context);
@@ -57,7 +65,7 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
         if (context.Is3DRenderingActive) return;
 
         _renderer?.DrawWorldObjects();
-        _hud.DrawHudOverlay(context);
+        _hud?.DrawHudOverlay(context);
     }
 
     public void Dispose()
