@@ -1,6 +1,6 @@
 using Raylib_cs;
 
-namespace ShadowHeist.WorldLighting;
+namespace ShadowHeist.WorldLighting.Rendering;
 
 /// <summary>
 /// Renders solid furniture and teller counter footprints in 2D blueprint mode to match 3D colliders.
@@ -23,11 +23,11 @@ public static class MapObstacleRenderer
             Color fill = SelectColor(prop.Kind);
             int x = (int)prop.X;
             int y = (int)prop.Y;
-            int w = (int)prop.Width;
-            int h = (int)prop.Height;
+            int width = (int)prop.Width;
+            int height = (int)prop.Height;
 
-            Raylib.DrawRectangle(x, y, w, h, fill);
-            Raylib.DrawRectangleLines(x, y, w, h, OutlineColor);
+            Raylib.DrawRectangle(x, y, width, height, fill);
+            Raylib.DrawRectangleLines(x, y, width, height, OutlineColor);
         }
     }
 

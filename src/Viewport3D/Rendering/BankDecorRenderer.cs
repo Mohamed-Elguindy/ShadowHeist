@@ -41,18 +41,22 @@ public sealed class BankDecorRenderer : ISceneRenderPass
     public void Draw(in Scene3DRenderFrame frame)
     {
         float timeSeconds = frame.ElapsedSeconds;
-        DrawGetawayVanSection(timeSeconds);
+        DrawVanParkingBay();
+        DrawGetawayVanModel(timeSeconds);
         DrawTellerStation(timeSeconds);
         DrawSecurityCameras(timeSeconds);
         DrawVaultFusebox(timeSeconds);
         DrawBankPlaque();
     }
 
-    private void DrawGetawayVanSection(float timeSeconds)
+    private static void DrawVanParkingBay()
     {
         Raylib.DrawCube(new Vector3(VanPosition.X + 8f, -1.5f, VanPosition.Y), 220f, 3f, 112f, AsphaltColor);
         Raylib.DrawCube(new Vector3(VanPosition.X + 8f, 0.2f, VanPosition.Y - 54f), 200f, 0.5f, 3f, new Color(246, 196, 54, 150));
+    }
 
+    private void DrawGetawayVanModel(float timeSeconds)
+    {
         if (_vanModel is not LoadedModel van || _library is null)
         {
             return;
@@ -60,8 +64,11 @@ public sealed class BankDecorRenderer : ISceneRenderPass
 
         var origin = new Vector3(VanPosition.X, van.BaseOffsetY, VanPosition.Y);
         _library.DrawCenteredProp(van, origin, VanYawDegrees, Color.White, VanOutlineWidth);
+        DrawVanLightsAndHazards(origin, timeSeconds);
+    }
 
-        // Headlight beams and hazard blinkers
+    private static void DrawVanLightsAndHazards(Vector3 origin, float timeSeconds)
+    {
         Raylib.DrawTriangle3D(
             origin + new Vector3(72f, 4f, -14f),
             origin + new Vector3(140f, 1f, -34f),
@@ -118,15 +125,15 @@ public sealed class BankDecorRenderer : ISceneRenderPass
         Raylib.DrawCube(mountPosition, 8f, 8f, 8f, SteelDarkColor);
 
         float radians = yawDegrees * HeistConstants.DegToRad;
-        Vector3 lookDir = new(MathF.Cos(radians), -0.36f, MathF.Sin(radians));
-        Vector3 lensTip = mountPosition + (lookDir * 17f);
+        Vector3 lookDirection = new(MathF.Cos(radians), -0.36f, MathF.Sin(radians));
+        Vector3 lensTip = mountPosition + (lookDirection * 17f);
 
-        Raylib.DrawCylinderEx(mountPosition, mountPosition + (lookDir * 16f), 4.5f, 3.5f, 8, new Color(210, 220, 234, 255));
+        Raylib.DrawCylinderEx(mountPosition, mountPosition + (lookDirection * 16f), 4.5f, 3.5f, 8, new Color(210, 220, 234, 255));
         byte recordAlpha = (byte)(120f + 135f * MathF.Abs(MathF.Sin(timeSeconds * 4f)));
         Raylib.DrawSphere(lensTip, 2.4f, new Color((byte)255, (byte)55, (byte)75, recordAlpha));
         Raylib.DrawLine3D(
             lensTip,
-            new Vector3(mountPosition.X + (lookDir.X * 145f), 2f, mountPosition.Z + (lookDir.Z * 145f)),
+            new Vector3(mountPosition.X + (lookDirection.X * 145f), 2f, mountPosition.Z + (lookDirection.Z * 145f)),
             new Color(255, 70, 90, 42));
     }
 

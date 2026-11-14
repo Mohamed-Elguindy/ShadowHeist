@@ -8,14 +8,13 @@ using ShadowHeist.WorldLighting;
 namespace ShadowHeist.PlayerSystem;
 
 /// <summary>
-/// Player entity (Ticket #4, #11 & #12 - Mahmoud).
-/// Handles movement, stances, wall collisions, smooth aim, and footstep noise events.
+/// Player entity handling movement, stances, wall collisions, instant aim, and footstep noise events.
 /// </summary>
 public sealed class Player
 {
     private const float BaseSpeed = 160f;
-    private const float MinAimDistance = 16f; // Ignore aim changes when mouse is directly on the player
-    private const float WalkStepInterval = 0.40f;   // Seconds between walk footstep sounds
+    private const float MinAimDistance = 16f;
+    private const float WalkStepIntervalSeconds = 0.40f;
 
     private float _stepTimer;
 
@@ -29,51 +28,52 @@ public sealed class Player
 
     public void Update(PlayerInputCommand input, float deltaTime, IEnumerable<RectangleBounds> walls, GameEventBus eventBus)
     {
-        // 1. Update stance (Walk, Sneak, Sprint)
         CurrentStance = CurrentStance.HandleInput(input);
+        MoveWithCollision(input.MoveDirection, deltaTime, walls);
+        FaceAimPosition(input.AimWorldPosition);
+        UpdateFootstepNoise(input.MoveDirection, deltaTime, eventBus);
+    }
 
-        // 2. Move with WASD
-        if (input.MoveDirection != Vector2.Zero)
+    private void MoveWithCollision(Vector2 moveDirection, float deltaTime, IEnumerable<RectangleBounds> walls)
+    {
+        if (moveDirection != Vector2.Zero)
         {
-            Position += input.MoveDirection * MoveSpeed * deltaTime;
+            Position += moveDirection * MoveSpeed * deltaTime;
         }
 
-        // 3. Prevent walking through walls
         Position = CollisionHelper.ResolveWallCollision(Position, Radius, walls);
+    }
 
-        // 4. Aim towards mouse
-        RotateTowards(input.AimWorldPosition);
+    private void FaceAimPosition(Vector2 targetPosition)
+    {
+        Vector2 delta = targetPosition - Position;
+        if (delta.LengthSquared() < MinAimDistance * MinAimDistance)
+        {
+            return;
+        }
 
-        // 5. Emit footstep noise based on active stance
-        UpdateFootstepNoise(input.MoveDirection, deltaTime, eventBus);
+        RotationDegrees = MathF.Atan2(delta.Y, delta.X) * HeistConstants.RadToDeg;
     }
 
     private void UpdateFootstepNoise(Vector2 moveDirection, float deltaTime, GameEventBus eventBus)
     {
-        // Silent crouch or standing still produces zero footstep noise
-        if (moveDirection == Vector2.Zero || CurrentStance.NoiseRadius <= 0f)
+        bool isSilentOrStill = moveDirection == Vector2.Zero || CurrentStance.NoiseRadius <= 0f;
+        if (isSilentOrStill)
         {
             _stepTimer = Math.Max(0f, _stepTimer - deltaTime);
             return;
         }
 
         _stepTimer -= deltaTime;
-        if (_stepTimer > 0f) return;
+        if (_stepTimer > 0f)
+        {
+            return;
+        }
 
-        _stepTimer = WalkStepInterval / CurrentStance.SpeedMultiplier;
-
+        _stepTimer = WalkStepIntervalSeconds / CurrentStance.SpeedMultiplier;
         eventBus.Publish(new NoiseEmittedEvent(
             Position,
             CurrentStance.NoiseRadius,
             $"PlayerFootstep:{CurrentStance.Name}"));
-    }
-
-    private void RotateTowards(Vector2 targetPosition)
-    {
-        Vector2 diff = targetPosition - Position;
-        if (diff.LengthSquared() < MinAimDistance * MinAimDistance) return;
-
-        // Directly face mouse aim position without turn-rate lag
-        RotationDegrees = MathF.Atan2(diff.Y, diff.X) * HeistConstants.RadToDeg;
     }
 }

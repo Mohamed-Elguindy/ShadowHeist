@@ -25,16 +25,7 @@ public static class Program
         Raylib.SetTargetFPS(TargetFps);
 
         using var context = new GameContext();
-        var worldModule = new WorldLightingModule();       // Ali (Map & Floor)
-        context.RegisterSystem(worldModule);
-        context.RegisterSystem(new PlayerSystemModule());  // Mahmoud (Input & Player)
-        var guardModule = new GuardAiModule(worldModule);  // Hatem (Guards)
-        context.RegisterSystem(guardModule);
-        var heistModule = new HeistWorldModule(worldModule); // Guindy (Interactions & HUD)
-        context.RegisterSystem(heistModule);
-        var viewportModule = new Viewport3DModule(guardModule, worldModule, heistModule); // 3D tactical view (F5)
-        context.RegisterSystem(viewportModule);
-
+        (WorldLightingModule worldModule, Viewport3DModule viewportModule) = RegisterSystems(context);
         context.InitializeAll();
 
         while (!Raylib.WindowShouldClose())
@@ -45,34 +36,58 @@ public static class Program
             }
 
             Camera2D camera2D = BuildCamera2D(worldModule);
-            if (context.Is3DRenderingActive)
-            {
-                viewportModule.SyncAimOverride(context);
-            }
-            else
-            {
-                context.AimWorldOverride = Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), camera2D);
-            }
-
-            float deltaTime = Raylib.GetFrameTime();
-            context.UpdateAll(deltaTime);
-
-            Raylib.BeginDrawing();
-            Raylib.ClearBackground(new Color(9, 13, 22, 255));
-            if (context.Is3DRenderingActive)
-            {
-                context.DrawAll();
-            }
-            else
-            {
-                Raylib.BeginMode2D(camera2D);
-                context.DrawAll();
-                Raylib.EndMode2D();
-            }
-            Raylib.EndDrawing();
+            UpdateAimTarget(context, viewportModule, camera2D);
+            context.UpdateAll(Raylib.GetFrameTime());
+            DrawFrame(context, camera2D);
         }
 
         Raylib.CloseWindow();
+    }
+
+    private static (WorldLightingModule World, Viewport3DModule Viewport) RegisterSystems(GameContext context)
+    {
+        var worldModule = new WorldLightingModule();
+        var guardModule = new GuardAiModule(worldModule);
+        var heistModule = new HeistWorldModule(worldModule);
+        var viewportModule = new Viewport3DModule(guardModule, worldModule, heistModule);
+
+        context.RegisterSystem(worldModule);
+        context.RegisterSystem(new PlayerSystemModule());
+        context.RegisterSystem(guardModule);
+        context.RegisterSystem(heistModule);
+        context.RegisterSystem(viewportModule);
+
+        return (worldModule, viewportModule);
+    }
+
+    private static void UpdateAimTarget(GameContext context, Viewport3DModule viewportModule, Camera2D camera2D)
+    {
+        if (context.Is3DRenderingActive)
+        {
+            viewportModule.SyncAimOverride(context);
+            return;
+        }
+
+        context.AimWorldOverride = Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), camera2D);
+    }
+
+    private static void DrawFrame(GameContext context, Camera2D camera2D)
+    {
+        Raylib.BeginDrawing();
+        Raylib.ClearBackground(new Color(9, 13, 22, 255));
+
+        if (context.Is3DRenderingActive)
+        {
+            context.DrawAll();
+        }
+        else
+        {
+            Raylib.BeginMode2D(camera2D);
+            context.DrawAll();
+            Raylib.EndMode2D();
+        }
+
+        Raylib.EndDrawing();
     }
 
     private static Camera2D BuildCamera2D(WorldLightingModule worldModule)
@@ -80,6 +95,7 @@ public static class Program
         int mapHeight = (worldModule.CurrentMap?.GridHeight ?? 12) * (worldModule.CurrentMap?.TileSize ?? 64);
         int mapWidth = (worldModule.CurrentMap?.GridWidth ?? 20) * (worldModule.CurrentMap?.TileSize ?? 64);
         float zoom = MathF.Min((float)ScreenWidth / mapWidth, (float)ScreenHeight / mapHeight);
+
         return new Camera2D
         {
             Zoom = zoom,

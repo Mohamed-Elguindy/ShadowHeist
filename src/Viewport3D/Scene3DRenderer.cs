@@ -11,7 +11,8 @@ namespace ShadowHeist.Viewport3D;
 public sealed class Scene3DRenderer : IDisposable
 {
     private readonly ToonModelLibrary _library = new();
-    private readonly FloorWallsFurnitureRenderer _environment = new();
+    private readonly Architecture3DRenderer _architecture = new();
+    private readonly Furniture3DRenderer _furniture = new();
     private readonly BankDecorRenderer _decor = new();
     private readonly PropsRenderer _props = new();
     private readonly CharacterRenderer _characters = new();
@@ -27,9 +28,11 @@ public sealed class Scene3DRenderer : IDisposable
     {
         _renderPasses = new ISceneRenderPass[]
         {
-            _environment,
+            _architecture,
+            _furniture,
             _decor,
             _vfx,
+            new VisionCone3DRenderer(),
             new LaserTripwire3DRenderer(),
             _props,
             _characters
@@ -41,7 +44,8 @@ public sealed class Scene3DRenderer : IDisposable
         if (!_assetsLoaded && Raylib.IsWindowReady())
         {
             _library.LoadShader();
-            _environment.Load(_library);
+            _architecture.Load(_library);
+            _furniture.Load(_library);
             _decor.Load(_library);
             _props.Load(_library);
             _characters.Load(_library);

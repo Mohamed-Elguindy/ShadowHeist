@@ -1,11 +1,11 @@
 using System.Numerics;
 using Raylib_cs;
+using ShadowHeist.Core;
 
 namespace ShadowHeist.PlayerSystem.Rendering;
 
 /// <summary>
-/// Renders the Player sprite and visual orientation (Ticket #4 - Mahmoud).
-/// Decoupled from Player movement logic (Single Responsibility Principle).
+/// Renders the Player sprite and visual orientation.
 /// </summary>
 public sealed class PlayerRenderer : IDisposable
 {
@@ -14,6 +14,7 @@ public sealed class PlayerRenderer : IDisposable
     private const float SpriteFacesUpOffsetDegrees = 90f;
     private const float FallbackAimLineLength = 24f;
     private static readonly Vector2 SpriteOrigin = new(SpriteSize / 2f, SpriteSize / 2f);
+
     private readonly Texture2D _texture;
     private readonly bool _hasTexture;
 
@@ -32,20 +33,11 @@ public sealed class PlayerRenderer : IDisposable
     {
         if (_hasTexture)
         {
-            var source = new Rectangle(0, 0, _texture.Width, _texture.Height);
-            var dest = new Rectangle(player.Position.X, player.Position.Y, SpriteSize, SpriteSize);
-            float spriteRotation = player.RotationDegrees + SpriteFacesUpOffsetDegrees;
-            Raylib.DrawTexturePro(_texture, source, dest, SpriteOrigin, spriteRotation, Color.White);
+            DrawSprite(player);
         }
         else
         {
-            // Fallback rendering if the sprite fails to load
-            Raylib.DrawCircleV(player.Position, player.Radius, Color.SkyBlue);
-
-            // Draw a line showing facing direction
-            float radians = player.RotationDegrees * Raylib.DEG2RAD;
-            var facingEnd = player.Position + new Vector2(MathF.Cos(radians), MathF.Sin(radians)) * FallbackAimLineLength;
-            Raylib.DrawLineV(player.Position, facingEnd, Color.White);
+            DrawFallbackCircleWithFacingLine(player);
         }
     }
 
@@ -56,5 +48,21 @@ public sealed class PlayerRenderer : IDisposable
             Raylib.UnloadTexture(_texture);
         }
     }
-}
 
+    private void DrawSprite(Player player)
+    {
+        var source = new Rectangle(0, 0, _texture.Width, _texture.Height);
+        var dest = new Rectangle(player.Position.X, player.Position.Y, SpriteSize, SpriteSize);
+        float spriteRotation = player.RotationDegrees + SpriteFacesUpOffsetDegrees;
+        Raylib.DrawTexturePro(_texture, source, dest, SpriteOrigin, spriteRotation, Color.White);
+    }
+
+    private static void DrawFallbackCircleWithFacingLine(Player player)
+    {
+        Raylib.DrawCircleV(player.Position, player.Radius, Color.SkyBlue);
+
+        float radians = player.RotationDegrees * HeistConstants.DegToRad;
+        Vector2 facingEnd = player.Position + (new Vector2(MathF.Cos(radians), MathF.Sin(radians)) * FallbackAimLineLength);
+        Raylib.DrawLineV(player.Position, facingEnd, Color.White);
+    }
+}

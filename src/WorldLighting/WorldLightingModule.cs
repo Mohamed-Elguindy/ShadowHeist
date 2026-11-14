@@ -47,13 +47,15 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
 
     public void Update(float deltaTime, GameContext context)
     {
-        if (context.Outcome != HeistOutcome.Playing) return;
+        if (context.Outcome != HeistOutcome.Playing)
+        {
+            return;
+        }
 
         Vector2 aimTarget = context.AimWorldOverride ?? context.CurrentInput.AimWorldPosition;
         UpdateAimAngle(context.PlayerPosition, aimTarget, context.PlayerRotationDegrees);
 
-        // Include closed doors from context.Walls while excluding waist-high furniture obstacles.
-        IReadOnlyList<RectangleBounds> visionWalls = BuildVisionWalls(context);
+        IReadOnlyList<RectangleBounds> visionWalls = BuildWallsExcludingWaistHighObstacles(context);
         _visionConeVertices = VisionRaycaster.ComputeVisionCone(
             context.PlayerPosition,
             _currentAimDegrees,
@@ -106,30 +108,30 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
 
     private void UpdateLasers(GameContext context, IReadOnlyList<RectangleBounds>? visionWalls = null)
     {
-        IReadOnlyList<RectangleBounds> walls = visionWalls ?? BuildVisionWalls(context);
+        IReadOnlyList<RectangleBounds> walls = visionWalls ?? BuildWallsExcludingWaistHighObstacles(context);
         foreach (LaserTripwire laser in _lasers)
         {
             laser.Update(context, walls: walls);
         }
     }
 
-    private IReadOnlyList<RectangleBounds> BuildVisionWalls(GameContext context)
+    private IReadOnlyList<RectangleBounds> BuildWallsExcludingWaistHighObstacles(GameContext context)
     {
         if (_currentMap?.Obstacles is not { Count: > 0 } obstacles)
         {
             return context.Walls;
         }
 
-        var obstacleSet = obstacles.Select(o => o.ToBounds()).ToHashSet();
-        var filtered = new List<RectangleBounds>(context.Walls.Count);
+        var obstacleSet = obstacles.Select(obstacle => obstacle.ToBounds()).ToHashSet();
+        var filteredWalls = new List<RectangleBounds>(context.Walls.Count);
         foreach (RectangleBounds wall in context.Walls)
         {
             if (!obstacleSet.Contains(wall))
             {
-                filtered.Add(wall);
+                filteredWalls.Add(wall);
             }
         }
 
-        return filtered;
+        return filteredWalls;
     }
 }

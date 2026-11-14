@@ -7,6 +7,7 @@ public static class CollisionHelper
 {
     public const float DefaultActorRadius = 18f;
     private const float MinDistanceSquared = 0.0001f;
+    private const float ParallelDirectionEpsilon = 0.00001f;
 
     public static Vector2 ResolveWallCollision(
         Vector2 actorPosition,
@@ -21,73 +22,13 @@ public static class CollisionHelper
         Vector2 resolvedPosition = actorPosition;
         for (int pass = 0; pass < 2; pass++)
         {
-            foreach (var wall in walls)
+            foreach (RectangleBounds wall in walls)
             {
                 resolvedPosition = ResolveSingleWallCollision(resolvedPosition, actorRadius, wall);
             }
         }
 
         return resolvedPosition;
-    }
-
-    public static bool HasLineOfSight(Vector2 from, Vector2 to, IReadOnlyList<RectangleBounds> walls)
-    {
-        Vector2 delta = to - from;
-        float dist = delta.Length();
-        if (dist <= 0.001f) return true;
-        float hit = CastRayAgainstWalls(from, delta / dist, dist, walls);
-        return hit >= dist - 0.5f;
-    }
-
-    public static float CastRayAgainstWalls(
-        Vector2 origin,
-        Vector2 direction,
-        float maxDistance,
-        IReadOnlyList<RectangleBounds> walls)
-    {
-        float closest = maxDistance;
-        foreach (RectangleBounds wall in walls)
-        {
-            if (TryIntersectRayAabb(origin, direction, wall, out float dist) && dist < closest)
-            {
-                closest = dist;
-            }
-        }
-
-        return closest;
-    }
-
-    private static bool TryIntersectRayAabb(Vector2 origin, Vector2 dir, RectangleBounds box, out float hitDistance)
-    {
-        hitDistance = float.MaxValue;
-        float tMin = 0f;
-        float tMax = float.MaxValue;
-
-        if (!ClipAxis(origin.X, dir.X, box.X, box.X + box.Width, ref tMin, ref tMax) ||
-            !ClipAxis(origin.Y, dir.Y, box.Y, box.Y + box.Height, ref tMin, ref tMax))
-        {
-            return false;
-        }
-
-        hitDistance = tMin;
-        return tMin >= 0f;
-    }
-
-    private static bool ClipAxis(float origin, float dir, float min, float max, ref float tMin, ref float tMax)
-    {
-        if (MathF.Abs(dir) < 0.00001f)
-        {
-            return origin >= min && origin <= max;
-        }
-
-        float inv = 1f / dir;
-        float t1 = (min - origin) * inv;
-        float t2 = (max - origin) * inv;
-        if (t1 > t2) (t1, t2) = (t2, t1);
-
-        tMin = MathF.Max(tMin, t1);
-        tMax = MathF.Min(tMax, t2);
-        return tMin <= tMax;
     }
 
     public static Vector2 ResolveSingleWallCollision(
@@ -117,10 +58,85 @@ public static class CollisionHelper
         return PushToNearestWallEdge(actorPosition, actorRadius, wall);
     }
 
-    private static bool IsInvalidInput(float actorRadius, RectangleBounds wall)
+    public static bool HasLineOfSight(Vector2 origin, Vector2 target, IReadOnlyList<RectangleBounds> walls)
     {
-        return actorRadius <= 0f || wall.Width <= 0f || wall.Height <= 0f;
+        Vector2 delta = target - origin;
+        float distance = delta.Length();
+        if (distance <= 0.001f)
+        {
+            return true;
+        }
+
+        float hitDistance = CastRayAgainstWalls(origin, delta / distance, distance, walls);
+        return hitDistance >= distance - 0.5f;
     }
+
+    public static float CastRayAgainstWalls(
+        Vector2 origin,
+        Vector2 rayDirection,
+        float maxDistance,
+        IReadOnlyList<RectangleBounds> walls)
+    {
+        float closestDistance = maxDistance;
+        foreach (RectangleBounds wall in walls)
+        {
+            if (TryIntersectRayAabb(origin, rayDirection, wall, out float distance) && distance < closestDistance)
+            {
+                closestDistance = distance;
+            }
+        }
+
+        return closestDistance;
+    }
+
+    private static bool TryIntersectRayAabb(
+        Vector2 origin,
+        Vector2 rayDirection,
+        RectangleBounds box,
+        out float hitDistance)
+    {
+        hitDistance = float.MaxValue;
+        float nearDistance = 0f;
+        float farDistance = float.MaxValue;
+
+        if (!ClipAxis(origin.X, rayDirection.X, box.X, box.X + box.Width, ref nearDistance, ref farDistance) ||
+            !ClipAxis(origin.Y, rayDirection.Y, box.Y, box.Y + box.Height, ref nearDistance, ref farDistance))
+        {
+            return false;
+        }
+
+        hitDistance = nearDistance;
+        return nearDistance >= 0f;
+    }
+
+    private static bool ClipAxis(
+        float origin,
+        float rayDirection,
+        float minBound,
+        float maxBound,
+        ref float nearDistance,
+        ref float farDistance)
+    {
+        if (MathF.Abs(rayDirection) < ParallelDirectionEpsilon)
+        {
+            return origin >= minBound && origin <= maxBound;
+        }
+
+        float inverseDirection = 1f / rayDirection;
+        float entryDistance = (minBound - origin) * inverseDirection;
+        float exitDistance = (maxBound - origin) * inverseDirection;
+        if (entryDistance > exitDistance)
+        {
+            (entryDistance, exitDistance) = (exitDistance, entryDistance);
+        }
+
+        nearDistance = MathF.Max(nearDistance, entryDistance);
+        farDistance = MathF.Min(farDistance, exitDistance);
+        return nearDistance <= farDistance;
+    }
+
+    private static bool IsInvalidInput(float actorRadius, RectangleBounds wall) =>
+        actorRadius <= 0f || wall.Width <= 0f || wall.Height <= 0f;
 
     private static Vector2 ClampToWall(Vector2 actorPosition, RectangleBounds wall)
     {
@@ -137,23 +153,23 @@ public static class CollisionHelper
         float wallRight = wall.X + wall.Width;
         float wallBottom = wall.Y + wall.Height;
 
-        float distToLeft = MathF.Abs(actorPosition.X - wall.X);
-        float distToRight = MathF.Abs(wallRight - actorPosition.X);
-        float distToTop = MathF.Abs(actorPosition.Y - wall.Y);
-        float distToBottom = MathF.Abs(wallBottom - actorPosition.Y);
+        float distanceToLeft = MathF.Abs(actorPosition.X - wall.X);
+        float distanceToRight = MathF.Abs(wallRight - actorPosition.X);
+        float distanceToTop = MathF.Abs(actorPosition.Y - wall.Y);
+        float distanceToBottom = MathF.Abs(wallBottom - actorPosition.Y);
 
-        float nearestHorizontalDist = MathF.Min(distToLeft, distToRight);
-        float nearestVerticalDist = MathF.Min(distToTop, distToBottom);
+        float nearestHorizontalDistance = MathF.Min(distanceToLeft, distanceToRight);
+        float nearestVerticalDistance = MathF.Min(distanceToTop, distanceToBottom);
 
-        if (nearestHorizontalDist < nearestVerticalDist)
+        if (nearestHorizontalDistance < nearestVerticalDistance)
         {
-            float resolvedX = distToLeft < distToRight
+            float resolvedX = distanceToLeft < distanceToRight
                 ? wall.X - actorRadius
                 : wallRight + actorRadius;
             return new Vector2(resolvedX, actorPosition.Y);
         }
 
-        float resolvedY = distToTop < distToBottom
+        float resolvedY = distanceToTop < distanceToBottom
             ? wall.Y - actorRadius
             : wallBottom + actorRadius;
         return new Vector2(actorPosition.X, resolvedY);
