@@ -13,6 +13,17 @@
     "width": 128,
     "height": 96
   },
+  "lasers": [
+    {
+      "id": "laser_hall",
+      "x": 336,
+      "y": 386,
+      "direction": {
+        "x": 0,
+        "y": 1
+      }
+    }
+  ],
   "interactables": [
     {
       "type": "KeypadTerminal",
