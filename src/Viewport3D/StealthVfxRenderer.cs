@@ -11,7 +11,7 @@ namespace ShadowHeist.Viewport3D;
 /// <summary>
 /// Renders 3D stealth VFX: wall-clipped guard & player vision cones via VisionRaycaster, category-coded sound ripples, lamp pools, loot sparks, and aim reticle.
 /// </summary>
-public sealed class StealthVfxRenderer
+public sealed class StealthVfxRenderer : ISceneRenderPass
 {
     private const int MaxRipples = 16;
     private const float RippleLifetimeSeconds = 0.85f;
@@ -32,80 +32,122 @@ public sealed class StealthVfxRenderer
 
     public void Update(float deltaTime, GameContext context)
     {
+        UpdateRipples(deltaTime);
+        UpdateSparks(deltaTime);
+        UpdateLootBursts(context);
+    }
+
+    public void Draw(in Scene3DRenderFrame frame)
+    {
+        DrawLampGlows();
+        DrawVaultSecuritySeal(frame.Context, frame.ElapsedSeconds);
+        DrawAcousticRipples();
+        DrawLootSparks();
+        DrawPlayerVisionCone(frame.Context.PlayerPosition, frame.PlayerRotationDegrees, frame.VisionBlockers);
+        DrawGuardCones(frame.Guards, frame.VisionBlockers, frame.Context.IsAlarmTriggered, frame.ElapsedSeconds);
+        DrawAimReticle(frame.Context.PlayerPosition, frame.Context.AimWorldOverride, frame.ElapsedSeconds);
+    }
+
+    private void UpdateRipples(float deltaTime)
+    {
         for (int i = _ripples.Count - 1; i >= 0; i--)
         {
-            SoundRipple r = _ripples[i];
-            r.Age += deltaTime;
-            if (r.Age >= RippleLifetimeSeconds) _ripples.RemoveAt(i);
-            else _ripples[i] = r;
+            SoundRipple ripple = _ripples[i];
+            ripple.Age += deltaTime;
+            if (ripple.Age >= RippleLifetimeSeconds)
+            {
+                _ripples.RemoveAt(i);
+            }
+            else
+            {
+                _ripples[i] = ripple;
+            }
         }
+    }
 
+    private void UpdateSparks(float deltaTime)
+    {
         for (int i = _sparks.Count - 1; i >= 0; i--)
         {
-            GoldSpark s = _sparks[i];
-            s.Age += deltaTime;
-            s.Position += s.Velocity * deltaTime;
-            s.Velocity += new Vector3(0f, -180f, 0f) * deltaTime;
-            if (s.Age >= SparkLifetimeSeconds) _sparks.RemoveAt(i);
-            else _sparks[i] = s;
-        }
+            GoldSpark spark = _sparks[i];
+            spark.Age += deltaTime;
+            spark.Position += spark.Velocity * deltaTime;
+            spark.Velocity += new Vector3(0f, -180f, 0f) * deltaTime;
 
-        if (_collectedCrates.Count > 0 && context.StolenCash == 0) _collectedCrates.Clear();
+            if (spark.Age >= SparkLifetimeSeconds)
+            {
+                _sparks.RemoveAt(i);
+            }
+            else
+            {
+                _sparks[i] = spark;
+            }
+        }
+    }
+
+    private void UpdateLootBursts(GameContext context)
+    {
+        if (_collectedCrates.Count > 0 && context.StolenCash == 0)
+        {
+            _collectedCrates.Clear();
+        }
 
         foreach (LootCrate crate in context.Interactables.OfType<LootCrate>())
         {
-            if (crate.IsCollected && _collectedCrates.Add(crate.Id)) SpawnLootBurst(crate.Position);
+            if (crate.IsCollected && _collectedCrates.Add(crate.Id))
+            {
+                SpawnLootBurst(crate.Position);
+            }
         }
     }
 
-    public void Draw(
-        IReadOnlyList<RectangleBounds> visionBlockers,
-        GameContext context,
-        IReadOnlyList<Guard> guards,
-        float playerRotationDegrees,
-        float timeSeconds)
+    private void OnNoiseEmitted(NoiseEmittedEvent noiseEvent)
     {
-        DrawLampGlows();
-        DrawVaultSecurityLasers(context, timeSeconds);
-        DrawRipples();
-        DrawSparks();
-        DrawPlayerVisionCone(context.PlayerPosition, playerRotationDegrees, visionBlockers);
-        DrawGuardCones(guards, visionBlockers, context.IsAlarmTriggered, timeSeconds);
-        DrawAimReticle(context.PlayerPosition, context.AimWorldOverride, timeSeconds);
+        if (noiseEvent.Radius <= 0f)
+        {
+            return;
+        }
+
+        if (_ripples.Count >= MaxRipples)
+        {
+            _ripples.RemoveAt(0);
+        }
+
+        _ripples.Add(new SoundRipple(
+            noiseEvent.Origin,
+            MathF.Max(noiseEvent.Radius, 40f),
+            ResolveRippleColor(noiseEvent),
+            age: 0f));
     }
 
-    private void OnNoiseEmitted(NoiseEmittedEvent evt)
-    {
-        if (evt.Radius <= 0f) return;
-
-        if (_ripples.Count >= MaxRipples) _ripples.RemoveAt(0);
-        Color baseColor = ResolveRippleColor(evt);
-        _ripples.Add(new SoundRipple(evt.Origin, MathF.Max(evt.Radius, 40f), baseColor, 0f));
-    }
-
-    private static Color ResolveRippleColor(NoiseEmittedEvent evt) => evt.Category switch
+    private static Color ResolveRippleColor(NoiseEmittedEvent noiseEvent) => noiseEvent.Category switch
     {
         NoiseCategory.Distraction => new Color(216, 180, 254, 255),
         NoiseCategory.Environment => new Color(244, 63, 94, 255),
-        _ when evt.Radius >= LoudSprintNoiseThreshold => new Color(251, 146, 60, 255),
+        _ when noiseEvent.Radius >= LoudSprintNoiseThreshold => new Color(251, 146, 60, 255),
         _ => new Color(56, 225, 255, 255)
     };
 
     private void SpawnLootBurst(Vector2 origin)
     {
-        for (int i = 0; i < 14; i++)
+        const int sparkCount = 14;
+        for (int i = 0; i < sparkCount; i++)
         {
-            float ang = (i / 14f) * MathF.PI * 2f;
-            Vector3 vel = new(MathF.Cos(ang) * 55f, 95f + (i % 3) * 28f, MathF.Sin(ang) * 55f);
-            _sparks.Add(new GoldSpark(new Vector3(origin.X, 24f, origin.Y), vel, 0f));
+            float angle = (i / (float)sparkCount) * MathF.PI * 2f;
+            var velocity = new Vector3(MathF.Cos(angle) * 55f, 95f + ((i % 3) * 28f), MathF.Sin(angle) * 55f);
+            _sparks.Add(new GoldSpark(new Vector3(origin.X, 24f, origin.Y), velocity, age: 0f));
         }
     }
 
     private static void DrawLampGlows()
     {
-        foreach (FurnitureSpec spec in Viewport3DConfig.LobbyFurniture)
+        foreach (FurnitureSpec spec in BankFurnitureLayout.LobbyFurniture)
         {
-            if (!spec.EmitsWarmGlow) continue;
+            if (!spec.EmitsWarmGlow)
+            {
+                continue;
+            }
+
             var center = new Vector3(spec.Position.X, 0.6f, spec.Position.Y);
             Raylib.DrawCylinder(center, 95f, 95f, 0.4f, 20, new Color(255, 214, 120, 34));
             Raylib.DrawCylinder(center, 46f, 46f, 0.6f, 16, new Color(255, 224, 150, 56));
@@ -113,58 +155,60 @@ public sealed class StealthVfxRenderer
         }
     }
 
-    private static void DrawVaultSecurityLasers(GameContext context, float timeSeconds)
+    private static void DrawVaultSecuritySeal(GameContext context, float timeSeconds)
     {
         VaultDoor? door = context.Interactables.OfType<VaultDoor>().FirstOrDefault();
-        if (door is not { IsLocked: true }) return;
+        if (door is not { IsLocked: true })
+        {
+            return;
+        }
 
-        byte glowAlpha = (byte)(95 + 50 * MathF.Sin(timeSeconds * 4.5f));
-        byte coreAlpha = (byte)(190 + 60 * MathF.Sin(timeSeconds * 4.5f));
-        Color glow = new((byte)244, (byte)63, (byte)94, glowAlpha);
-        Color core = new((byte)255, (byte)130, (byte)150, coreAlpha);
+        byte glowAlpha = (byte)(95f + (50f * MathF.Sin(timeSeconds * 4.5f)));
+        byte coreAlpha = (byte)(190f + (60f * MathF.Sin(timeSeconds * 4.5f)));
+        var glow = new Color((byte)244, (byte)63, (byte)94, glowAlpha);
+        var core = new Color((byte)255, (byte)130, (byte)150, coreAlpha);
 
         for (int i = 0; i < 3; i++)
         {
-            float y = 24f + i * 18f;
-            var start = new Vector3(door.Position.X - 16f, y, door.Position.Y - 40f);
-            var end = new Vector3(door.Position.X - 16f, y, door.Position.Y + 40f);
-            Raylib.DrawCylinderEx(start, end, 1.4f, 1.4f, 6, glow);
-            Raylib.DrawCylinderEx(start, end, 0.45f, 0.45f, 6, core);
+            float beamHeight = 24f + (i * 18f);
+            var start = new Vector3(door.Position.X - 16f, beamHeight, door.Position.Y - 40f);
+            var end = new Vector3(door.Position.X - 16f, beamHeight, door.Position.Y + 40f);
+            Raylib3DPrimitives.DrawVolumetricBeam(start, end, glowRadius: 1.4f, coreRadius: 0.45f, glow, core);
         }
     }
 
-    private void DrawRipples()
+    private void DrawAcousticRipples()
     {
-        foreach (SoundRipple r in _ripples)
+        foreach (SoundRipple ripple in _ripples)
         {
-            float t = r.Age / RippleLifetimeSeconds;
-            float radius = 14f + (r.MaxRadius - 14f) * t;
-            byte alpha = (byte)(215 * (1f - t));
-            Raylib.DrawCylinderWires(
-                new Vector3(r.Origin.X, 2f, r.Origin.Y),
-                radius,
-                radius,
-                0.6f,
-                28,
-                new Color(r.BaseColor.R, r.BaseColor.G, r.BaseColor.B, alpha));
+            float progress = ripple.Age / RippleLifetimeSeconds;
+            float radius = 14f + ((ripple.MaxRadius - 14f) * progress);
+            byte alpha = (byte)(215f * (1f - progress));
+            var ringColor = new Color(ripple.BaseColor.R, ripple.BaseColor.G, ripple.BaseColor.B, alpha);
+
+            Raylib.DrawCylinderWires(new Vector3(ripple.Origin.X, 2f, ripple.Origin.Y), radius, radius, 0.6f, 28, ringColor);
         }
     }
 
-    private void DrawSparks()
+    private void DrawLootSparks()
     {
-        foreach (GoldSpark s in _sparks)
+        foreach (GoldSpark spark in _sparks)
         {
-            float t = s.Age / SparkLifetimeSeconds;
-            Raylib.DrawCube(s.Position, 5f, 5f, 5f, new Color((byte)248, (byte)196, (byte)44, (byte)(255 * (1f - t))));
+            float progress = spark.Age / SparkLifetimeSeconds;
+            byte alpha = (byte)(255f * (1f - progress));
+            Raylib.DrawCube(spark.Position, 5f, 5f, 5f, new Color((byte)248, (byte)196, (byte)44, alpha));
         }
     }
 
     private static void DrawAimReticle(Vector2 playerPos, Vector2? aimPoint, float timeSeconds)
     {
-        if (aimPoint is not Vector2 aim) return;
+        if (aimPoint is not Vector2 aim)
+        {
+            return;
+        }
 
-        float pulse = 10f + MathF.Sin(timeSeconds * 5f) * 1.5f;
-        Raylib.DrawCylinderWires(new Vector3(aim.X, 1.5f, aim.Y), pulse, pulse, 0.5f, 18, new Color(56, 225, 255, 190));
+        float pulseRadius = 10f + (MathF.Sin(timeSeconds * 5f) * 1.5f);
+        Raylib.DrawCylinderWires(new Vector3(aim.X, 1.5f, aim.Y), pulseRadius, pulseRadius, 0.5f, 18, new Color(56, 225, 255, 190));
         Raylib.DrawLine3D(new Vector3(playerPos.X, 22f, playerPos.Y), new Vector3(aim.X, 2f, aim.Y), new Color(56, 225, 255, 65));
     }
 
@@ -186,11 +230,11 @@ public sealed class StealthVfxRenderer
             edge: new Color(110, 235, 255, 115));
     }
 
-    private static void DrawGuardCones(IReadOnlyList<Guard> guards, IReadOnlyList<RectangleBounds> visionBlockers, bool alarm, float timeSeconds)
+    private static void DrawGuardCones(IReadOnlyList<Guard> guards, IReadOnlyList<RectangleBounds> visionBlockers, bool alarmActive, float timeSeconds)
     {
         foreach (Guard guard in guards)
         {
-            (Color fill, Color edge) = ResolveGuardConeColors(guard.CurrentState.StateName, alarm, timeSeconds);
+            (Color fill, Color edge) = ResolveGuardConeColors(guard.CurrentState.StateName, alarmActive, timeSeconds);
             IReadOnlyList<Vector2> cone = VisionRaycaster.ComputeVisionCone(
                 guard.Position,
                 guard.RotationDegrees,
@@ -203,11 +247,11 @@ public sealed class StealthVfxRenderer
         }
     }
 
-    private static (Color Fill, Color Edge) ResolveGuardConeColors(string stateName, bool alarm, float timeSeconds)
+    private static (Color Fill, Color Edge) ResolveGuardConeColors(string stateName, bool alarmActive, float timeSeconds)
     {
-        if (alarm || stateName == "Alert")
+        if (alarmActive || stateName == "Alert")
         {
-            byte pulseAlpha = (byte)(95 + 35 * MathF.Sin(timeSeconds * 8f));
+            byte pulseAlpha = (byte)(95f + (35f * MathF.Sin(timeSeconds * 8f)));
             return (new Color((byte)244, (byte)63, (byte)94, pulseAlpha), new Color(255, 110, 125, 220));
         }
 
@@ -226,7 +270,10 @@ public sealed class StealthVfxRenderer
         Color fill,
         Color edge)
     {
-        if (vertices.Count < 3) return;
+        if (vertices.Count < 3)
+        {
+            return;
+        }
 
         var apex = new Vector3(vertices[0].X, groundY, vertices[0].Y);
         var beamOrigin = new Vector3(vertices[0].X, sourceY, vertices[0].Y);
@@ -257,10 +304,10 @@ public sealed class StealthVfxRenderer
         public float Age { get; set; } = age;
     }
 
-    private struct GoldSpark(Vector3 pos, Vector3 vel, float age)
+    private struct GoldSpark(Vector3 position, Vector3 velocity, float age)
     {
-        public Vector3 Position { get; set; } = pos;
-        public Vector3 Velocity { get; set; } = vel;
+        public Vector3 Position { get; set; } = position;
+        public Vector3 Velocity { get; set; } = velocity;
         public float Age { get; set; } = age;
     }
 }

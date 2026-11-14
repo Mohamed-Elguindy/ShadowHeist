@@ -14,7 +14,7 @@ public static class MapLoader
     private const float OuterWallThickness = 32f;
 
     private static readonly Vector2 DefaultPlayerSpawn = new(128f, 640f);
-    private static readonly RectangleBounds DefaultGetawayZone = new(64f, 640f, 128f, 96f);
+    private static readonly RectangleBounds DefaultGetawayZone = HeistConstants.DefaultGetawayZone;
     private static readonly RectangleBounds DefaultVaultTopWall = new(320f, 160f, 640f, 32f);
     private static readonly RectangleBounds DefaultVaultBottomWall = new(320f, 384f, 640f, 32f);
     private static readonly RectangleBounds DefaultLobbyDividerWall = new(320f, 160f, 32f, 256f);

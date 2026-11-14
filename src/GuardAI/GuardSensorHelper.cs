@@ -48,10 +48,10 @@ public static class GuardSensorHelper
         if (distSq > visionRange * visionRange) return false;
         if (distSq < 1f) return true;
 
-        float rad = guard.RotationDegrees * (MathF.PI / 180f);
+        float rad = guard.RotationDegrees * HeistConstants.DegToRad;
         Vector2 forward = new(MathF.Cos(rad), MathF.Sin(rad));
         float dot = Vector2.Dot(forward, Vector2.Normalize(toPlayer));
-        float cosHalf = MathF.Cos(halfAngleDegrees * (MathF.PI / 180f));
+        float cosHalf = MathF.Cos(halfAngleDegrees * HeistConstants.DegToRad);
         if (dot < cosHalf) return false;
 
         return context.Walls.Count == 0 ||

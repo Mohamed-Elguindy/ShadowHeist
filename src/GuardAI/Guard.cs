@@ -70,7 +70,7 @@ public sealed class Guard
             return;
         }
 
-        float targetAngle = MathF.Atan2(direction.Y, direction.X) * (180f / MathF.PI);
+        float targetAngle = MathF.Atan2(direction.Y, direction.X) * HeistConstants.RadToDeg;
         RotationDegrees = MoveTowardsAngle(RotationDegrees, targetAngle, turnRate * deltaTime);
     }
 

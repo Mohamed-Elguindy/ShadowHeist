@@ -5,19 +5,24 @@ using ShadowHeist.Core;
 namespace ShadowHeist.Viewport3D;
 
 /// <summary>
-/// Renders multi-zone cel-shaded 3D bank floors, cutaway concrete walls, pillars, and centered furniture.
+/// Renders multi-zone cel-shaded 3D bank floors, cutaway concrete walls, corner pillars, getaway pad, and furniture.
 /// </summary>
-public sealed class FloorWallsFurnitureRenderer
+public sealed class FloorWallsFurnitureRenderer : ISceneRenderPass
 {
     private const string MarbleFloorPath = "assets/sprites/floor_marble_dark.png";
     private const string SlateFloorPath = "assets/sprites/floor_slate_corridor.png";
     private const string SteelFloorPath = "assets/sprites/floor_vault_steel.png";
     private const string WallTexturePath = "assets/sprites/wall_reinforced_concrete.png";
     private const string FurnitureFolder = "assets/models/furniture";
+    private const string RugAssetKey = "rugRectangle";
     private const float WallPanelLength = 64f;
     private const float RugLiftY = 1.2f;
+    private const float PropOutlineWidth = 0.012f;
 
-    private readonly Dictionary<string, LoadedModel> _furniture = new();
+    private static readonly Color CornerPillarColor = new(62, 72, 92, 255);
+    private static readonly Color GetawayPadBorderColor = new(74, 222, 128, 220);
+
+    private readonly Dictionary<string, LoadedModel> _furnitureModels = new();
     private ToonModelLibrary? _library;
     private Model? _marbleSlab;
     private Model? _slateSlab;
@@ -27,67 +32,95 @@ public sealed class FloorWallsFurnitureRenderer
     public void Load(ToonModelLibrary library)
     {
         _library = library;
-        float tile = Viewport3DConfig.FloorTileSize;
-        float thick = Viewport3DConfig.FloorThickness;
-        _marbleSlab = library.LoadTexturedBox(MarbleFloorPath, tile, thick, tile);
-        _slateSlab = library.LoadTexturedBox(SlateFloorPath, tile, thick, tile);
-        _steelSlab = library.LoadTexturedBox(SteelFloorPath, tile, thick, tile);
+        float tileSize = Viewport3DConfig.FloorTileSize;
+        float thickness = Viewport3DConfig.FloorThickness;
+
+        _marbleSlab = library.LoadTexturedBox(MarbleFloorPath, tileSize, thickness, tileSize);
+        _slateSlab = library.LoadTexturedBox(SlateFloorPath, tileSize, thickness, tileSize);
+        _steelSlab = library.LoadTexturedBox(SteelFloorPath, tileSize, thickness, tileSize);
         _wallUnitBox = library.LoadTexturedBox(WallTexturePath, 1f, 1f, 1f);
 
-        foreach (FurnitureSpec spec in Viewport3DConfig.LobbyFurniture)
-        {
-            if (_furniture.ContainsKey(spec.AssetKey)) continue;
-            string path = Path.Combine(FurnitureFolder, $"{spec.AssetKey}.obj");
-            if (library.LoadProp(path, spec.TargetMaxExtent) is LoadedModel loaded)
-                _furniture[spec.AssetKey] = loaded;
-        }
+        LoadFurnitureModels(library);
     }
 
-    public void Draw(IReadOnlyList<RectangleBounds> walls, RectangleBounds? getawayZone, float timeSeconds)
+    public void Draw(in Scene3DRenderFrame frame)
     {
         DrawFloorZones();
-        DrawGetawayPad(getawayZone, timeSeconds);
-        DrawWalls(walls);
+        DrawGetawayPad(frame.GetawayZone, frame.ElapsedSeconds);
+        DrawWallsAndPillars(frame.ArchitecturalWalls);
         DrawFurniture();
+    }
+
+    private void LoadFurnitureModels(ToonModelLibrary library)
+    {
+        foreach (FurnitureSpec spec in BankFurnitureLayout.LobbyFurniture)
+        {
+            if (_furnitureModels.ContainsKey(spec.AssetKey))
+            {
+                continue;
+            }
+
+            string modelPath = Path.Combine(FurnitureFolder, $"{spec.AssetKey}.obj");
+            if (library.LoadProp(modelPath, spec.TargetMaxExtent) is LoadedModel loaded)
+            {
+                _furnitureModels[spec.AssetKey] = loaded;
+            }
+        }
     }
 
     private void DrawFloorZones()
     {
-        float step = Viewport3DConfig.FloorTileSize;
-        float y = -Viewport3DConfig.FloorThickness / 2f;
-        for (float z = 0f; z < Viewport3DConfig.MapHeight; z += step)
-            for (float x = 0f; x < Viewport3DConfig.MapWidth; x += step)
-                if (SelectFloorSlab(x + step * 0.5f, z + step * 0.5f) is Model tileModel)
-                    Raylib.DrawModel(tileModel, new Vector3(x + step / 2f, y, z + step / 2f), 1f, Color.White);
+        float tileStep = Viewport3DConfig.FloorTileSize;
+        float centerY = -Viewport3DConfig.FloorThickness * 0.5f;
+
+        for (float z = 0f; z < Viewport3DConfig.MapHeight; z += tileStep)
+        {
+            for (float x = 0f; x < Viewport3DConfig.MapWidth; x += tileStep)
+            {
+                Model? slab = SelectFloorSlab(x + (tileStep * 0.5f), z + (tileStep * 0.5f));
+                if (slab is Model tileModel)
+                {
+                    Raylib.DrawModel(tileModel, new Vector3(x + (tileStep * 0.5f), centerY, z + (tileStep * 0.5f)), 1f, Color.White);
+                }
+            }
+        }
     }
 
-    private Model? SelectFloorSlab(float cx, float cz)
+    private Model? SelectFloorSlab(float centerX, float centerZ)
     {
-        bool inVault = cx >= Viewport3DConfig.VaultZoneMin.X && cx <= Viewport3DConfig.VaultZoneMax.X
-                    && cz >= Viewport3DConfig.VaultZoneMin.Y && cz <= Viewport3DConfig.VaultZoneMax.Y;
-        if (inVault) return _steelSlab;
-        if (cz < Viewport3DConfig.VaultZoneMin.Y || cx > Viewport3DConfig.VaultZoneMax.X) return _slateSlab;
+        bool insideVault = centerX >= Viewport3DConfig.VaultZoneMin.X
+                        && centerX <= Viewport3DConfig.VaultZoneMax.X
+                        && centerZ >= Viewport3DConfig.VaultZoneMin.Y
+                        && centerZ <= Viewport3DConfig.VaultZoneMax.Y;
+
+        if (insideVault)
+        {
+            return _steelSlab;
+        }
+
+        if (centerZ < Viewport3DConfig.VaultZoneMin.Y || centerX > Viewport3DConfig.VaultZoneMax.X)
+        {
+            return _slateSlab;
+        }
+
         return _marbleSlab;
     }
 
-    private static void DrawGetawayPad(RectangleBounds? zone, float timeSeconds)
+    private static void DrawGetawayPad(RectangleBounds? getawayZone, float timeSeconds)
     {
-        Rectangle pad = zone is RectangleBounds z
-            ? new Rectangle(z.X, z.Y, z.Width, z.Height)
-            : Viewport3DConfig.GetawayZoneBounds;
-        byte alpha = (byte)(110 * (0.65f + 0.35f * MathF.Sin(timeSeconds * 3f)));
-        var center = new Vector3(pad.X + pad.Width / 2f, 0.5f, pad.Y + pad.Height / 2f);
-        Raylib.DrawCube(center, pad.Width, 1f, pad.Height, new Color((byte)28, (byte)155, (byte)102, alpha));
-        Raylib.DrawCubeWires(center, pad.Width, 1.5f, pad.Height, new Color(74, 222, 128, 220));
+        RectangleBounds zone = getawayZone ?? HeistConstants.DefaultGetawayZone;
+        byte alpha = (byte)(110f * (0.65f + 0.35f * MathF.Sin(timeSeconds * 3f)));
+
+        var center = new Vector3(zone.X + (zone.Width * 0.5f), 0.5f, zone.Y + (zone.Height * 0.5f));
+        Raylib.DrawCube(center, zone.Width, 1f, zone.Height, new Color((byte)28, (byte)155, (byte)102, alpha));
+        Raylib.DrawCubeWires(center, zone.Width, 1.5f, zone.Height, GetawayPadBorderColor);
     }
 
-    private void DrawWalls(IReadOnlyList<RectangleBounds> walls)
+    private void DrawWallsAndPillars(IReadOnlyList<RectangleBounds> walls)
     {
         foreach (RectangleBounds wall in walls)
         {
-            bool isWestOuter = wall.X < Viewport3DConfig.LeftCutawayMaxX && wall.Height > wall.Width;
-            bool isSouthOuter = wall.Y > Viewport3DConfig.BottomCutawayMinY && wall.Width > wall.Height;
-            bool isCutaway = isWestOuter || isSouthOuter;
+            bool isCutaway = IsCutawayPerimeterWall(wall);
             float height = isCutaway ? Viewport3DConfig.CutawayWallHeight : Viewport3DConfig.WallHeight;
             DrawSegmentedWall(wall, height, isCutaway);
         }
@@ -98,58 +131,76 @@ public sealed class FloorWallsFurnitureRenderer
         DrawCornerPillar(944f, 400f);
     }
 
+    private static bool IsCutawayPerimeterWall(RectangleBounds wall)
+    {
+        bool isWestOuter = wall.X < Viewport3DConfig.LeftCutawayMaxX && wall.Height > wall.Width;
+        bool isSouthOuter = wall.Y > Viewport3DConfig.BottomCutawayMinY && wall.Width > wall.Height;
+        return isWestOuter || isSouthOuter;
+    }
+
     private void DrawSegmentedWall(RectangleBounds wall, float height, bool isCutaway)
     {
-        bool splitX = wall.Width >= wall.Height;
-        int segments = Math.Max(1, (int)MathF.Ceiling((splitX ? wall.Width : wall.Height) / WallPanelLength));
-        float step = (splitX ? wall.Width : wall.Height) / segments;
+        bool splitAlongX = wall.Width >= wall.Height;
+        float span = splitAlongX ? wall.Width : wall.Height;
+        int segmentCount = Math.Max(1, (int)MathF.Ceiling(span / WallPanelLength));
+        float segmentStep = span / segmentCount;
 
-        for (int i = 0; i < segments; i++)
+        for (int i = 0; i < segmentCount; i++)
         {
-            float segW = splitX ? step : wall.Width;
-            float segL = splitX ? wall.Height : step;
-            float segX = splitX ? wall.X + step * (i + 0.5f) : wall.X + wall.Width * 0.5f;
-            float segZ = splitX ? wall.Y + wall.Height * 0.5f : wall.Y + step * (i + 0.5f);
-            var center = new Vector3(segX, height * 0.5f, segZ);
+            float segmentWidth = splitAlongX ? segmentStep : wall.Width;
+            float segmentLength = splitAlongX ? wall.Height : segmentStep;
+            float centerX = splitAlongX ? wall.X + segmentStep * (i + 0.5f) : wall.X + (wall.Width * 0.5f);
+            float centerZ = splitAlongX ? wall.Y + (wall.Height * 0.5f) : wall.Y + segmentStep * (i + 0.5f);
 
-            if (_wallUnitBox is Model box)
-                Raylib.DrawModelEx(box, center, Vector3.UnitY, 0f, new Vector3(segW, height, segL), Viewport3DConfig.WallTint);
+            var center = new Vector3(centerX, height * 0.5f, centerZ);
+            if (_wallUnitBox is Model boxModel)
+            {
+                Raylib.DrawModelEx(boxModel, center, Vector3.UnitY, 0f, new Vector3(segmentWidth, height, segmentLength), Viewport3DConfig.WallTint);
+            }
 
             if (!isCutaway)
             {
-                var cap = new Vector3(segX, height + Viewport3DConfig.WallCapHeight * 0.5f, segZ);
-                Raylib.DrawCube(cap, segW + 1f, Viewport3DConfig.WallCapHeight, segL + 1f, Viewport3DConfig.WallCapColor);
+                var capCenter = new Vector3(centerX, height + (Viewport3DConfig.WallCapHeight * 0.5f), centerZ);
+                Raylib.DrawCube(capCenter, segmentWidth + 1f, Viewport3DConfig.WallCapHeight, segmentLength + 1f, Viewport3DConfig.WallCapColor);
             }
 
-            Raylib.DrawCubeWires(center, segW, height, segL, Viewport3DConfig.OutlineColor);
+            Raylib.DrawCubeWires(center, segmentWidth, height, segmentLength, Viewport3DConfig.OutlineColor);
         }
     }
 
     private static void DrawCornerPillar(float x, float z)
     {
-        float h = Viewport3DConfig.WallHeight + Viewport3DConfig.WallCapHeight + 2f;
-        var pos = new Vector3(x, h * 0.5f, z);
-        Raylib.DrawCube(pos, Viewport3DConfig.PillarSize, h, Viewport3DConfig.PillarSize, new Color(62, 72, 92, 255));
-        Raylib.DrawCubeWires(pos, Viewport3DConfig.PillarSize, h, Viewport3DConfig.PillarSize, Viewport3DConfig.OutlineColor);
+        float height = Viewport3DConfig.WallHeight + Viewport3DConfig.WallCapHeight + 2f;
+        var center = new Vector3(x, height * 0.5f, z);
+        var size = new Vector3(Viewport3DConfig.PillarSize, height, Viewport3DConfig.PillarSize);
+        Raylib3DPrimitives.DrawOutlinedCube(center, size, CornerPillarColor, Viewport3DConfig.OutlineColor);
     }
 
     private void DrawFurniture()
     {
-        if (_library is null) return;
-        foreach (FurnitureSpec spec in Viewport3DConfig.LobbyFurniture)
+        if (_library is null)
         {
-            if (!_furniture.TryGetValue(spec.AssetKey, out LoadedModel item)) continue;
-            bool isRug = spec.AssetKey == "rugRectangle";
-            if (!isRug)
+            return;
+        }
+
+        foreach (FurnitureSpec spec in BankFurnitureLayout.LobbyFurniture)
+        {
+            if (!_furnitureModels.TryGetValue(spec.AssetKey, out LoadedModel model))
             {
-                float radius = spec.TargetMaxExtent * 0.42f;
-                Raylib.DrawCylinder(new Vector3(spec.Position.X, 0.35f, spec.Position.Y), radius, radius, 0.5f, 14, new Color(0, 0, 0, 88));
+                continue;
             }
 
-            float extraY = isRug ? RugLiftY : 0f;
-            var pos = new Vector3(spec.Position.X, item.BaseOffsetY + extraY, spec.Position.Y);
-            float outline = isRug ? 0f : 0.012f;
-            _library.DrawCenteredProp(item, pos, spec.RotationDegrees, Color.White, outline);
+            bool isRug = spec.AssetKey == RugAssetKey;
+            if (!isRug)
+            {
+                Raylib3DPrimitives.DrawGroundShadow(spec.Position, spec.TargetMaxExtent * 0.42f);
+            }
+
+            float verticalOffset = model.BaseOffsetY + (isRug ? RugLiftY : 0f);
+            var worldPosition = new Vector3(spec.Position.X, verticalOffset, spec.Position.Y);
+            float outlineWidth = isRug ? 0f : PropOutlineWidth;
+
+            _library.DrawCenteredProp(model, worldPosition, spec.RotationDegrees, Color.White, outlineWidth);
         }
     }
 }

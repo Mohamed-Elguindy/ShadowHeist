@@ -6,18 +6,20 @@ using ShadowHeist.GuardAI;
 namespace ShadowHeist.Viewport3D;
 
 /// <summary>
-/// Renders outlined 6-part stylized 3D thief and guard characters with stride, sneak crouch, and state badges.
+/// Renders outlined 6-part stylized 3D thief and guard characters with stride animation, crouch posture, and state badges.
 /// </summary>
-public sealed class CharacterRenderer
+public sealed class CharacterRenderer : ISceneRenderPass
 {
-    private const string CharDir = "assets/models/characters";
+    private const string CharacterAssetDir = "assets/models/characters";
     private const string ThiefSkinPath = "assets/models/characters/skin_thief.png";
     private const string GuardSkinPath = "assets/models/characters/skin_guard.png";
     private const float HipHeightUnits = 6f;
+    private const float SneakHipHeightUnits = 4.6f;
     private const float TorsoHeightUnits = 6f;
-    private const float ShoulderX = 2.0f;
-    private const float ShoulderY = 5.5f;
-    private const float LimbOutline = 0.21f;
+    private const float ShoulderOffsetX = 2.0f;
+    private const float ShoulderOffsetY = 5.5f;
+    private const float LimbOutlineWidth = 0.21f;
+    private const float TeleportSnapDistance = 120f;
 
     private readonly Dictionary<string, ActorAnimState> _animStates = new();
     private ToonModelLibrary? _library;
@@ -27,138 +29,220 @@ public sealed class CharacterRenderer
     public void Load(ToonModelLibrary library)
     {
         _library = library;
-        float scale = Viewport3DConfig.CharacterUnitScale;
-        _thiefRig = library.LoadCharacterRig(CharDir, ThiefSkinPath, scale);
-        _guardRig = library.LoadCharacterRig(CharDir, GuardSkinPath, scale);
+        float unitScale = Viewport3DConfig.CharacterUnitScale;
+        _thiefRig = library.LoadCharacterRig(CharacterAssetDir, ThiefSkinPath, unitScale);
+        _guardRig = library.LoadCharacterRig(CharacterAssetDir, GuardSkinPath, unitScale);
     }
 
     public void Update(float deltaTime, GameContext context, IReadOnlyList<Guard> guards)
     {
-        UpdateActorState("player", context.PlayerPosition, deltaTime);
-        foreach (Guard guard in guards) UpdateActorState(guard.Id, guard.Position, deltaTime);
+        UpdateActorAnimation("player", context.PlayerPosition, deltaTime);
+        foreach (Guard guard in guards)
+        {
+            UpdateActorAnimation(guard.Id, guard.Position, deltaTime);
+        }
     }
 
-    public void Draw(GameContext context, IReadOnlyList<Guard> guards, float playerRotationDegrees, float timeSeconds)
+    public void Draw(in Scene3DRenderFrame frame)
     {
-        if (_library is null) return;
-        if (_thiefRig is CharacterRig thief)
+        if (_library is null)
         {
-            Color ring = context.CurrentInput.IsSprintHeld ? Color.Orange : new Color(56, 225, 255, 190);
-            DrawShadowAndRing(context.PlayerPosition, ring);
-            DrawCharacter(_library, thief, context.PlayerPosition, playerRotationDegrees, GetAnim("player"), context.IsPlayerSneaking, false, timeSeconds);
+            return;
+        }
+
+        if (_thiefRig is CharacterRig thiefRig)
+        {
+            Color ringColor = frame.Context.CurrentInput.IsSprintHeld
+                ? Color.Orange
+                : new Color(56, 225, 255, 190);
+
+            DrawGroundRing(frame.Context.PlayerPosition, ringColor);
+            DrawCharacterModel(
+                _library,
+                thiefRig,
+                frame.Context.PlayerPosition,
+                frame.PlayerRotationDegrees,
+                GetAnimState("player"),
+                frame.Context.IsPlayerSneaking,
+                isGuard: false,
+                frame.ElapsedSeconds);
         }
 
         if (_guardRig is CharacterRig guardRig)
         {
-            foreach (Guard guard in guards)
+            foreach (Guard guard in frame.Guards)
             {
-                string state = guard.CurrentState.StateName;
-                Color ring = state == "Alert"
-                    ? new Color(244, 63, 94, 225)
-                    : state == "Suspicious" ? new Color(250, 204, 21, 210) : new Color(255, 208, 92, 165);
-                DrawShadowAndRing(guard.Position, ring);
-                DrawCharacter(_library, guardRig, guard.Position, guard.RotationDegrees, GetAnim(guard.Id), false, true, timeSeconds);
-                DrawAwarenessBadge(guard.Position, state, timeSeconds);
+                string stateName = guard.CurrentState.StateName;
+                DrawGroundRing(guard.Position, ResolveGuardRingColor(stateName));
+                DrawCharacterModel(
+                    _library,
+                    guardRig,
+                    guard.Position,
+                    guard.RotationDegrees,
+                    GetAnimState(guard.Id),
+                    isSneaking: false,
+                    isGuard: true,
+                    frame.ElapsedSeconds);
+                DrawAwarenessBadge(guard.Position, stateName, frame.ElapsedSeconds);
             }
         }
     }
 
-    private void UpdateActorState(string id, Vector2 position, float deltaTime)
+    private void UpdateActorAnimation(string actorId, Vector2 currentPosition, float deltaTime)
     {
-        if (!_animStates.TryGetValue(id, out ActorAnimState? state))
+        if (!_animStates.TryGetValue(actorId, out ActorAnimState? state))
         {
-            _animStates[id] = new ActorAnimState(position);
+            _animStates[actorId] = new ActorAnimState(currentPosition);
             return;
         }
 
-        float dist = Vector2.Distance(position, state.PreviousPosition);
-        if (dist > 120f)
+        float movedDistance = Vector2.Distance(currentPosition, state.PreviousPosition);
+        if (movedDistance > TeleportSnapDistance)
         {
-            state.PreviousPosition = position;
+            state.PreviousPosition = currentPosition;
             state.NormalizedSpeed = 0f;
             return;
         }
 
-        state.NormalizedSpeed = MathF.Min(1.5f, deltaTime > 0.0001f ? (dist / deltaTime) / 150f : 0f);
-        if (dist > 0.05f) state.StridePhase += dist * 0.14f;
-        state.PreviousPosition = position;
+        state.NormalizedSpeed = deltaTime > 0.0001f
+            ? MathF.Min(1.5f, (movedDistance / deltaTime) / 150f)
+            : 0f;
+
+        if (movedDistance > 0.05f)
+        {
+            state.StridePhase += movedDistance * 0.14f;
+        }
+
+        state.PreviousPosition = currentPosition;
     }
 
-    private ActorAnimState GetAnim(string id) =>
-        _animStates.TryGetValue(id, out ActorAnimState? state) ? state : new ActorAnimState(Vector2.Zero);
+    private ActorAnimState GetAnimState(string actorId) =>
+        _animStates.TryGetValue(actorId, out ActorAnimState? state) ? state : new ActorAnimState(Vector2.Zero);
 
-    private static void DrawShadowAndRing(Vector2 position, Color ringColor)
+    private static Color ResolveGuardRingColor(string stateName) => stateName switch
     {
-        var shadowCenter = new Vector3(position.X, 0.7f, position.Y);
-        Raylib.DrawCylinder(shadowCenter, Viewport3DConfig.ShadowRadius, Viewport3DConfig.ShadowRadius, 0.8f, 16, Viewport3DConfig.ShadowColor);
-        Raylib.DrawCylinderWires(shadowCenter + new Vector3(0f, 0.6f, 0f), Viewport3DConfig.ShadowRadius + 2f, Viewport3DConfig.ShadowRadius + 2f, 0.4f, 20, ringColor);
+        "Alert" => new Color(244, 63, 94, 225),
+        "Suspicious" => new Color(250, 204, 21, 210),
+        _ => new Color(255, 208, 92, 165)
+    };
+
+    private static void DrawGroundRing(Vector2 position, Color ringColor)
+    {
+        Raylib3DPrimitives.DrawGroundShadow(position, Viewport3DConfig.ShadowRadius);
+        var ringCenter = new Vector3(position.X, 1.3f, position.Y);
+        float ringRadius = Viewport3DConfig.ShadowRadius + 2f;
+        Raylib.DrawCylinderWires(ringCenter, ringRadius, ringRadius, 0.4f, 20, ringColor);
     }
 
-    private static void DrawAwarenessBadge(Vector2 pos, string stateName, float t)
+    private static void DrawAwarenessBadge(Vector2 position, string stateName, float timeSeconds)
     {
-        bool alert = stateName == "Alert";
-        bool suspicious = stateName == "Suspicious";
-        float y = 84f + MathF.Sin(t * (alert ? 10f : 3f)) * 2.5f;
-        Vector3 top = new(pos.X, y, pos.Y);
-        Color col = alert
+        bool isAlert = stateName == "Alert";
+        bool isSuspicious = stateName == "Suspicious";
+        float bobY = 84f + (MathF.Sin(timeSeconds * (isAlert ? 10f : 3f)) * 2.5f);
+        var badgeBase = new Vector3(position.X, bobY, position.Y);
+
+        Color badgeColor = isAlert
             ? new Color(244, 63, 94, 245)
-            : suspicious ? new Color(250, 204, 21, 240) : new Color(255, 214, 78, 175);
-        Raylib.DrawCylinderEx(top, top + new Vector3(0f, alert ? 12f : 6f, 0f), 0.5f, alert ? 4.5f : 3.2f, 6, col);
-        if (alert || suspicious) Raylib.DrawSphere(top + new Vector3(0f, -4f, 0f), 2.5f, col);
+            : isSuspicious
+                ? new Color(250, 204, 21, 240)
+                : new Color(255, 214, 78, 175);
+
+        float coneHeight = isAlert ? 12f : 6f;
+        float coneRadius = isAlert ? 4.5f : 3.2f;
+        Raylib.DrawCylinderEx(badgeBase, badgeBase + new Vector3(0f, coneHeight, 0f), 0.5f, coneRadius, 6, badgeColor);
+
+        if (isAlert || isSuspicious)
+        {
+            Raylib.DrawSphere(badgeBase + new Vector3(0f, -4f, 0f), 2.5f, badgeColor);
+        }
     }
 
-    private static void DrawCharacter(ToonModelLibrary lib, CharacterRig rig, Vector2 pos, float rotDeg, ActorAnimState state, bool isSneak, bool isGuard, float t)
+    private static void DrawCharacterModel(
+        ToonModelLibrary library,
+        CharacterRig rig,
+        Vector2 position,
+        float rotationDegrees,
+        ActorAnimState animState,
+        bool isSneaking,
+        bool isGuard,
+        float timeSeconds)
     {
-        float s = rig.Scale;
-        float speed = MathF.Min(1f, state.NormalizedSpeed);
-        float legSwing = MathF.Sin(state.StridePhase) * (isSneak ? 26f : 38f) * speed;
-        float hipY = (isSneak ? 4.6f : HipHeightUnits) * s + MathF.Abs(MathF.Sin(state.StridePhase)) * 2.4f * speed + MathF.Sin(t * 2.5f) * 0.6f;
-        float lean = isSneak ? 22f : 6f * speed;
+        float unitScale = rig.Scale;
+        float clampedSpeed = MathF.Min(1f, animState.NormalizedSpeed);
+        float legSwingDegrees = MathF.Sin(animState.StridePhase) * (isSneaking ? 26f : 38f) * clampedSpeed;
+        float strideBob = MathF.Abs(MathF.Sin(animState.StridePhase)) * 2.4f * clampedSpeed;
+        float idleBreath = MathF.Sin(timeSeconds * 2.5f) * 0.6f;
+        float hipHeight = ((isSneaking ? SneakHipHeightUnits : HipHeightUnits) * unitScale) + strideBob + idleBreath;
+        float torsoLeanDegrees = isSneaking ? 22f : 6f * clampedSpeed;
+        float rightArmPitch = ResolveRightArmPitch(isGuard, isSneaking, legSwingDegrees);
 
         Rlgl.PushMatrix();
-        Rlgl.Translatef(pos.X, hipY, pos.Y);
-        Rlgl.Rotatef(90f - rotDeg, 0f, 1f, 0f);
-        DrawLimb(lib, rig.LegLeft, new Vector3(s, 0f, 0f), legSwing, s);
-        DrawLimb(lib, rig.LegRight, new Vector3(-s, 0f, 0f), -legSwing, s);
+        Rlgl.Translatef(position.X, hipHeight, position.Y);
+        Rlgl.Rotatef(90f - rotationDegrees, 0f, 1f, 0f);
+
+        DrawLimbPart(library, rig.LegLeft, new Vector3(unitScale, 0f, 0f), legSwingDegrees, unitScale);
+        DrawLimbPart(library, rig.LegRight, new Vector3(-unitScale, 0f, 0f), -legSwingDegrees, unitScale);
 
         Rlgl.PushMatrix();
-        Rlgl.Rotatef(lean, 1f, 0f, 0f);
-        lib.DrawOutlined(rig.Body, Vector3.Zero, 0f, s, Color.White, LimbOutline);
-        DrawLimb(lib, rig.Head, new Vector3(0f, TorsoHeightUnits * s, 0f), -lean * 0.6f, s);
-        DrawLimb(lib, rig.ArmLeft, new Vector3(ShoulderX * s, ShoulderY * s, 0f), -legSwing * 0.85f, s);
-        DrawRightArm(lib, rig, new Vector3(-ShoulderX * s, ShoulderY * s, 0f), isGuard ? -68f - legSwing * 0.2f : (isSneak ? -48f : -legSwing * 0.85f), isGuard, s);
+        Rlgl.Rotatef(torsoLeanDegrees, 1f, 0f, 0f);
+        library.DrawOutlined(rig.Body, Vector3.Zero, 0f, unitScale, Color.White, LimbOutlineWidth);
+        DrawLimbPart(library, rig.Head, new Vector3(0f, TorsoHeightUnits * unitScale, 0f), -torsoLeanDegrees * 0.6f, unitScale);
+        DrawLimbPart(library, rig.ArmLeft, new Vector3(ShoulderOffsetX * unitScale, ShoulderOffsetY * unitScale, 0f), -legSwingDegrees * 0.85f, unitScale);
+        DrawRightArmWithTool(library, rig, new Vector3(-ShoulderOffsetX * unitScale, ShoulderOffsetY * unitScale, 0f), rightArmPitch, isGuard, unitScale);
         Rlgl.PopMatrix();
+
         Rlgl.PopMatrix();
     }
 
-    private static void DrawLimb(ToonModelLibrary lib, Model part, Vector3 pivot, float pitchDeg, float scale)
+    private static float ResolveRightArmPitch(bool isGuard, bool isSneaking, float legSwingDegrees)
     {
-        Rlgl.PushMatrix();
-        Rlgl.Translatef(pivot.X, pivot.Y, pivot.Z);
-        Rlgl.Rotatef(pitchDeg, 1f, 0f, 0f);
-        lib.DrawOutlined(part, Vector3.Zero, 0f, scale, Color.White, LimbOutline);
-        Rlgl.PopMatrix();
-    }
-
-    private static void DrawRightArm(ToonModelLibrary lib, CharacterRig rig, Vector3 pivot, float pitchDeg, bool isGuard, float scale)
-    {
-        Rlgl.PushMatrix();
-        Rlgl.Translatef(pivot.X, pivot.Y, pivot.Z);
-        Rlgl.Rotatef(pitchDeg, 1f, 0f, 0f);
-        lib.DrawOutlined(rig.ArmRight, Vector3.Zero, 0f, scale, Color.White, LimbOutline);
-        Vector3 hand = new(-scale, -5.2f * scale, 0.8f * scale);
         if (isGuard)
         {
-            Raylib.DrawCylinderEx(hand, hand + new Vector3(0f, -12f, 2f), 2.2f, 3.2f, 8, new Color(24, 28, 36, 255));
-            Raylib.DrawSphere(hand + new Vector3(0f, -13f, 2.2f), 2.8f, new Color(255, 240, 160, 235));
+            return -68f - (legSwingDegrees * 0.2f);
         }
-        else Raylib.DrawCube(hand + new Vector3(0f, -4f, 4f), 2.5f, 3.5f, 11f, new Color(22, 26, 34, 255));
+
+        return isSneaking ? -48f : -legSwingDegrees * 0.85f;
+    }
+
+    private static void DrawLimbPart(ToonModelLibrary library, Model partModel, Vector3 pivot, float pitchDegrees, float scale)
+    {
+        Rlgl.PushMatrix();
+        Rlgl.Translatef(pivot.X, pivot.Y, pivot.Z);
+        Rlgl.Rotatef(pitchDegrees, 1f, 0f, 0f);
+        library.DrawOutlined(partModel, Vector3.Zero, 0f, scale, Color.White, LimbOutlineWidth);
         Rlgl.PopMatrix();
     }
 
-    private sealed class ActorAnimState(Vector2 initialPos)
+    private static void DrawRightArmWithTool(
+        ToonModelLibrary library,
+        CharacterRig rig,
+        Vector3 pivot,
+        float pitchDegrees,
+        bool isGuard,
+        float scale)
     {
-        public Vector2 PreviousPosition { get; set; } = initialPos;
+        Rlgl.PushMatrix();
+        Rlgl.Translatef(pivot.X, pivot.Y, pivot.Z);
+        Rlgl.Rotatef(pitchDegrees, 1f, 0f, 0f);
+        library.DrawOutlined(rig.ArmRight, Vector3.Zero, 0f, scale, Color.White, LimbOutlineWidth);
+
+        Vector3 handPosition = new(-scale, -5.2f * scale, 0.8f * scale);
+        if (isGuard)
+        {
+            Raylib.DrawCylinderEx(handPosition, handPosition + new Vector3(0f, -12f, 2f), 2.2f, 3.2f, 8, new Color(24, 28, 36, 255));
+            Raylib.DrawSphere(handPosition + new Vector3(0f, -13f, 2.2f), 2.8f, new Color(255, 240, 160, 235));
+        }
+        else
+        {
+            Raylib.DrawCube(handPosition + new Vector3(0f, -4f, 4f), 2.5f, 3.5f, 11f, new Color(22, 26, 34, 255));
+        }
+
+        Rlgl.PopMatrix();
+    }
+
+    private sealed class ActorAnimState(Vector2 initialPosition)
+    {
+        public Vector2 PreviousPosition { get; set; } = initialPosition;
         public float StridePhase { get; set; }
         public float NormalizedSpeed { get; set; }
     }

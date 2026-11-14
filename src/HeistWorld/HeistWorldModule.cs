@@ -10,9 +10,6 @@ namespace ShadowHeist.HeistWorld;
 
 public sealed class HeistWorldModule : IGameSystem, IDisposable
 {
-    private const int TargetCashGoal = 500_000;
-    private static readonly RectangleBounds DefaultGetawayZone = new(64f, 640f, 128f, 96f);
-
     private readonly InteractionController _interaction = new();
     private readonly WorldLightingModule? _world;
     private readonly List<LootCrate> _crates = new();
@@ -21,7 +18,7 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
     private HeistWorldRenderer? _renderer;
     private SoundMeter? _soundMeter;
     private HudRenderer? _hud;
-    private RectangleBounds _getawayZone = DefaultGetawayZone;
+    private RectangleBounds _getawayZone = HeistConstants.DefaultGetawayZone;
     private bool _spritesLoaded;
 
     public float SoundMeterLevel => _soundMeter?.Level ?? 0f;
@@ -54,7 +51,7 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
 
         _interaction.HandlePlayerInteraction(deltaTime, context);
 
-        if (context.StolenCash >= TargetCashGoal && IsInsideZone(context.PlayerPosition, _getawayZone))
+        if (context.StolenCash >= HeistConstants.TargetCashGoal && IsInsideZone(context.PlayerPosition, _getawayZone))
         {
             context.Outcome = HeistOutcome.Escaped;
         }
@@ -78,7 +75,7 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
     private void BuildWorldObjects(GameContext context)
     {
         _crates.Clear();
-        _getawayZone = _world?.CurrentMap?.GetawayZone ?? DefaultGetawayZone;
+        _getawayZone = _world?.CurrentMap?.GetawayZone ?? HeistConstants.DefaultGetawayZone;
         IReadOnlyList<MapInteractableDto>? items = _world?.CurrentMap?.Interactables;
 
         VaultDoor? loadedDoor = null;
@@ -88,12 +85,18 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
         {
             foreach (MapInteractableDto dto in items)
             {
-                if (dto.Type == "LootCrate")
-                    _crates.Add(new LootCrate(dto.Id, new Vector2(dto.X, dto.Y), dto.CashValue));
-                else if (dto.Type == "VaultDoor")
-                    loadedDoor = new VaultDoor(dto.Id, new Vector2(dto.X, dto.Y));
-                else if (dto.Type == "KeypadTerminal")
-                    loadedKeypad = new KeypadTerminal(dto.Id, new Vector2(dto.X, dto.Y), dto.TargetId ?? "vault_door");
+                switch (dto.Type)
+                {
+                    case "LootCrate":
+                        _crates.Add(new LootCrate(dto.Id, new Vector2(dto.X, dto.Y), dto.CashValue));
+                        break;
+                    case "VaultDoor":
+                        loadedDoor = new VaultDoor(dto.Id, new Vector2(dto.X, dto.Y));
+                        break;
+                    case "KeypadTerminal":
+                        loadedKeypad = new KeypadTerminal(dto.Id, new Vector2(dto.X, dto.Y), dto.TargetId ?? "vault_door");
+                        break;
+                }
             }
         }
 

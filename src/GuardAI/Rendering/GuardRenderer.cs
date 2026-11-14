@@ -1,5 +1,6 @@
 using System.Numerics;
 using Raylib_cs;
+using ShadowHeist.Core;
 
 namespace ShadowHeist.GuardAI.Rendering;
 
@@ -65,7 +66,7 @@ public sealed class GuardRenderer : IDisposable
 
     private static void DrawForwardFacingGizmo(Guard guard)
     {
-        float angleRad = guard.RotationDegrees * (MathF.PI / 180f);
+        float angleRad = guard.RotationDegrees * HeistConstants.DegToRad;
         var forward = new Vector2(MathF.Cos(angleRad), MathF.Sin(angleRad));
         var lineEnd = guard.Position + forward * 30f;
 

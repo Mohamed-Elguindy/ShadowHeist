@@ -9,7 +9,6 @@ public static class VisionRaycaster
     public const float MaxVisionDist = 240f;
     public const int DefaultRayCount = 32;
 
-    private const float DegToRad = MathF.PI / 180f;
     private const float ParallelEpsilon = 0.00001f;
     private const float HalfMultiplier = 0.5f;
 
@@ -80,7 +79,7 @@ public static class VisionRaycaster
 
     public static Vector2 DirectionFromDegrees(float angleDegrees)
     {
-        float radians = angleDegrees * DegToRad;
+        float radians = angleDegrees * HeistConstants.DegToRad;
         return new Vector2(MathF.Cos(radians), MathF.Sin(radians));
     }
 

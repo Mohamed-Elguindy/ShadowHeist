@@ -7,9 +7,9 @@ using ShadowHeist.HeistWorld.Interactables;
 namespace ShadowHeist.Viewport3D;
 
 /// <summary>
-/// Renders detailed 3D interactable props: loot crates, hinged vault door, and hacking keypad + link beam.
+/// Renders detailed 3D interactable props: loot crates, hinged vault door, and hacking keypad + progress link beam.
 /// </summary>
-public sealed class PropsRenderer
+public sealed class PropsRenderer : ISceneRenderPass
 {
     private const string CrateTexturePath = "assets/sprites/prop_loot_crate.png";
     private const float CrateSize = 36f;
@@ -17,6 +17,7 @@ public sealed class PropsRenderer
     private const float VaultFrameWidth = 92f;
     private const float VaultFrameHeight = 88f;
     private const float VaultDoorOpenSpeed = 160f;
+    private const float VaultOpenAngleDegrees = 92f;
     private const float KeypadHeight = 46f;
 
     private static readonly Color GoldColor = new(248, 196, 44, 255);
@@ -37,95 +38,149 @@ public sealed class PropsRenderer
 
     public void Update(float deltaTime, GameContext context)
     {
-        bool isOpen = context.Interactables.OfType<VaultDoor>().Any(door => door.IsOpen);
-        float target = isOpen ? 92f : 0f;
-        float step = VaultDoorOpenSpeed * deltaTime;
-        _vaultSwingDegrees = MathF.Abs(target - _vaultSwingDegrees) <= step
-            ? target
-            : _vaultSwingDegrees + MathF.Sign(target - _vaultSwingDegrees) * step;
+        bool anyDoorOpen = context.Interactables.OfType<VaultDoor>().Any(door => door.IsOpen);
+        float targetAngle = anyDoorOpen ? VaultOpenAngleDegrees : 0f;
+        float maxStep = VaultDoorOpenSpeed * deltaTime;
+
+        _vaultSwingDegrees = MathF.Abs(targetAngle - _vaultSwingDegrees) <= maxStep
+            ? targetAngle
+            : _vaultSwingDegrees + (MathF.Sign(targetAngle - _vaultSwingDegrees) * maxStep);
     }
 
-    public void Draw(GameContext context, float timeSeconds)
+    public void Draw(in Scene3DRenderFrame frame)
     {
-        foreach (IInteractable item in context.Interactables)
+        foreach (IInteractable item in frame.Context.Interactables)
         {
-            if (item is LootCrate crate) DrawLootCrate(crate, timeSeconds);
-            else if (item is VaultDoor door) DrawVaultDoor(door, timeSeconds);
-            else if (item is KeypadTerminal keypad) DrawKeypad(keypad, context.PlayerPosition, timeSeconds);
+            switch (item)
+            {
+                case LootCrate crate:
+                    DrawLootCrate(crate, frame.ElapsedSeconds);
+                    break;
+                case VaultDoor door:
+                    DrawVaultDoor(door, frame.ElapsedSeconds);
+                    break;
+                case KeypadTerminal keypad:
+                    DrawKeypadTerminal(keypad, frame.Context.PlayerPosition, frame.ElapsedSeconds);
+                    break;
+            }
         }
     }
 
     private void DrawLootCrate(LootCrate crate, float timeSeconds)
     {
-        Raylib.DrawCylinder(new Vector3(crate.Position.X, 0.4f, crate.Position.Y), 24f, 24f, 0.5f, 12, new Color(0, 0, 0, 95));
+        Raylib3DPrimitives.DrawGroundShadow(crate.Position, 24f);
         float bodyHeight = crate.IsCollected ? CrateHeight * 0.65f : CrateHeight;
         var bodyCenter = new Vector3(crate.Position.X, bodyHeight * 0.5f, crate.Position.Y);
 
-        if (_crateUnitBox is Model box)
+        if (_crateUnitBox is Model boxModel)
         {
             Color tint = crate.IsCollected ? new Color(115, 120, 130, 255) : Color.White;
-            Raylib.DrawModelEx(box, bodyCenter, Vector3.UnitY, 0f, new Vector3(CrateSize, bodyHeight, CrateSize), tint);
+            Raylib.DrawModelEx(boxModel, bodyCenter, Vector3.UnitY, 0f, new Vector3(CrateSize, bodyHeight, CrateSize), tint);
         }
 
         Raylib.DrawCubeWires(bodyCenter, CrateSize, bodyHeight, CrateSize, Viewport3DConfig.OutlineColor);
         if (!crate.IsCollected)
         {
-            float bob = MathF.Sin(timeSeconds * 3.2f) * 2.5f;
-            var top = new Vector3(crate.Position.X, CrateHeight * 1.12f + bob, crate.Position.Y);
-            Raylib.DrawCube(top + new Vector3(-6f, 0f, 0f), 11f, 7f, 18f, GoldColor);
-            Raylib.DrawCube(top + new Vector3(7f, -1f, 2f), 10f, 6f, 16f, CashColor);
+            float bobOffset = MathF.Sin(timeSeconds * 3.2f) * 2.5f;
+            var stackTop = new Vector3(crate.Position.X, (CrateHeight * 1.12f) + bobOffset, crate.Position.Y);
+            Raylib.DrawCube(stackTop + new Vector3(-6f, 0f, 0f), 11f, 7f, 18f, GoldColor);
+            Raylib.DrawCube(stackTop + new Vector3(7f, -1f, 2f), 10f, 6f, 16f, CashColor);
         }
     }
 
     private void DrawVaultDoor(VaultDoor door, float timeSeconds)
     {
-        var center = new Vector3(door.Position.X, 0f, door.Position.Y);
+        var frameCenter = new Vector3(door.Position.X, 0f, door.Position.Y);
+        DrawVaultFrame(frameCenter);
+        DrawVaultDoorLeaf(frameCenter, door.IsLocked);
+        DrawVaultStatusBeacon(frameCenter, door, timeSeconds);
+    }
+
+    private static void DrawVaultFrame(Vector3 center)
+    {
         Raylib.DrawCube(center + new Vector3(0f, VaultFrameHeight * 0.5f, -VaultFrameWidth * 0.5f), 32f, VaultFrameHeight, 12f, DarkSteelColor);
         Raylib.DrawCube(center + new Vector3(0f, VaultFrameHeight * 0.5f, VaultFrameWidth * 0.5f), 32f, VaultFrameHeight, 12f, DarkSteelColor);
         Raylib.DrawCube(center + new Vector3(0f, VaultFrameHeight + 5f, 0f), 34f, 14f, VaultFrameWidth + 14f, SteelColor);
+    }
 
-        float rad = _vaultSwingDegrees * Raylib.DEG2RAD;
-        Vector3 leafPos = center + new Vector3(MathF.Sin(rad) * 40f, VaultFrameHeight * 0.48f, -40f + MathF.Cos(rad) * 40f);
-        float w = MathF.Abs(MathF.Cos(rad)) * 16f + MathF.Abs(MathF.Sin(rad)) * 80f;
-        float l = MathF.Abs(MathF.Sin(rad)) * 16f + MathF.Abs(MathF.Cos(rad)) * 80f;
+    private void DrawVaultDoorLeaf(Vector3 frameCenter, bool isLocked)
+    {
+        float swingRadians = _vaultSwingDegrees * HeistConstants.DegToRad;
+        float cos = MathF.Cos(swingRadians);
+        float sin = MathF.Sin(swingRadians);
 
-        Color doorTint = door.IsLocked ? SteelColor : new Color(172, 198, 212, 255);
-        Raylib.DrawCube(leafPos, w, VaultFrameHeight - 6f, l, doorTint);
-        Raylib.DrawCubeWires(leafPos, w, VaultFrameHeight - 6f, l, Viewport3DConfig.OutlineColor);
+        Vector3 leafCenter = frameCenter + new Vector3(sin * 40f, VaultFrameHeight * 0.48f, -40f + (cos * 40f));
+        float leafWidth = (MathF.Abs(cos) * 16f) + (MathF.Abs(sin) * 80f);
+        float leafLength = (MathF.Abs(sin) * 16f) + (MathF.Abs(cos) * 80f);
+
+        Color doorTint = isLocked ? SteelColor : new Color(172, 198, 212, 255);
+        Raylib3DPrimitives.DrawOutlinedCube(
+            leafCenter,
+            new Vector3(leafWidth, VaultFrameHeight - 6f, leafLength),
+            doorTint,
+            Viewport3DConfig.OutlineColor);
 
         if (_vaultSwingDegrees < 40f)
         {
-            Vector3 wc = leafPos + new Vector3(9f, 0f, 0f);
-            Raylib.DrawCylinderEx(wc + new Vector3(-2f, 0f, 0f), wc + new Vector3(3f, 0f, 0f), 13f, 13f, 12, BrassColor);
+            Vector3 wheelCenter = leafCenter + new Vector3(9f, 0f, 0f);
+            Raylib.DrawCylinderEx(
+                wheelCenter + new Vector3(-2f, 0f, 0f),
+                wheelCenter + new Vector3(3f, 0f, 0f),
+                13f,
+                13f,
+                12,
+                BrassColor);
         }
-
-        Color status = door.IsOpen ? EmeraldGlowColor : (door.IsLocked ? RedAlertColor : CyanGlowColor);
-        byte alpha = (byte)(255 * (0.6f + 0.4f * MathF.Sin(timeSeconds * 5f)));
-        Raylib.DrawSphere(center + new Vector3(12f, VaultFrameHeight + 16f, 0f), 6f, new Color(status.R, status.G, status.B, alpha));
     }
 
-    private static void DrawKeypad(KeypadTerminal keypad, Vector2 playerPos, float timeSeconds)
+    private static void DrawVaultStatusBeacon(Vector3 center, VaultDoor door, float timeSeconds)
     {
-        var pos = new Vector3(keypad.Position.X, KeypadHeight * 0.5f, keypad.Position.Y);
-        Raylib.DrawCylinder(new Vector3(keypad.Position.X, 0.4f, keypad.Position.Y), 15f, 15f, 0.5f, 10, new Color(0, 0, 0, 95));
-        Raylib.DrawCube(pos, 18f, KeypadHeight, 18f, KeypadBodyColor);
-        Raylib.DrawCubeWires(pos, 18f, KeypadHeight, 18f, Viewport3DConfig.OutlineColor);
+        Color statusColor = door.IsOpen ? EmeraldGlowColor : (door.IsLocked ? RedAlertColor : CyanGlowColor);
+        byte alpha = (byte)(255f * (0.6f + 0.4f * MathF.Sin(timeSeconds * 5f)));
+        Raylib.DrawSphere(
+            center + new Vector3(12f, VaultFrameHeight + 16f, 0f),
+            6f,
+            new Color(statusColor.R, statusColor.G, statusColor.B, alpha));
+    }
 
-        Color screenColor = keypad.IsHacked ? EmeraldGlowColor : (keypad.HoldProgress > 0f ? GoldColor : CyanGlowColor);
-        Raylib.DrawCube(pos + new Vector3(0f, 12f, 9.5f), 12f, 14f, 2f, screenColor);
+    private static void DrawKeypadTerminal(KeypadTerminal keypad, Vector2 playerPosition, float timeSeconds)
+    {
+        var terminalCenter = new Vector3(keypad.Position.X, KeypadHeight * 0.5f, keypad.Position.Y);
+        Raylib3DPrimitives.DrawGroundShadow(keypad.Position, 15f);
+        Raylib3DPrimitives.DrawOutlinedCube(terminalCenter, new Vector3(18f, KeypadHeight, 18f), KeypadBodyColor, Viewport3DConfig.OutlineColor);
+
+        Color screenColor = keypad.IsHacked
+            ? EmeraldGlowColor
+            : (keypad.HoldProgress > 0f ? GoldColor : CyanGlowColor);
+
+        Raylib.DrawCube(terminalCenter + new Vector3(0f, 12f, 9.5f), 12f, 14f, 2f, screenColor);
 
         if (keypad.HoldProgress > 0f && !keypad.IsHacked)
         {
-            Vector3 bar = new(keypad.Position.X, KeypadHeight + 18f, keypad.Position.Y);
-            float fillW = 34f * keypad.HoldProgress;
-            Raylib.DrawCube(bar, 38f, 7f, 4f, KeypadBodyColor);
-            Raylib.DrawCube(bar + new Vector3((fillW - 34f) * 0.5f, 0f, 0.5f), fillW, 5f, 4f, GoldColor);
-            Raylib.DrawLine3D(new Vector3(playerPos.X, 40f, playerPos.Y), pos + new Vector3(0f, 12f, 0f), CyanGlowColor);
-            Raylib.DrawCylinderWires(new Vector3(keypad.Position.X, 2f, keypad.Position.Y), 28f + MathF.Sin(timeSeconds * 8f) * 4f, 28f, 1f, 18, CyanGlowColor);
+            DrawActiveHackingEffect(keypad, terminalCenter, playerPosition, timeSeconds);
         }
 
         byte ledAlpha = (byte)(keypad.IsHacked ? 255f : 150f + 100f * MathF.Sin(timeSeconds * 4f));
-        Raylib.DrawSphere(pos + new Vector3(0f, KeypadHeight * 0.5f + 4f, 0f), 3.5f,
+        Raylib.DrawSphere(
+            terminalCenter + new Vector3(0f, (KeypadHeight * 0.5f) + 4f, 0f),
+            3.5f,
             new Color(screenColor.R, screenColor.G, screenColor.B, ledAlpha));
+    }
+
+    private static void DrawActiveHackingEffect(
+        KeypadTerminal keypad,
+        Vector3 terminalCenter,
+        Vector2 playerPosition,
+        float timeSeconds)
+    {
+        Vector3 barOrigin = new(keypad.Position.X, KeypadHeight + 18f, keypad.Position.Y);
+        float fillWidth = 34f * keypad.HoldProgress;
+
+        Raylib.DrawCube(barOrigin, 38f, 7f, 4f, KeypadBodyColor);
+        Raylib.DrawCube(barOrigin + new Vector3((fillWidth - 34f) * 0.5f, 0f, 0.5f), fillWidth, 5f, 4f, GoldColor);
+        Raylib.DrawLine3D(new Vector3(playerPosition.X, 40f, playerPosition.Y), terminalCenter + new Vector3(0f, 12f, 0f), CyanGlowColor);
+
+        float ringRadius = 28f + (MathF.Sin(timeSeconds * 8f) * 4f);
+        Raylib.DrawCylinderWires(new Vector3(keypad.Position.X, 2f, keypad.Position.Y), ringRadius, ringRadius, 1f, 18, CyanGlowColor);
     }
 }

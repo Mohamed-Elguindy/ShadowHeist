@@ -1,0 +1,41 @@
+using System.Numerics;
+using Raylib_cs;
+
+namespace ShadowHeist.HeistWorld.UI;
+
+/// <summary>
+/// Shared screen-space prompt box renderer used by both 2D and 3D HUD overlays.
+/// </summary>
+public static class HudPromptRenderer
+{
+    private const int DefaultFontSize = 16;
+    private const int HorizontalPadding = 20;
+    private const int VerticalPadding = 10;
+    private const int ScreenEdgeMargin = 8;
+
+    private static readonly Color BoxBackground = new(0, 0, 0, 210);
+    private static readonly Color BoxBorder = Color.White;
+    private static readonly Color PromptTextColor = Color.Yellow;
+
+    public static void DrawPromptBox(string prompt, Vector2 anchorScreenPosition, float yOffset = 0f)
+    {
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            return;
+        }
+
+        int textWidth = Raylib.MeasureText(prompt, DefaultFontSize);
+        int boxWidth = textWidth + HorizontalPadding;
+        int boxHeight = DefaultFontSize + VerticalPadding;
+
+        int maxX = Math.Max(ScreenEdgeMargin, Raylib.GetScreenWidth() - boxWidth - ScreenEdgeMargin);
+        int maxY = Math.Max(ScreenEdgeMargin, Raylib.GetScreenHeight() - boxHeight - ScreenEdgeMargin);
+
+        int boxX = Math.Clamp((int)anchorScreenPosition.X - (boxWidth / 2), ScreenEdgeMargin, maxX);
+        int boxY = Math.Clamp((int)(anchorScreenPosition.Y + yOffset), ScreenEdgeMargin, maxY);
+
+        Raylib.DrawRectangle(boxX, boxY, boxWidth, boxHeight, BoxBackground);
+        Raylib.DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, BoxBorder);
+        Raylib.DrawText(prompt, boxX + (HorizontalPadding / 2), boxY + (VerticalPadding / 2), DefaultFontSize, PromptTextColor);
+    }
+}

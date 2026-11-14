@@ -12,7 +12,6 @@ namespace ShadowHeist.WorldLighting;
 public sealed class WorldLightingModule : IGameSystem, IDisposable
 {
     private const string Level1MapPath = "assets/maps/level1_city_bank.json";
-    private const float RadToDeg = 180f / MathF.PI;
     private const float AimDistanceEpsilonSquared = 0.001f;
 
     private readonly MapRenderer _mapRenderer = new();
@@ -102,7 +101,7 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
             return;
         }
 
-        _currentAimDegrees = MathF.Atan2(toTarget.Y, toTarget.X) * RadToDeg;
+        _currentAimDegrees = MathF.Atan2(toTarget.Y, toTarget.X) * HeistConstants.RadToDeg;
     }
 
     private void UpdateLasers(GameContext context, IReadOnlyList<RectangleBounds>? visionWalls = null)

@@ -16,7 +16,6 @@ public sealed class Player
     private const float BaseSpeed = 160f;
     private const float MinAimDistance = 16f; // Ignore aim changes when mouse is directly on the player
     private const float WalkStepInterval = 0.40f;   // Seconds between walk footstep sounds
-    private const float RadToDeg = 180f / MathF.PI;
 
     private float _stepTimer;
 
@@ -75,6 +74,6 @@ public sealed class Player
         if (diff.LengthSquared() < MinAimDistance * MinAimDistance) return;
 
         // Directly face mouse aim position without turn-rate lag
-        RotationDegrees = MathF.Atan2(diff.Y, diff.X) * RadToDeg;
+        RotationDegrees = MathF.Atan2(diff.Y, diff.X) * HeistConstants.RadToDeg;
     }
 }

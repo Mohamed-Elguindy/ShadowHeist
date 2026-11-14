@@ -8,9 +8,7 @@ namespace ShadowHeist.HeistWorld.UI;
 
 public sealed class HudRenderer
 {
-    private const int TargetHeistGoal = 500_000;
     private const int CashFontSize = 20;
-    private const int PromptFontSize = 16;
 
     private readonly SoundMeter _soundMeter;
 
@@ -64,7 +62,7 @@ public sealed class HudRenderer
 
     public static void DrawStolenCashBanner(int stolenCash)
     {
-        string text = $"STOLEN CASH: ${stolenCash:N0} / ${TargetHeistGoal:N0}";
+        string text = $"STOLEN CASH: ${stolenCash:N0} / ${HeistConstants.TargetCashGoal:N0}";
         int textWidth = Raylib.MeasureText(text, CashFontSize);
 
         int boxWidth = textWidth + 28;
@@ -75,7 +73,7 @@ public sealed class HudRenderer
         Raylib.DrawRectangle(boxX, boxY, boxWidth, boxHeight, new Color(15, 23, 42, 220));
         Raylib.DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, new Color(56, 189, 248, 180));
 
-        Color textColor = stolenCash >= TargetHeistGoal ? Color.Gold : Color.Green;
+        Color textColor = stolenCash >= HeistConstants.TargetCashGoal ? Color.Gold : Color.Green;
         Raylib.DrawText(text, boxX + 14, boxY + 8, CashFontSize, textColor);
     }
 
@@ -111,19 +109,6 @@ public sealed class HudRenderer
             return;
         }
 
-        DrawPromptBox(activeItem.PromptText, activeItem.Position);
-    }
-
-    private static void DrawPromptBox(string prompt, Vector2 worldPosition)
-    {
-        int textWidth = Raylib.MeasureText(prompt, PromptFontSize);
-        int boxW = textWidth + 20;
-        int boxH = PromptFontSize + 10;
-        int boxX = Math.Clamp((int)worldPosition.X - boxW / 2, 8, Math.Max(8, Raylib.GetScreenWidth() - boxW - 8));
-        int boxY = Math.Clamp((int)worldPosition.Y - 50, 8, Math.Max(8, Raylib.GetScreenHeight() - boxH - 8));
-
-        Raylib.DrawRectangle(boxX, boxY, boxW, boxH, new Color(0, 0, 0, 200));
-        Raylib.DrawRectangleLines(boxX, boxY, boxW, boxH, Color.White);
-        Raylib.DrawText(prompt, boxX + 10, boxY + 5, PromptFontSize, Color.Yellow);
+        HudPromptRenderer.DrawPromptBox(activeItem.PromptText, activeItem.Position, yOffset: -50f);
     }
 }

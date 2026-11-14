@@ -2,12 +2,11 @@ using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.GuardAI;
-using ShadowHeist.WorldLighting;
 
 namespace ShadowHeist.Viewport3D;
 
 /// <summary>
-/// Orchestrates all 3D cel-shaded scene sub-renderers without mutating gameplay state.
+/// Orchestrates modular ISceneRenderPass layers cleanly in draw order without mutating gameplay state.
 /// </summary>
 public sealed class Scene3DRenderer : IDisposable
 {
@@ -17,9 +16,25 @@ public sealed class Scene3DRenderer : IDisposable
     private readonly PropsRenderer _props = new();
     private readonly CharacterRenderer _characters = new();
     private readonly StealthVfxRenderer _vfx = new();
-    private readonly LaserTripwire3DRenderer _lasers = new();
+    private readonly IReadOnlyList<ISceneRenderPass> _renderPasses;
+
     private float _elapsedSeconds;
     private bool _assetsLoaded;
+
+    public float ElapsedSeconds => _elapsedSeconds;
+
+    public Scene3DRenderer()
+    {
+        _renderPasses = new ISceneRenderPass[]
+        {
+            _environment,
+            _decor,
+            _vfx,
+            new LaserTripwire3DRenderer(),
+            _props,
+            _characters
+        };
+    }
 
     public void Load(GameContext context)
     {
@@ -45,21 +60,12 @@ public sealed class Scene3DRenderer : IDisposable
         _vfx.Update(deltaTime, context);
     }
 
-    public void Draw(
-        GameContext context,
-        IReadOnlyList<RectangleBounds> architecturalWalls,
-        IReadOnlyList<RectangleBounds> visionBlockers,
-        IReadOnlyList<Guard> guards,
-        IReadOnlyList<LaserTripwire> lasers,
-        RectangleBounds? getawayZone,
-        float playerRotationDegrees)
+    public void Draw(in Scene3DRenderFrame frame)
     {
-        _environment.Draw(architecturalWalls, getawayZone, _elapsedSeconds);
-        _decor.Draw(_elapsedSeconds);
-        _vfx.Draw(visionBlockers, context, guards, playerRotationDegrees, _elapsedSeconds);
-        _lasers.Draw(lasers, _elapsedSeconds);
-        _props.Draw(context, _elapsedSeconds);
-        _characters.Draw(context, guards, playerRotationDegrees, _elapsedSeconds);
+        foreach (ISceneRenderPass pass in _renderPasses)
+        {
+            pass.Draw(frame);
+        }
     }
 
     public void Dispose() => _library.Dispose();
