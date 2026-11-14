@@ -1,9 +1,8 @@
 # 🕵️‍♂️ ShadowHeist (`Raylib-cs`)
 
-A **2D/3D Dual-Viewport Tactical Stealth Heist** game built in C# (`.NET 8` + `Raylib-cs`) following **SOLID Architecture, Design Patterns, and Strict GitHub Pull Request Workflows**.
-*(Post-Week 2 Update: Promoted the 3D Isometric Tactical Viewport `[F5]` toggle directly into Week 3 after completing Week 2 core simulation!)*
+A **Native 3D Isometric Tactical Stealth Heist** game built in C# (`.NET 8` + `Raylib-cs`) featuring cel-shaded 3D visuals, A* guard pathfinding, wall-clipped vision raycasting, and strict **SOLID Clean Code Architecture (<200 lines per source file)**.
 
-📄 **Full 5-Page Engineering & Sprint Plan:**
+📄 **Engineering & Sprint Plan Docs:**
 * [docs/ShadowHeist_Team_Engineering_Plan.pdf](docs/ShadowHeist_Team_Engineering_Plan.pdf)
 * [docs/ARCHITECTURE_AND_PLAN.md](docs/ARCHITECTURE_AND_PLAN.md)
 
@@ -13,13 +12,15 @@ A **2D/3D Dual-Viewport Tactical Stealth Heist** game built in C# (`.NET 8` + `R
 
 | Action | Control Key | Description |
 | :--- | :--- | :--- |
-| **Move** | `W`, `A`, `S`, `D` / Arrow Keys | Top-down directional movement |
-| **Aim / Orient** | Mouse Cursor | Smooth 360° mouse-aim rotation |
-| **Crouch / Sneak** | `Left Ctrl` (Toggle) | Lowers footstep noise and speed |
-| **Sprint** | `Left Shift` (Hold) | Increases speed, creates loud noise |
-| **Interact / Hold** | `E` | Open vaults, loot crates, bypass keypads |
-| **Use Gadget** | `Q` / `Space` / Right Click | Throws coin / EMP grenade / fires pistol |
-| **Toggle 2D / 3D View** | `F5` *(Week 3)* | Live switch between 2D Blueprint & 3D Isometric Tactical View |
+| **Move** | `W`, `A`, `S`, `D` / Arrow Keys | Directional movement on the bank floor plane |
+| **Aim / Orient** | Mouse Cursor | 3D ground-plane raycast aiming (`ScreenToGroundPoint`) |
+| **Crouch / Sneak** | `Left Ctrl` (Toggle) | Lowers footstep noise radius and movement speed |
+| **Sprint** | `Left Shift` (Hold) | Increases speed and emits wider acoustic ripples |
+| **Interact / Hack** | `E` (Press / Hold) | Unlock keypad terminals, grab vault loot, open vault door |
+| **Camera View** | `F6` | Toggle between smooth Isometric Follow and Tactical Overview |
+| **Camera Zoom** | `Mouse Scroll Wheel` | Smoothly zoom camera in and out |
+| **Restart Mission** | `R` | Reset heist level, guards, interactables, and camera |
+| **Debug Noise Pulse** | `Left Mouse Click` | Emits an acoustic test noise pulse on the clicked 3D floor point |
 
 ---
 
@@ -29,23 +30,23 @@ To prevent merge conflicts and enforce clean separation of concerns, each engine
 
 | Engineer | Owned Module | Key Responsibilities |
 | :--- | :--- | :--- |
-| **Guindy** | `src/Core/` & `src/HeistWorld/` | `GameContext`, `GameEventBus`, `VaultDoor`, `KeypadTerminal`, `LootCrate`, `FuseBox`, `HudRenderer`, `GameStateManager` |
-| **Mahmoud** | `src/PlayerSystem/` | `IInputProvider`, `Player`, Stance State Machine (`SneakStance`, `WalkStance`, `SprintStance`), `PlayerInventory` (LINQ), `IGadget` (`CoinGadget`, `EmpGadget`, `SuppressedPistol`) |
-| **Hatem** | `src/GuardAI/` | `Guard`, AI State Machine (`PatrolState`, `SuspiciousState`, `AlertChaseState`), `SecurityCamera`, Detection Meter, 2D Grid `AStarPathfinder` |
-| **Ali** | `src/WorldLighting/` | JSON `MapLoader`, `CollisionHelper`, `VisionRaycaster`, `LaserTripwire`, `BrokenGlassTile`, `ShadowRenderer`, GLSL Bloom Shader |
+| **Guindy** | `src/Core/` & `src/HeistWorld/` | `GameContext`, `GameEventBus`, `Core/Rendering3D/` (`TacticalCameraController`, `ToonModelLibrary`, `CharacterMeshDrawer`), `VaultDoor`, `KeypadTerminal`, `LootCrate`, `HeistWorldRenderer`, unified `HudRenderer`, upcoming `FuseBox` & `GameStateManager` |
+| **Mahmoud** | `src/PlayerSystem/` | `IInputProvider`, `Player`, Stance FSM (`SneakStance`, `WalkStance`, `SprintStance`), `PlayerRenderer`, `PlayerSoundRippleRenderer`, upcoming `PlayerInventory` (LINQ) & `IGadget` (`CoinGadget`, `EmpGadget`, `SuppressedPistol`) |
+| **Hatem** | `src/GuardAI/` | `Guard`, FSM (`PatrolState`, `SuspiciousState`, `AlertChaseState`), `IGuardPathState`, `GuardSensorHelper`, `AStarPathfinder` & `GridGraph`, `GuardRenderer`, `GuardPathGizmo3DRenderer`, upcoming `SecurityCamera` & Detection Meter |
+| **Ali** | `src/WorldLighting/` | JSON `MapLoader`, `CollisionHelper`, `VisionRaycaster`, `LaserTripwire`, 3D renderers (`Architecture3DRenderer`, `Furniture3DRenderer`, `BankDecorRenderer`, `LaserTripwire3DRenderer`, `VisionCone3DRenderer`), upcoming lighting/glass hazards |
 
 ---
 
 ## 🚀 Quick Start (Build, Run & Test)
 
 ```bash
-# 1. Build the solution
+# 1. Build the solution (0 warnings, 0 errors)
 dotnet build ShadowHeist.sln
 
-# 2. Run the game
+# 2. Run the 3D game
 dotnet run --project src/ShadowHeist.csproj
 
-# 3. Run automated xUnit tests
+# 3. Run all 97 headless xUnit tests
 dotnet test ShadowHeist.sln
 ```
 
@@ -53,7 +54,7 @@ dotnet test ShadowHeist.sln
 
 ## 🌿 Daily Git & Pull Request Routine
 
-**Direct pushes to `main` are disabled.** Before starting any ticket, run these 5 commands:
+**Direct pushes to `main` are disabled.** Before starting any ticket, run:
 
 ```bash
 # 1. Switch to main & pull latest merged team code
@@ -61,17 +62,17 @@ git checkout main
 git pull origin main
 
 # 2. Create a fresh branch for ONE ticket (<type>/<owner>-<feature>)
-git checkout -b feat/mahmoud-player-stances
+git checkout -b feat/mahmoud-inventory-linq
 
 # 3. Verify build & tests pass locally
 dotnet build && dotnet test
 
 # 4. Stage & commit with a Conventional Commit message
 git add .
-git commit -m "feat(player): implement SneakStance and SprintStance"
+git commit -m "feat(player): implement PlayerInventory with LINQ weight calculation"
 
 # 5. Push branch & open a Pull Request on GitHub
-git push -u origin feat/mahmoud-player-stances
+git push -u origin feat/mahmoud-inventory-linq
 ```
 
 ### Mandatory Peer Review Matrix (2 Approvals Required per PR)
