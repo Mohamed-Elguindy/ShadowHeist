@@ -8,7 +8,7 @@ using ShadowHeist.WorldLighting.Rendering;
 namespace ShadowHeist.GuardAI.Rendering;
 
 /// <summary>
-/// Renders articulated 3D guard rigs, wall-clipped 3D vision cones, flashlights, and overhead awareness badges.
+/// Renders articulated 3D guard rigs, patrol/A* gizmos, wall-clipped 3D vision cones, flashlights, and awareness badges.
 /// </summary>
 public sealed class GuardRenderer : IDisposable
 {
@@ -16,6 +16,7 @@ public sealed class GuardRenderer : IDisposable
     private const string GuardSkinPath = "assets/models/characters/skin_guard.png";
 
     private readonly CharacterPoseAnimator _poseAnimator = new();
+    private readonly GuardPathGizmo3DRenderer _pathGizmoRenderer = new();
     private CharacterRig? _guardRig;
 
     public void Load(ToonModelLibrary models)
@@ -29,13 +30,16 @@ public sealed class GuardRenderer : IDisposable
         _guardRig = models.LoadCharacterRig(CharacterAssetDir, GuardSkinPath, Viewport3DConfig.CharacterUnitScale);
     }
 
+    public void RecordNoisePulse(Vector2 origin, float radius) =>
+        _pathGizmoRenderer.RecordNoisePulse(origin, radius);
+
     public void Update(float deltaTime, IReadOnlyList<Guard> guards, ToonModelLibrary models)
     {
-        for (int i = 0; i < guards.Count; i++)
+        for (int guardIndex = 0; guardIndex < guards.Count; guardIndex++)
         {
-            Guard guard = guards[i];
+            Guard guard = guards[guardIndex];
             _poseAnimator.UpdateActor(guard.Id, guard.Position, deltaTime);
-            models.SetGuardFlashlight(i, guard.Position, guard.RotationDegrees);
+            models.SetGuardFlashlight(guardIndex, guard.Position, guard.RotationDegrees);
         }
 
         models.ClearUnusedGuardFlashlights(guards.Count);
@@ -43,6 +47,8 @@ public sealed class GuardRenderer : IDisposable
 
     public void Draw(IReadOnlyList<Guard> guards, IReadOnlyList<RectangleBounds> visionBlockers, GameContext context)
     {
+        _pathGizmoRenderer.Draw(guards, context.ElapsedSeconds);
+
         foreach (Guard guard in guards)
         {
             DrawGuardVisionCone(guard, visionBlockers, context.IsAlarmTriggered, context.ElapsedSeconds);

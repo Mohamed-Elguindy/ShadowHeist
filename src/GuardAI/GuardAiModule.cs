@@ -1,4 +1,5 @@
 using System.Numerics;
+using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Events;
 using ShadowHeist.Core.Interfaces;
@@ -9,11 +10,27 @@ namespace ShadowHeist.GuardAI;
 
 /// <summary>
 /// Owned by: Hatem (ShadowHeist.GuardAI)
-/// Spawns guards from loaded map data, relays noise events, updates guard FSM states, and renders 3D guards and cones.
+/// Spawns guards, handles acoustic/alarm investigation via A* pathfinding, updates guard FSMs, and renders 3D guards.
 /// </summary>
 public sealed class GuardAiModule : IGameSystem, IDisposable
 {
-    private const float HearingBonusRange = 55f;
+    private const float AlphaGuardSpeed = 75f;
+    private const float BetaGuardSpeed = 65f;
+    private const float DebugClickNoiseRadius = 400f;
+
+    private static readonly Vector2[] PatrolRouteAlpha =
+    {
+        new(320f, 200f),
+        new(860f, 200f),
+        new(860f, 380f),
+        new(320f, 380f)
+    };
+
+    private static readonly Vector2[] PatrolRouteBeta =
+    {
+        new(980f, 160f),
+        new(980f, 540f)
+    };
 
     private readonly List<Guard> _guards = new();
     private readonly WorldLightingModule? _world;
@@ -28,12 +45,15 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
 
     public void Init(GameContext context)
     {
+        ArgumentNullException.ThrowIfNull(context);
+
         _guards.Clear();
         _renderer ??= new GuardRenderer();
         _renderer.Load(context.Models);
-        SpawnGuards();
-        context.EventBus.Subscribe<NoiseEmittedEvent>(OnNoiseEmitted);
-        context.EventBus.Subscribe<AlarmTriggeredEvent>(OnAlarmTriggered);
+        SpawnInitialGuards();
+
+        context.EventBus.Subscribe<NoiseEmittedEvent>(evt => HandleNoiseEmitted(evt, context.Walls));
+        context.EventBus.Subscribe<AlarmTriggeredEvent>(evt => HandleAlarmTriggered(evt, context.Walls));
     }
 
     public void Update(float deltaTime, GameContext context)
@@ -42,6 +62,8 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
         {
             return;
         }
+
+        PublishDebugClickNoiseIfTriggered(context);
 
         foreach (Guard guard in _guards)
         {
@@ -64,47 +86,57 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
         _guards.Clear();
     }
 
-    private void OnNoiseEmitted(NoiseEmittedEvent evt)
+    private static void PublishDebugClickNoiseIfTriggered(GameContext context)
     {
-        float maxDist = evt.Radius + HearingBonusRange;
+        if (!Raylib.IsWindowReady() || !Raylib.IsMouseButtonPressed(MouseButton.Left))
+        {
+            return;
+        }
+
+        Vector2 clickWorldPosition = context.AimWorldOverride
+            ?? context.Camera.ScreenToGroundPoint(Raylib.GetMousePosition())
+            ?? Raylib.GetMousePosition();
+
+        context.EventBus.Publish(new NoiseEmittedEvent(clickWorldPosition, DebugClickNoiseRadius, "DebugClickNoise"));
+    }
+
+    private void HandleNoiseEmitted(NoiseEmittedEvent noiseEvent, IReadOnlyList<RectangleBounds> walls)
+    {
+        _renderer?.RecordNoisePulse(noiseEvent.Origin, noiseEvent.Radius);
+
         foreach (Guard guard in _guards)
         {
-            if (Vector2.Distance(guard.Position, evt.Origin) <= maxDist)
-            {
-                guard.NotifyNoise(evt.Origin);
-            }
+            guard.OnNoiseEmitted(noiseEvent, walls);
         }
     }
 
-    private void OnAlarmTriggered(AlarmTriggeredEvent evt)
+    private void HandleAlarmTriggered(AlarmTriggeredEvent alarmEvent, IReadOnlyList<RectangleBounds> walls)
     {
-        if (!evt.Reason.StartsWith("LaserTripwire:", StringComparison.Ordinal))
+        if (!alarmEvent.Reason.StartsWith("LaserTripwire:", StringComparison.Ordinal))
         {
             return;
         }
 
         foreach (Guard guard in _guards)
         {
-            guard.NotifyNoise(evt.TriggerPosition);
+            guard.NotifyNoise(alarmEvent.TriggerPosition, walls);
         }
     }
 
-    private void SpawnGuards()
+    private void SpawnInitialGuards()
     {
         IReadOnlyList<MapGuardDto>? mapGuards = _world?.CurrentMap?.Guards;
         if (mapGuards is { Count: > 0 })
         {
-            foreach (MapGuardDto dto in mapGuards)
+            foreach (MapGuardDto guardDto in mapGuards)
             {
-                _guards.Add(new Guard(dto.Name, dto.Waypoints[0], dto.Waypoints, dto.MoveSpeed));
+                _guards.Add(new Guard(guardDto.Name, guardDto.Waypoints[0], guardDto.Waypoints, guardDto.MoveSpeed));
             }
 
             return;
         }
 
-        var vaultRoute = new List<Vector2> { new(410f, 228f), new(860f, 228f), new(860f, 348f), new(410f, 348f) };
-        var lobbyRoute = new List<Vector2> { new(1060f, 104f), new(1060f, 480f), new(420f, 480f), new(1060f, 480f) };
-        _guards.Add(new Guard("guard_vault_patrol_alpha", vaultRoute[0], vaultRoute, moveSpeed: 75f));
-        _guards.Add(new Guard("guard_corridor_patrol_beta", lobbyRoute[0], lobbyRoute, moveSpeed: 65f));
+        _guards.Add(new Guard("guard_vault_patrol_alpha", PatrolRouteAlpha[0], PatrolRouteAlpha, moveSpeed: AlphaGuardSpeed));
+        _guards.Add(new Guard("guard_corridor_patrol_beta", PatrolRouteBeta[0], PatrolRouteBeta, moveSpeed: BetaGuardSpeed));
     }
 }
