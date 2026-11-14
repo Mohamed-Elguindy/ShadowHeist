@@ -10,7 +10,13 @@ public sealed record LevelMapData(
     int GridHeight,
     Vector2 PlayerSpawn,
     RectangleBounds GetawayZone,
-    IReadOnlyList<RectangleBounds> Walls);
+    IReadOnlyList<RectangleBounds> Walls,
+    IReadOnlyList<LaserSpawnData> Lasers);
+
+public sealed record LaserSpawnData(
+    string Id,
+    Vector2 Origin,
+    Vector2 Direction);
 
 public sealed class LevelMapDto
 {
@@ -21,4 +27,13 @@ public sealed class LevelMapDto
     public Vector2? PlayerSpawn { get; set; }
     public RectangleBounds? GetawayZone { get; set; }
     public List<RectangleBounds>? Walls { get; set; }
+    public List<LaserSpawnDto>? Lasers { get; set; }
+}
+
+public sealed class LaserSpawnDto
+{
+    public string? Id { get; set; }
+    public float X { get; set; }
+    public float Y { get; set; }
+    public Vector2? Direction { get; set; }
 }
