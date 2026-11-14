@@ -1,16 +1,15 @@
-using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Rendering3D;
 using ShadowHeist.GuardAI;
 using ShadowHeist.HeistWorld;
 using ShadowHeist.PlayerSystem;
-using ShadowHeist.Viewport3D;
 using ShadowHeist.WorldLighting;
 
 namespace ShadowHeist;
 
 /// <summary>
-/// Application entry point wiring all game modules.
+/// Application entry point wiring the 4 3D game modules and running the main Raylib 3D loop.
 /// </summary>
 public static class Program
 {
@@ -21,85 +20,80 @@ public static class Program
     public static void Main()
     {
         Raylib.SetConfigFlags(ConfigFlags.Msaa4xHint);
-        Raylib.InitWindow(ScreenWidth, ScreenHeight, "ShadowHeist — Raylib C#");
+        Raylib.InitWindow(ScreenWidth, ScreenHeight, "ShadowHeist 3D — Raylib C#");
         Raylib.SetTargetFPS(TargetFps);
 
+        try
+        {
+            RunGameLoop();
+        }
+        finally
+        {
+            Raylib.CloseWindow();
+        }
+    }
+
+    private static void RunGameLoop()
+    {
         using var context = new GameContext();
-        (WorldLightingModule worldModule, Viewport3DModule viewportModule) = RegisterSystems(context);
+        RegisterSystems(context);
         context.InitializeAll();
+        context.Camera.Reset(context.PlayerPosition);
 
         while (!Raylib.WindowShouldClose())
         {
-            if (Raylib.IsKeyPressed(KeyboardKey.R))
-            {
-                context.RestartMission();
-            }
-
-            Camera2D camera2D = BuildCamera2D(worldModule);
-            UpdateAimTarget(context, viewportModule, camera2D);
-            context.UpdateAll(Raylib.GetFrameTime());
-            DrawFrame(context, camera2D);
+            float deltaTime = Raylib.GetFrameTime();
+            HandleGlobalHotkeys(context);
+            UpdateCameraAndLighting(context, deltaTime);
+            context.UpdateAll(deltaTime);
+            DrawFrame(context);
         }
-
-        Raylib.CloseWindow();
     }
 
-    private static (WorldLightingModule World, Viewport3DModule Viewport) RegisterSystems(GameContext context)
+    private static void RegisterSystems(GameContext context)
     {
         var worldModule = new WorldLightingModule();
         var guardModule = new GuardAiModule(worldModule);
         var heistModule = new HeistWorldModule(worldModule);
-        var viewportModule = new Viewport3DModule(guardModule, worldModule, heistModule);
 
         context.RegisterSystem(worldModule);
         context.RegisterSystem(new PlayerSystemModule());
         context.RegisterSystem(guardModule);
         context.RegisterSystem(heistModule);
-        context.RegisterSystem(viewportModule);
-
-        return (worldModule, viewportModule);
     }
 
-    private static void UpdateAimTarget(GameContext context, Viewport3DModule viewportModule, Camera2D camera2D)
+    private static void HandleGlobalHotkeys(GameContext context)
     {
-        if (context.Is3DRenderingActive)
+        if (Raylib.IsKeyPressed(KeyboardKey.R))
         {
-            viewportModule.SyncAimOverride(context);
-            return;
+            context.RestartMission();
         }
 
-        context.AimWorldOverride = Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), camera2D);
+        if (Raylib.IsKeyPressed(KeyboardKey.F6))
+        {
+            context.Camera.ToggleOverviewMode();
+        }
     }
 
-    private static void DrawFrame(GameContext context, Camera2D camera2D)
+    private static void UpdateCameraAndLighting(GameContext context, float deltaTime)
     {
+        context.Camera.ApplyZoomWheel(Raylib.GetMouseWheelMove());
+        context.Camera.Update(deltaTime, context.PlayerPosition);
+        context.AimWorldOverride = context.Camera.ScreenToGroundPoint(Raylib.GetMousePosition());
+        context.Models.UpdateFrameLighting(context.Camera.Camera.Position, context);
+    }
+
+    private static void DrawFrame(GameContext context)
+    {
+        Color sky = context.IsAlarmTriggered ? Viewport3DConfig.AlarmSkyColor : Viewport3DConfig.SkyColor;
         Raylib.BeginDrawing();
-        Raylib.ClearBackground(new Color(9, 13, 22, 255));
+        Raylib.ClearBackground(sky);
 
-        if (context.Is3DRenderingActive)
-        {
-            context.DrawAll();
-        }
-        else
-        {
-            Raylib.BeginMode2D(camera2D);
-            context.DrawAll();
-            Raylib.EndMode2D();
-        }
+        Raylib.BeginMode3D(context.Camera.Camera);
+        context.DrawAll();
+        Raylib.EndMode3D();
 
+        context.DrawHudAll();
         Raylib.EndDrawing();
-    }
-
-    private static Camera2D BuildCamera2D(WorldLightingModule worldModule)
-    {
-        int mapHeight = (worldModule.CurrentMap?.GridHeight ?? 12) * (worldModule.CurrentMap?.TileSize ?? 64);
-        int mapWidth = (worldModule.CurrentMap?.GridWidth ?? 20) * (worldModule.CurrentMap?.TileSize ?? 64);
-        float zoom = MathF.Min((float)ScreenWidth / mapWidth, (float)ScreenHeight / mapHeight);
-
-        return new Camera2D
-        {
-            Zoom = zoom,
-            Offset = new Vector2((ScreenWidth - mapWidth * zoom) * 0.5f, (ScreenHeight - mapHeight * zoom) * 0.5f)
-        };
     }
 }

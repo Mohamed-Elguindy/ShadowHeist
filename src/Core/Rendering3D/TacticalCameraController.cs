@@ -1,7 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
 
-namespace ShadowHeist.Viewport3D;
+namespace ShadowHeist.Core.Rendering3D;
 
 /// <summary>
 /// Manages isometric 3D camera smoothing, follow/overview framing, zoom clamping, and mouse-to-ground raycasting.

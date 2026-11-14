@@ -1,7 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
 
-namespace ShadowHeist.Viewport3D;
+namespace ShadowHeist.Core.Rendering3D;
 
 /// <summary>
 /// Centralized tuning constants, camera settings, and palette colors for the 3D tactical viewport.
@@ -41,6 +41,7 @@ public static class Viewport3DConfig
     public static readonly Vector3 OverviewCameraOffset = new(-105f, 500f, 340f);
     public static readonly Vector2 VaultZoneMin = new(320f, 160f);
     public static readonly Vector2 VaultZoneMax = new(960f, 416f);
+    public static readonly Vector2[] WarmLampPositions = [new(84f, 344f), new(912f, 646f)];
 
     public static readonly Color SkyColor = new(12, 16, 26, 255);
     public static readonly Color AlarmSkyColor = new(34, 12, 18, 255);

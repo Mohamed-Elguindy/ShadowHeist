@@ -9,7 +9,7 @@ namespace ShadowHeist.GuardAI;
 
 /// <summary>
 /// Owned by: Hatem (ShadowHeist.GuardAI)
-/// Spawns guards from loaded map data, relays noise events, and updates guard FSM states.
+/// Spawns guards from loaded map data, relays noise events, updates guard FSM states, and renders 3D guards and cones.
 /// </summary>
 public sealed class GuardAiModule : IGameSystem, IDisposable
 {
@@ -30,6 +30,7 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
     {
         _guards.Clear();
         _renderer ??= new GuardRenderer();
+        _renderer.Load(context.Models);
         SpawnGuards();
         context.EventBus.Subscribe<NoiseEmittedEvent>(OnNoiseEmitted);
         context.EventBus.Subscribe<AlarmTriggeredEvent>(OnAlarmTriggered);
@@ -37,20 +38,23 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
 
     public void Update(float deltaTime, GameContext context)
     {
-        if (context.Outcome != HeistOutcome.Playing) return;
+        if (context.Outcome != HeistOutcome.Playing)
+        {
+            return;
+        }
 
-        foreach (var guard in _guards)
+        foreach (Guard guard in _guards)
         {
             guard.Update(deltaTime, context);
         }
+
+        _renderer?.Update(deltaTime, _guards, context.Models);
     }
 
     public void Draw(GameContext context)
     {
-        if (!context.Is3DRenderingActive)
-        {
-            _renderer?.Draw(_guards);
-        }
+        IReadOnlyList<RectangleBounds> visionBlockers = _world?.GetVisionBlockingWalls(context) ?? context.Walls;
+        _renderer?.Draw(_guards, visionBlockers, context);
     }
 
     public void Dispose()

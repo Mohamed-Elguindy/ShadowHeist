@@ -1,3 +1,4 @@
+using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Interfaces;
@@ -5,9 +6,20 @@ using ShadowHeist.HeistWorld.Interactables;
 
 namespace ShadowHeist.HeistWorld.UI;
 
+/// <summary>
+/// Renders tactical 3D screen-space HUD banners, sound meter, 3D-projected hold rings & prompts, and outcome overlays.
+/// </summary>
 public sealed class HudRenderer
 {
     private const int CashFontSize = 20;
+    private const int HintFontSize = 18;
+    private const int HudMargin = 20;
+    private const int VignetteBandSize = 64;
+    private const float HoldRingHeightOverGround = 42f;
+    private const float PromptHeightOverGround = 88f;
+
+    private static readonly Color HintTextColor = new(110, 225, 255, 255);
+    private static readonly Color VignetteEdge = new(4, 6, 12, 130);
 
     private readonly SoundMeter _soundMeter;
 
@@ -18,9 +30,11 @@ public sealed class HudRenderer
 
     public void DrawHudOverlay(GameContext context)
     {
-        DrawStolenCashBanner(context.StolenCash);
+        DrawVignette();
+        SoundMeterBarRenderer.Draw(_soundMeter.Level);
         DrawAlarmBanner(context.IsAlarmTriggered, context.Outcome);
-        DrawSoundMeter();
+        DrawStolenCashBanner(context.StolenCash);
+        DrawHintBar(context.Camera.IsOverviewMode);
         DrawHoldProgressRing(context);
         DrawContextualPrompt(context);
         DrawOutcomeOverlay(context.Outcome);
@@ -83,28 +97,59 @@ public sealed class HudRenderer
         Raylib.DrawText(subtitle, (screenWidth - subtitleWidth) / 2, panelY + 68, 20, Color.RayWhite);
     }
 
-    private void DrawSoundMeter() =>
-        SoundMeterBarRenderer.Draw(_soundMeter.Level);
+    private static void DrawVignette()
+    {
+        int width = Raylib.GetScreenWidth();
+        int height = Raylib.GetScreenHeight();
+        Color transparent = new(0, 0, 0, 0);
+
+        Raylib.DrawRectangleGradientV(0, 0, width, VignetteBandSize, VignetteEdge, transparent);
+        Raylib.DrawRectangleGradientV(0, height - VignetteBandSize, width, VignetteBandSize, transparent, VignetteEdge);
+        Raylib.DrawRectangleGradientH(0, 0, VignetteBandSize, height, VignetteEdge, transparent);
+        Raylib.DrawRectangleGradientH(width - VignetteBandSize, 0, VignetteBandSize, height, transparent, VignetteEdge);
+    }
+
+    private static void DrawHintBar(bool isOverviewCamera)
+    {
+        string cameraLabel = isOverviewCamera ? "FOLLOW" : "OVERVIEW";
+        string text = $"[F6] {cameraLabel}   |   [SCROLL] ZOOM   |   [R] RESTART";
+        Raylib.DrawText(text, HudMargin, Raylib.GetScreenHeight() - 30, HintFontSize, HintTextColor);
+    }
 
     private static void DrawHoldProgressRing(GameContext context)
     {
         IHoldInteractable? activeHold = InteractableQuery.FindHoldInProgress(context);
-        if (activeHold == null)
-        {
-            return;
-        }
+        if (activeHold is null) return;
 
-        HoldProgressRingRenderer.Draw(activeHold.Position, activeHold.HoldProgress);
+        var worldPos = new Vector3(activeHold.Position.X, HoldRingHeightOverGround, activeHold.Position.Y);
+        if (TryProjectInFrontOfCamera(worldPos, context.Camera.Camera, out Vector2 screenPosition))
+        {
+            HoldProgressRingRenderer.Draw(screenPosition, activeHold.HoldProgress);
+        }
     }
 
     private static void DrawContextualPrompt(GameContext context)
     {
         IInteractable? activeItem = InteractableQuery.FindInPlayerRange(context);
-        if (activeItem == null || string.IsNullOrWhiteSpace(activeItem.PromptText))
+        if (activeItem is null || string.IsNullOrWhiteSpace(activeItem.PromptText)) return;
+
+        var worldPos = new Vector3(activeItem.Position.X, PromptHeightOverGround, activeItem.Position.Y);
+        if (TryProjectInFrontOfCamera(worldPos, context.Camera.Camera, out Vector2 screenPosition))
         {
-            return;
+            HudPromptRenderer.DrawPromptBox(activeItem.PromptText, screenPosition);
+        }
+    }
+
+    private static bool TryProjectInFrontOfCamera(Vector3 worldPos, Camera3D camera, out Vector2 screenPos)
+    {
+        Vector3 forward = camera.Target - camera.Position;
+        if (Vector3.Dot(worldPos - camera.Position, forward) <= 0f)
+        {
+            screenPos = Vector2.Zero;
+            return false;
         }
 
-        HudPromptRenderer.DrawPromptBox(activeItem.PromptText, activeItem.Position, yOffset: -50f);
+        screenPos = Raylib.GetWorldToScreen(worldPos, camera);
+        return true;
     }
 }

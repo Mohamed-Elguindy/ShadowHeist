@@ -1,12 +1,13 @@
 using System.Numerics;
 using Raylib_cs;
+using ShadowHeist.Core.Rendering3D;
 
-namespace ShadowHeist.Viewport3D;
+namespace ShadowHeist.WorldLighting.Rendering;
 
 /// <summary>
 /// Renders declarative 3D furniture models and their ground shadows across the bank lobby.
 /// </summary>
-public sealed class Furniture3DRenderer : ISceneRenderPass
+public sealed class Furniture3DRenderer
 {
     private const string FurnitureFolder = "assets/models/furniture";
     private const string RugAssetKey = "rugRectangle";
@@ -34,7 +35,7 @@ public sealed class Furniture3DRenderer : ISceneRenderPass
         }
     }
 
-    public void Draw(in Scene3DRenderFrame frame)
+    public void Draw()
     {
         if (_library is null)
         {

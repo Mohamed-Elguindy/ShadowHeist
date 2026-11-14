@@ -1,10 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
-using ShadowHeist.Core;
-using ShadowHeist.GuardAI;
-using ShadowHeist.WorldLighting;
 
-namespace ShadowHeist.Viewport3D;
+namespace ShadowHeist.Core.Rendering3D;
 
 /// <summary>Loaded single-mesh prop plus uniform scale, vertical grounding offset, and XZ center offset.</summary>
 public readonly record struct LoadedModel(
@@ -30,20 +27,3 @@ public readonly record struct FurnitureSpec(
     float RotationDegrees,
     float TargetMaxExtent,
     bool EmitsWarmGlow = false);
-
-/// <summary>Immutable per-frame render state passed cleanly to every 3D scene render pass.</summary>
-public readonly record struct Scene3DRenderFrame(
-    GameContext Context,
-    IReadOnlyList<RectangleBounds> ArchitecturalWalls,
-    IReadOnlyList<RectangleBounds> VisionBlockers,
-    IReadOnlyList<Guard> Guards,
-    IReadOnlyList<LaserTripwire> Lasers,
-    RectangleBounds? GetawayZone,
-    float PlayerRotationDegrees,
-    float ElapsedSeconds);
-
-/// <summary>Contract for each modular 3D rendering layer in Scene3DRenderer (OCP / SRP).</summary>
-public interface ISceneRenderPass
-{
-    void Draw(in Scene3DRenderFrame frame);
-}

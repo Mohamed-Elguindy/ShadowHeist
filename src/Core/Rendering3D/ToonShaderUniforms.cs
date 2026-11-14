@@ -1,9 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
-using ShadowHeist.Core;
-using ShadowHeist.GuardAI;
 
-namespace ShadowHeist.Viewport3D;
+namespace ShadowHeist.Core.Rendering3D;
 
 /// <summary>
 /// Compiles cel-shading & outline GLSL programs, caches uniform locations, and pushes per-frame lighting state.
@@ -23,6 +21,7 @@ public sealed class ToonShaderUniforms : IDisposable
     private static readonly Vector3 AlarmAmbient = new(0.46f, 0.16f, 0.20f);
     private static readonly Vector3 AlarmRim = new(0.95f, 0.22f, 0.24f);
     private static readonly Vector4 InkOutlineColor = new(0.04f, 0.05f, 0.09f, 1f);
+    private static readonly Vector3 OffstageLightPosition = new(-9999f, 0f, -9999f);
 
     private readonly int[] _guardPosLocations = { -1, -1 };
     private readonly int[] _guardDirLocations = { -1, -1 };
@@ -47,14 +46,17 @@ public sealed class ToonShaderUniforms : IDisposable
         LoadOutlineShader();
     }
 
-    public void UpdateFrameUniforms(Vector3 cameraPosition, GameContext context, IReadOnlyList<Guard> guards, float timeSeconds)
+    public void UpdateFrameLighting(Vector3 cameraPosition, GameContext context)
     {
         if (!IsToonLoaded)
         {
             return;
         }
 
-        float alarmPulse = context.IsAlarmTriggered ? 0.5f + 0.5f * MathF.Sin(timeSeconds * 8f) : 0f;
+        float alarmPulse = context.IsAlarmTriggered
+            ? 0.5f + 0.5f * MathF.Sin(context.ElapsedSeconds * 8f)
+            : 0f;
+
         SetVec3(_viewPosLocation, cameraPosition);
         SetVec3(_ambientLocation, Vector3.Lerp(DefaultAmbient, AlarmAmbient, alarmPulse));
         SetVec3(_rimLocation, Vector3.Lerp(DefaultRim, AlarmRim, alarmPulse));
@@ -64,8 +66,32 @@ public sealed class ToonShaderUniforms : IDisposable
         {
             Raylib.SetShaderValue(_toonShader, _alarmLocation, context.IsAlarmTriggered ? 1f : 0f, ShaderUniformDataType.Float);
         }
+    }
 
-        PushGuardFlashlightUniforms(guards);
+    public void SetGuardFlashlight(int slotIndex, Vector2 position, float rotationDegrees)
+    {
+        if (!IsToonLoaded || slotIndex < 0 || slotIndex >= MaxShaderGuards)
+        {
+            return;
+        }
+
+        float radians = rotationDegrees * HeistConstants.DegToRad;
+        SetVec3(_guardPosLocations[slotIndex], new Vector3(position.X, 36f, position.Y));
+        SetVec3(_guardDirLocations[slotIndex], new Vector3(MathF.Cos(radians), 0f, MathF.Sin(radians)));
+    }
+
+    public void ClearUnusedGuardFlashlights(int activeGuardCount)
+    {
+        if (!IsToonLoaded)
+        {
+            return;
+        }
+
+        for (int i = Math.Max(0, activeGuardCount); i < MaxShaderGuards; i++)
+        {
+            SetVec3(_guardPosLocations[i], OffstageLightPosition);
+            SetVec3(_guardDirLocations[i], Vector3.UnitX);
+        }
     }
 
     public void SetOutlineWidth(float width)
@@ -151,29 +177,11 @@ public sealed class ToonShaderUniforms : IDisposable
         SetVec3(Raylib.GetShaderLocation(_toonShader, "lightDirection"), DefaultLightDirection);
         SetVec3(Raylib.GetShaderLocation(_toonShader, "lightColor"), DefaultLightColor);
 
-        FurnitureSpec[] warmLamps = BankFurnitureLayout.LobbyFurniture
-            .Where(spec => spec.EmitsWarmGlow)
-            .Take(MaxShaderGuards)
-            .ToArray();
-
-        for (int i = 0; i < warmLamps.Length; i++)
+        for (int i = 0; i < Math.Min(MaxShaderGuards, Viewport3DConfig.WarmLampPositions.Length); i++)
         {
+            Vector2 lampPos = Viewport3DConfig.WarmLampPositions[i];
             int loc = Raylib.GetShaderLocation(_toonShader, $"lampPos{i}");
-            SetVec3(loc, new Vector3(warmLamps[i].Position.X, 64f, warmLamps[i].Position.Y));
-        }
-    }
-
-    private void PushGuardFlashlightUniforms(IReadOnlyList<Guard> guards)
-    {
-        for (int i = 0; i < MaxShaderGuards; i++)
-        {
-            Vector3 position = i < guards.Count
-                ? new Vector3(guards[i].Position.X, 36f, guards[i].Position.Y)
-                : new Vector3(-9999f, 0f, -9999f);
-
-            float radians = i < guards.Count ? guards[i].RotationDegrees * HeistConstants.DegToRad : 0f;
-            SetVec3(_guardPosLocations[i], position);
-            SetVec3(_guardDirLocations[i], new Vector3(MathF.Cos(radians), 0f, MathF.Sin(radians)));
+            SetVec3(loc, new Vector3(lampPos.X, 64f, lampPos.Y));
         }
     }
 

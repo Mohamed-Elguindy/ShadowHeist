@@ -1,6 +1,7 @@
 using System.Numerics;
+using ShadowHeist.Core.Rendering3D;
 
-namespace ShadowHeist.Viewport3D;
+namespace ShadowHeist.WorldLighting.Rendering;
 
 /// <summary>
 /// Declarative 3D furniture placement for Level 1 City Bank.

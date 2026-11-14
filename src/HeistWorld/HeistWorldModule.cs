@@ -8,9 +8,14 @@ using ShadowHeist.WorldLighting;
 
 namespace ShadowHeist.HeistWorld;
 
+/// <summary>
+/// Owned by: Guindy (ShadowHeist.HeistWorld)
+/// Builds mission interactables, handles hold interactions and escape win conditions, and draws 3D props and HUD overlays.
+/// </summary>
 public sealed class HeistWorldModule : IGameSystem, IDisposable
 {
     private readonly InteractionController _interaction = new();
+    private readonly LootSparkRenderer _lootSparks = new();
     private readonly WorldLightingModule? _world;
     private readonly List<LootCrate> _crates = new();
     private VaultDoor _vaultDoor = null!;
@@ -19,7 +24,6 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
     private SoundMeter? _soundMeter;
     private HudRenderer? _hud;
     private RectangleBounds _getawayZone = HeistConstants.DefaultGetawayZone;
-    private bool _spritesLoaded;
 
     public float SoundMeterLevel => _soundMeter?.Level ?? 0f;
 
@@ -31,23 +35,25 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
     public void Init(GameContext context)
     {
         _interaction.Reset();
+        _lootSparks.Reset();
         _soundMeter = new SoundMeter(context.EventBus);
         _hud = new HudRenderer(_soundMeter);
 
         BuildWorldObjects(context);
-        _renderer ??= new HeistWorldRenderer(_crates, _vaultDoor, _keypad);
-        _renderer.SetTargets(_vaultDoor, _keypad);
-        if (!_spritesLoaded)
-        {
-            _renderer.LoadSprites();
-            _spritesLoaded = true;
-        }
+        _renderer ??= new HeistWorldRenderer();
+        _renderer.Reset();
+        _renderer.Load(context.Models);
     }
 
     public void Update(float deltaTime, GameContext context)
     {
         _soundMeter?.Update(deltaTime);
-        if (context.Outcome != HeistOutcome.Playing) return;
+        _renderer?.Update(deltaTime, context);
+        _lootSparks.Update(deltaTime, context);
+        if (context.Outcome != HeistOutcome.Playing)
+        {
+            return;
+        }
 
         _interaction.HandlePlayerInteraction(deltaTime, context);
 
@@ -59,17 +65,16 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
 
     public void Draw(GameContext context)
     {
-        if (context.Is3DRenderingActive) return;
-
-        _renderer?.DrawWorldObjects();
-        _hud?.DrawHudOverlay(context);
+        _renderer?.Draw(context);
+        _lootSparks.Draw();
     }
+
+    public void DrawHud(GameContext context) => _hud?.DrawHudOverlay(context);
 
     public void Dispose()
     {
         _renderer?.Dispose();
         _renderer = null;
-        _spritesLoaded = false;
     }
 
     private void BuildWorldObjects(GameContext context)

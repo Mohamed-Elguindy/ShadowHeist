@@ -1,4 +1,5 @@
 using System.Numerics;
+using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Interfaces;
 using ShadowHeist.WorldLighting.Rendering;
@@ -7,36 +8,36 @@ namespace ShadowHeist.WorldLighting;
 
 /// <summary>
 /// Owned by: Ali (ShadowHeist.WorldLighting)
-/// Loads level geometry, obstacles, and laser tripwires into GameContext and renders 2D lighting when 3D view is off.
+/// Loads level geometry, obstacles, and laser tripwires into GameContext and renders the 3D bank environment, furniture, lasers, and player FOV.
 /// </summary>
 public sealed class WorldLightingModule : IGameSystem, IDisposable
 {
     private const string Level1MapPath = "assets/maps/level1_city_bank.json";
     private const float AimDistanceEpsilonSquared = 0.001f;
 
-    private readonly MapRenderer _mapRenderer = new();
-    private readonly LightingEffectRenderer _lightingRenderer = new();
+    private readonly Architecture3DRenderer _architecture = new();
+    private readonly Furniture3DRenderer _furniture = new();
+    private readonly BankDecorRenderer _decor = new();
+    private readonly LaserTripwire3DRenderer _laserRenderer = new();
     private readonly List<LaserTripwire> _lasers = new();
     private IReadOnlyList<Vector2> _visionConeVertices = Array.Empty<Vector2>();
     private LevelMapData? _currentMap;
     private float _currentAimDegrees;
-    private bool _texturesLoaded;
+    private bool _modelsLoaded;
 
     public LevelMapData? CurrentMap => _currentMap;
     public IReadOnlyList<LaserTripwire> Lasers => _lasers;
     public IReadOnlyList<Vector2> PlayerVisionCone => _visionConeVertices;
 
+    public IReadOnlyList<RectangleBounds> GetVisionBlockingWalls(GameContext context) =>
+        BuildWallsExcludingWaistHighObstacles(context);
+
     public void Init(GameContext context)
     {
         _currentMap = MapLoader.LoadFromFile(Level1MapPath, context);
-        if (!_texturesLoaded)
-        {
-            _mapRenderer.LoadTextures();
-            _lightingRenderer.LoadTextures();
-            _texturesLoaded = true;
-        }
-
+        EnsureModelsLoaded(context);
         SpawnInitialLasers();
+
         _currentAimDegrees = context.PlayerRotationDegrees;
         _visionConeVertices = VisionRaycaster.ComputeVisionCone(
             context.PlayerPosition,
@@ -66,18 +67,28 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
 
     public void Draw(GameContext context)
     {
-        if (!context.Is3DRenderingActive)
-        {
-            _mapRenderer.Draw(_currentMap, context.Walls);
-            _lightingRenderer.Draw(_visionConeVertices, _lasers);
-        }
+        _architecture.Draw(_currentMap?.Walls ?? context.Walls, _currentMap?.GetawayZone, context.ElapsedSeconds);
+        _furniture.Draw();
+        _decor.Draw(context.ElapsedSeconds);
+        VisionCone3DRenderer.DrawWarmLampGlows();
+        VisionCone3DRenderer.DrawPlayerVisionCone(_visionConeVertices);
+        _laserRenderer.Draw(_lasers, context.ElapsedSeconds);
     }
 
-    public void Dispose()
+    public void Dispose() => _modelsLoaded = false;
+
+    private void EnsureModelsLoaded(GameContext context)
     {
-        _mapRenderer.Dispose();
-        _lightingRenderer.Dispose();
-        _texturesLoaded = false;
+        if (_modelsLoaded || !Raylib.IsWindowReady())
+        {
+            return;
+        }
+
+        context.Models.EnsureLoaded();
+        _architecture.Load(context.Models);
+        _furniture.Load(context.Models);
+        _decor.Load(context.Models);
+        _modelsLoaded = true;
     }
 
     private void SpawnInitialLasers()

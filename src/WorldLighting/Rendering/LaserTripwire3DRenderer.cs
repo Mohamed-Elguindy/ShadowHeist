@@ -1,13 +1,13 @@
 using System.Numerics;
 using Raylib_cs;
-using ShadowHeist.WorldLighting;
+using ShadowHeist.Core.Rendering3D;
 
-namespace ShadowHeist.Viewport3D;
+namespace ShadowHeist.WorldLighting.Rendering;
 
 /// <summary>
 /// Renders 3D security laser tripwire emitter pylons, dual volumetric laser beams, floor warning traces, and wall impact seals.
 /// </summary>
-public sealed class LaserTripwire3DRenderer : ISceneRenderPass
+public sealed class LaserTripwire3DRenderer
 {
     private const float PylonHeight = 50f;
     private const float PylonWidth = 10f;
@@ -24,18 +24,18 @@ public sealed class LaserTripwire3DRenderer : ISceneRenderPass
     private static readonly Color InactiveLedColor = new(74, 222, 128, 230);
     private static readonly Color FloorTraceColor = new(244, 63, 94, 130);
 
-    public void Draw(in Scene3DRenderFrame frame)
+    public void Draw(IReadOnlyList<LaserTripwire> lasers, float elapsedSeconds)
     {
-        foreach (LaserTripwire laser in frame.Lasers)
+        foreach (LaserTripwire laser in lasers)
         {
-            DrawEmitterPylon(laser, frame.ElapsedSeconds);
+            DrawEmitterPylon(laser, elapsedSeconds);
 
             if (!laser.IsActive || Vector2.DistanceSquared(laser.Origin, laser.BeamEnd) < BeamLengthEpsilonSq)
             {
                 continue;
             }
 
-            DrawDualLaserBeams(laser.Origin, laser.BeamEnd, laser.HasTriggeredAlarm, frame.ElapsedSeconds);
+            DrawDualLaserBeams(laser.Origin, laser.BeamEnd, laser.HasTriggeredAlarm, elapsedSeconds);
         }
     }
 

@@ -8,4 +8,5 @@ public interface IGameSystem
     void Init(GameContext context);
     void Update(float deltaTime, GameContext context);
     void Draw(GameContext context);
+    void DrawHud(GameContext context) { }
 }

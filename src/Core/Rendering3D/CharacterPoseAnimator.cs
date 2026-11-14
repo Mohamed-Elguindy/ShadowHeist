@@ -1,8 +1,6 @@
 using System.Numerics;
-using ShadowHeist.Core;
-using ShadowHeist.GuardAI;
 
-namespace ShadowHeist.Viewport3D;
+namespace ShadowHeist.Core.Rendering3D;
 
 /// <summary>
 /// Computed per-frame articulation angles and vertical hip placement for an actor rig.
@@ -26,35 +24,7 @@ public sealed class CharacterPoseAnimator
 
     private readonly Dictionary<string, ActorAnimState> _animStates = new();
 
-    public void Update(float deltaTime, GameContext context, IReadOnlyList<Guard> guards)
-    {
-        UpdateActorState("player", context.PlayerPosition, deltaTime);
-        foreach (Guard guard in guards)
-        {
-            UpdateActorState(guard.Id, guard.Position, deltaTime);
-        }
-    }
-
-    public CharacterPose ComputePose(
-        string actorId,
-        float unitScale,
-        bool isSneaking,
-        bool isGuard,
-        float elapsedSeconds)
-    {
-        ActorAnimState state = GetOrDefaultState(actorId);
-        float clampedSpeed = MathF.Min(1f, state.NormalizedSpeed);
-        float legSwingDegrees = MathF.Sin(state.StridePhase) * (isSneaking ? 26f : 38f) * clampedSpeed;
-        float strideBob = MathF.Abs(MathF.Sin(state.StridePhase)) * 2.4f * clampedSpeed;
-        float idleBreath = MathF.Sin(elapsedSeconds * 2.5f) * 0.6f;
-        float hipHeight = ((isSneaking ? SneakHipHeightUnits : HipHeightUnits) * unitScale) + strideBob + idleBreath;
-        float torsoLeanDegrees = isSneaking ? 22f : 6f * clampedSpeed;
-        float rightArmPitch = ResolveRightArmPitch(isGuard, isSneaking, legSwingDegrees);
-
-        return new CharacterPose(hipHeight, legSwingDegrees, torsoLeanDegrees, rightArmPitch);
-    }
-
-    private void UpdateActorState(string actorId, Vector2 currentPosition, float deltaTime)
+    public void UpdateActor(string actorId, Vector2 currentPosition, float deltaTime)
     {
         if (!_animStates.TryGetValue(actorId, out ActorAnimState? state))
         {
@@ -80,6 +50,25 @@ public sealed class CharacterPoseAnimator
         }
 
         state.PreviousPosition = currentPosition;
+    }
+
+    public CharacterPose ComputePose(
+        string actorId,
+        float unitScale,
+        bool isSneaking,
+        bool isGuard,
+        float elapsedSeconds)
+    {
+        ActorAnimState state = GetOrDefaultState(actorId);
+        float clampedSpeed = MathF.Min(1f, state.NormalizedSpeed);
+        float legSwingDegrees = MathF.Sin(state.StridePhase) * (isSneaking ? 26f : 38f) * clampedSpeed;
+        float strideBob = MathF.Abs(MathF.Sin(state.StridePhase)) * 2.4f * clampedSpeed;
+        float idleBreath = MathF.Sin(elapsedSeconds * 2.5f) * 0.6f;
+        float hipHeight = ((isSneaking ? SneakHipHeightUnits : HipHeightUnits) * unitScale) + strideBob + idleBreath;
+        float torsoLeanDegrees = isSneaking ? 22f : 6f * clampedSpeed;
+        float rightArmPitch = ResolveRightArmPitch(isGuard, isSneaking, legSwingDegrees);
+
+        return new CharacterPose(hipHeight, legSwingDegrees, torsoLeanDegrees, rightArmPitch);
     }
 
     private ActorAnimState GetOrDefaultState(string actorId) =>

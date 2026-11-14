@@ -1,13 +1,14 @@
 using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Rendering3D;
 
-namespace ShadowHeist.Viewport3D;
+namespace ShadowHeist.WorldLighting.Rendering;
 
 /// <summary>
 /// Renders architectural storytelling props: getaway van, teller security counter, CCTV cameras, vault fusebox, and bank plaque.
 /// </summary>
-public sealed class BankDecorRenderer : ISceneRenderPass
+public sealed class BankDecorRenderer
 {
     private const string VanModelPath = "assets/models/props/getaway_van.obj";
     private const float VanLength = 148f;
@@ -38,14 +39,13 @@ public sealed class BankDecorRenderer : ISceneRenderPass
         _vanModel = library.LoadProp(VanModelPath, VanLength);
     }
 
-    public void Draw(in Scene3DRenderFrame frame)
+    public void Draw(float elapsedSeconds)
     {
-        float timeSeconds = frame.ElapsedSeconds;
         DrawVanParkingBay();
-        DrawGetawayVanModel(timeSeconds);
-        DrawTellerStation(timeSeconds);
-        DrawSecurityCameras(timeSeconds);
-        DrawVaultFusebox(timeSeconds);
+        DrawGetawayVanModel(elapsedSeconds);
+        DrawTellerStation(elapsedSeconds);
+        DrawSecurityCameras(elapsedSeconds);
+        DrawVaultFusebox(elapsedSeconds);
         DrawBankPlaque();
     }
 

@@ -1,13 +1,14 @@
 using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Rendering3D;
 
-namespace ShadowHeist.Viewport3D;
+namespace ShadowHeist.WorldLighting.Rendering;
 
 /// <summary>
 /// Renders multi-zone cel-shaded 3D bank floors, cutaway concrete walls, corner pillars, and getaway pad.
 /// </summary>
-public sealed class Architecture3DRenderer : ISceneRenderPass
+public sealed class Architecture3DRenderer
 {
     private const string MarbleFloorPath = "assets/sprites/floor_marble_dark.png";
     private const string SlateFloorPath = "assets/sprites/floor_slate_corridor.png";
@@ -34,11 +35,11 @@ public sealed class Architecture3DRenderer : ISceneRenderPass
         _wallUnitBox = library.LoadTexturedBox(WallTexturePath, 1f, 1f, 1f);
     }
 
-    public void Draw(in Scene3DRenderFrame frame)
+    public void Draw(IReadOnlyList<RectangleBounds> architecturalWalls, RectangleBounds? getawayZone, float elapsedSeconds)
     {
         DrawFloorZones();
-        DrawGetawayPad(frame.GetawayZone, frame.ElapsedSeconds);
-        DrawWallsAndPillars(frame.ArchitecturalWalls);
+        DrawGetawayPad(getawayZone, elapsedSeconds);
+        DrawWallsAndPillars(architecturalWalls);
     }
 
     private void DrawFloorZones()

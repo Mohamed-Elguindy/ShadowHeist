@@ -1,9 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
-using ShadowHeist.Core;
-using ShadowHeist.GuardAI;
 
-namespace ShadowHeist.Viewport3D;
+namespace ShadowHeist.Core.Rendering3D;
 
 /// <summary>
 /// Manages GPU model, texture, and character rig resources with centered bounding-box alignment and comic outlines.
@@ -13,33 +11,41 @@ public sealed unsafe class ToonModelLibrary : IDisposable
     private readonly ToonShaderUniforms _shaders = new();
     private readonly List<Model> _models = new();
     private readonly List<Texture2D> _textures = new();
+    private bool _shaderInitialized;
 
-    public void LoadShader() => _shaders.Load();
+    public void EnsureLoaded()
+    {
+        if (_shaderInitialized || !Raylib.IsWindowReady())
+        {
+            return;
+        }
 
-    public void UpdateFrameUniforms(Vector3 cameraPosition, GameContext context, IReadOnlyList<Guard> guards, float timeSeconds) =>
-        _shaders.UpdateFrameUniforms(cameraPosition, context, guards, timeSeconds);
+        _shaders.Load();
+        _shaderInitialized = true;
+    }
+
+    public void UpdateFrameLighting(Vector3 cameraPosition, GameContext context) =>
+        _shaders.UpdateFrameLighting(cameraPosition, context);
+
+    public void SetGuardFlashlight(int slotIndex, Vector2 position, float rotationDegrees) =>
+        _shaders.SetGuardFlashlight(slotIndex, position, rotationDegrees);
+
+    public void ClearUnusedGuardFlashlights(int activeGuardCount) =>
+        _shaders.ClearUnusedGuardFlashlights(activeGuardCount);
 
     public LoadedModel? LoadProp(string objPath, float targetMaxExtent)
     {
-        if (!File.Exists(objPath))
-        {
-            return null;
-        }
+        if (!File.Exists(objPath)) return null;
 
         Model model = Raylib.LoadModel(objPath);
-        if (model.MeshCount == 0)
-        {
-            return null;
-        }
+        if (model.MeshCount == 0) return null;
 
         ApplyToonShaderToMaterials(model);
         BoundingBox bounds = Raylib.GetModelBoundingBox(model);
         Vector3 size = bounds.Max - bounds.Min;
         float maxDimension = MathF.Max(size.X, MathF.Max(size.Y, size.Z));
         float scale = targetMaxExtent / MathF.Max(maxDimension, 0.0001f);
-        var centerOffsetXZ = new Vector2(
-            (bounds.Min.X + bounds.Max.X) * 0.5f * scale,
-            (bounds.Min.Z + bounds.Max.Z) * 0.5f * scale);
+        var centerOffsetXZ = new Vector2((bounds.Min.X + bounds.Max.X) * 0.5f * scale, (bounds.Min.Z + bounds.Max.Z) * 0.5f * scale);
 
         _models.Add(model);
         return new LoadedModel(model, scale, -bounds.Min.Y * scale, centerOffsetXZ);
@@ -60,10 +66,7 @@ public sealed unsafe class ToonModelLibrary : IDisposable
 
     public CharacterRig? LoadCharacterRig(string directory, string skinPath, float uniformScale)
     {
-        if (!File.Exists(skinPath))
-        {
-            return null;
-        }
+        if (!File.Exists(skinPath)) return null;
 
         Texture2D skin = Raylib.LoadTexture(skinPath);
         _textures.Add(skin);
@@ -80,22 +83,12 @@ public sealed unsafe class ToonModelLibrary : IDisposable
             return null;
         }
 
-        return new CharacterRig(
-            body.Value,
-            head.Value,
-            armLeft.Value,
-            armRight.Value,
-            legLeft.Value,
-            legRight.Value,
-            uniformScale);
+        return new CharacterRig(body.Value, head.Value, armLeft.Value, armRight.Value, legLeft.Value, legRight.Value, uniformScale);
     }
 
     public Model? LoadTexturedBox(string texturePath, float width, float height, float length)
     {
-        if (!File.Exists(texturePath))
-        {
-            return null;
-        }
+        if (!File.Exists(texturePath)) return null;
 
         Model model = Raylib.LoadModelFromMesh(Raylib.GenMeshCube(width, height, length));
         Texture2D texture = Raylib.LoadTexture(texturePath);
@@ -130,6 +123,7 @@ public sealed unsafe class ToonModelLibrary : IDisposable
         _shaders.Dispose();
         _models.Clear();
         _textures.Clear();
+        _shaderInitialized = false;
     }
 
     private void DrawInvertedHullOutline(Model model, Vector3 position, float rotationDegrees, float scale, float outlineWidth)
