@@ -5,18 +5,13 @@ using ShadowHeist.Core.Rendering3D;
 
 namespace ShadowHeist.Core;
 
-public enum HeistOutcome
-{
-    Playing,
-    Escaped,
-    Caught
-}
-
 /// <summary>
-/// Shared dependency container, 3D graphics state &amp; state context passed to all IGameSystem modules.
+/// Shared dependency container, 3D graphics state, and game loop coordinator for all IGameSystem modules.
 /// </summary>
 public sealed class GameContext : IDisposable
 {
+    private static readonly Vector2 DefaultPlayerPosition = new(160f, 360f);
+
     private readonly List<IGameSystem> _systems = new();
 
     public GameEventBus EventBus { get; } = new();
@@ -25,7 +20,7 @@ public sealed class GameContext : IDisposable
     public TacticalCameraController Camera { get; } = new();
     public ToonModelLibrary Models { get; } = new();
 
-    public Vector2 PlayerPosition { get; set; } = new(160f, 360f);
+    public Vector2 PlayerPosition { get; set; } = DefaultPlayerPosition;
     public float PlayerRotationDegrees { get; set; }
     public bool IsPlayerSneaking { get; set; }
     public Vector2? AimWorldOverride { get; set; }
@@ -85,6 +80,8 @@ public sealed class GameContext : IDisposable
         Outcome = HeistOutcome.Playing;
         CurrentInput = default;
         AimWorldOverride = null;
+        PlayerPosition = DefaultPlayerPosition;
+        PlayerRotationDegrees = 0f;
         IsPlayerSneaking = false;
         InitializeAll();
         Camera.Reset(PlayerPosition);
@@ -103,8 +100,3 @@ public sealed class GameContext : IDisposable
         Models.Dispose();
     }
 }
-
-/// <summary>
-/// Pure C# AABB rectangle struct so core collision logic can be unit-tested without Raylib window dependencies.
-/// </summary>
-public readonly record struct RectangleBounds(float X, float Y, float Width, float Height);

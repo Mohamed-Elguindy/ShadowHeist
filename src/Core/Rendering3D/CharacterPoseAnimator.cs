@@ -21,8 +21,24 @@ public sealed class CharacterPoseAnimator
     private const float TeleportSnapDistance = 120f;
     private const float StrideCycleScale = 0.14f;
     private const float ReferenceMoveSpeed = 150f;
+    private const float MaxNormalizedSpeed = 1.5f;
+    private const float MinMoveDistanceThreshold = 0.05f;
+    private const float MinDeltaTimeEpsilon = 0.0001f;
+    private const float SneakLegSwingDegrees = 26f;
+    private const float WalkLegSwingDegrees = 38f;
+    private const float StrideBobAmplitude = 2.4f;
+    private const float IdleBreathFrequency = 2.5f;
+    private const float IdleBreathAmplitude = 0.6f;
+    private const float SneakTorsoLeanDegrees = 22f;
+    private const float WalkTorsoLeanFactor = 6f;
+    private const float GuardArmPitchDegrees = -68f;
+    private const float GuardArmSwingFactor = 0.2f;
+    private const float SneakArmPitchDegrees = -48f;
+    private const float WalkArmSwingFactor = 0.85f;
 
     private readonly Dictionary<string, ActorAnimState> _animStates = new();
+
+    public void Reset() => _animStates.Clear();
 
     public void UpdateActor(string actorId, Vector2 currentPosition, float deltaTime)
     {
@@ -40,11 +56,11 @@ public sealed class CharacterPoseAnimator
             return;
         }
 
-        state.NormalizedSpeed = deltaTime > 0.0001f
-            ? MathF.Min(1.5f, (movedDistance / deltaTime) / ReferenceMoveSpeed)
+        state.NormalizedSpeed = deltaTime > MinDeltaTimeEpsilon
+            ? MathF.Min(MaxNormalizedSpeed, (movedDistance / deltaTime) / ReferenceMoveSpeed)
             : 0f;
 
-        if (movedDistance > 0.05f)
+        if (movedDistance > MinMoveDistanceThreshold)
         {
             state.StridePhase += movedDistance * StrideCycleScale;
         }
@@ -61,11 +77,13 @@ public sealed class CharacterPoseAnimator
     {
         ActorAnimState state = GetOrDefaultState(actorId);
         float clampedSpeed = MathF.Min(1f, state.NormalizedSpeed);
-        float legSwingDegrees = MathF.Sin(state.StridePhase) * (isSneaking ? 26f : 38f) * clampedSpeed;
-        float strideBob = MathF.Abs(MathF.Sin(state.StridePhase)) * 2.4f * clampedSpeed;
-        float idleBreath = MathF.Sin(elapsedSeconds * 2.5f) * 0.6f;
-        float hipHeight = ((isSneaking ? SneakHipHeightUnits : HipHeightUnits) * unitScale) + strideBob + idleBreath;
-        float torsoLeanDegrees = isSneaking ? 22f : 6f * clampedSpeed;
+        float legAmplitude = isSneaking ? SneakLegSwingDegrees : WalkLegSwingDegrees;
+        float legSwingDegrees = MathF.Sin(state.StridePhase) * legAmplitude * clampedSpeed;
+        float strideBob = MathF.Abs(MathF.Sin(state.StridePhase)) * StrideBobAmplitude * clampedSpeed;
+        float idleBreath = MathF.Sin(elapsedSeconds * IdleBreathFrequency) * IdleBreathAmplitude;
+        float baseHipUnits = isSneaking ? SneakHipHeightUnits : HipHeightUnits;
+        float hipHeight = (baseHipUnits * unitScale) + strideBob + idleBreath;
+        float torsoLeanDegrees = isSneaking ? SneakTorsoLeanDegrees : WalkTorsoLeanFactor * clampedSpeed;
         float rightArmPitch = ResolveRightArmPitch(isGuard, isSneaking, legSwingDegrees);
 
         return new CharacterPose(hipHeight, legSwingDegrees, torsoLeanDegrees, rightArmPitch);
@@ -78,10 +96,10 @@ public sealed class CharacterPoseAnimator
     {
         if (isGuard)
         {
-            return -68f - (legSwingDegrees * 0.2f);
+            return GuardArmPitchDegrees - (legSwingDegrees * GuardArmSwingFactor);
         }
 
-        return isSneaking ? -48f : -legSwingDegrees * 0.85f;
+        return isSneaking ? SneakArmPitchDegrees : -legSwingDegrees * WalkArmSwingFactor;
     }
 
     private sealed class ActorAnimState(Vector2 initialPosition)

@@ -11,7 +11,12 @@ public static class Raylib3DPrimitives
     private const float ShadowHeight = 0.5f;
     private const float ShadowElevationY = 0.4f;
     private const float RingElevationY = 1.3f;
+    private const float RingRadiusPadding = 2f;
+    private const float RingWireHeight = 0.4f;
     private const int DefaultCylinderSides = 12;
+    private const int RingWireSegments = 20;
+    private const int GlowBeamSides = 8;
+    private const int CoreBeamSides = 6;
 
     public static void DrawGroundShadow(Vector2 position, float radius)
     {
@@ -23,8 +28,8 @@ public static class Raylib3DPrimitives
     {
         DrawGroundShadow(position, Viewport3DConfig.ShadowRadius);
         var ringCenter = new Vector3(position.X, RingElevationY, position.Y);
-        float ringRadius = Viewport3DConfig.ShadowRadius + 2f;
-        Raylib.DrawCylinderWires(ringCenter, ringRadius, ringRadius, 0.4f, 20, ringColor);
+        float ringRadius = Viewport3DConfig.ShadowRadius + RingRadiusPadding;
+        Raylib.DrawCylinderWires(ringCenter, ringRadius, ringRadius, RingWireHeight, RingWireSegments, ringColor);
     }
 
     public static void DrawOutlinedCube(Vector3 center, Vector3 size, Color fillColor, Color outlineColor)
@@ -41,7 +46,7 @@ public static class Raylib3DPrimitives
         Color glowColor,
         Color coreColor)
     {
-        Raylib.DrawCylinderEx(start, end, glowRadius, glowRadius, 8, glowColor);
-        Raylib.DrawCylinderEx(start, end, coreRadius, coreRadius, 6, coreColor);
+        Raylib.DrawCylinderEx(start, end, glowRadius, glowRadius, GlowBeamSides, glowColor);
+        Raylib.DrawCylinderEx(start, end, coreRadius, coreRadius, CoreBeamSides, coreColor);
     }
 }

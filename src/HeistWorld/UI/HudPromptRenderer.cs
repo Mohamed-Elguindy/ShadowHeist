@@ -4,7 +4,7 @@ using Raylib_cs;
 namespace ShadowHeist.HeistWorld.UI;
 
 /// <summary>
-/// Shared screen-space prompt box renderer used by both 2D and 3D HUD overlays.
+/// Screen-space prompt box renderer for nearby world interactables.
 /// </summary>
 public static class HudPromptRenderer
 {

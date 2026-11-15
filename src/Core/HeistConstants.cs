@@ -1,5 +1,3 @@
-using ShadowHeist.Core;
-
 namespace ShadowHeist.Core;
 
 /// <summary>

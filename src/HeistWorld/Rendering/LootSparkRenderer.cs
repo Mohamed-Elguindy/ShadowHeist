@@ -11,7 +11,15 @@ namespace ShadowHeist.HeistWorld.Rendering;
 public sealed class LootSparkRenderer
 {
     private const float SparkLifetimeSeconds = 0.90f;
+    private const float GravityY = -180f;
+    private const float HorizontalSpeed = 55f;
+    private const float BaseUpwardSpeed = 95f;
+    private const float UpwardSpeedStep = 28f;
+    private const float SpawnHeightY = 24f;
+    private const float SparkCubeSize = 5f;
     private const int SparksPerBurst = 14;
+
+    private static readonly Color SparkBaseColor = new(248, 196, 44, 255);
 
     private readonly List<GoldSpark> _sparks = new();
     private readonly HashSet<string> _collectedCrates = new();
@@ -25,11 +33,6 @@ public sealed class LootSparkRenderer
     public void Update(float deltaTime, GameContext context)
     {
         UpdateSparks(deltaTime);
-
-        if (_collectedCrates.Count > 0 && context.StolenCash == 0)
-        {
-            _collectedCrates.Clear();
-        }
 
         foreach (LootCrate crate in context.Interactables.OfType<LootCrate>())
         {
@@ -46,18 +49,20 @@ public sealed class LootSparkRenderer
         {
             float progress = spark.Age / SparkLifetimeSeconds;
             byte alpha = (byte)(255f * (1f - progress));
-            Raylib.DrawCube(spark.Position, 5f, 5f, 5f, new Color((byte)248, (byte)196, (byte)44, alpha));
+            var sparkColor = new Color(SparkBaseColor.R, SparkBaseColor.G, SparkBaseColor.B, alpha);
+            Raylib.DrawCube(spark.Position, SparkCubeSize, SparkCubeSize, SparkCubeSize, sparkColor);
         }
     }
 
     private void UpdateSparks(float deltaTime)
     {
+        var gravityStep = new Vector3(0f, GravityY, 0f) * deltaTime;
         for (int i = _sparks.Count - 1; i >= 0; i--)
         {
             GoldSpark current = _sparks[i];
             GoldSpark updated = new(
                 current.Position + (current.Velocity * deltaTime),
-                current.Velocity + (new Vector3(0f, -180f, 0f) * deltaTime),
+                current.Velocity + gravityStep,
                 current.Age + deltaTime);
 
             if (updated.Age >= SparkLifetimeSeconds)
@@ -76,8 +81,11 @@ public sealed class LootSparkRenderer
         for (int i = 0; i < SparksPerBurst; i++)
         {
             float angle = (i / (float)SparksPerBurst) * MathF.PI * 2f;
-            var velocity = new Vector3(MathF.Cos(angle) * 55f, 95f + ((i % 3) * 28f), MathF.Sin(angle) * 55f);
-            _sparks.Add(new GoldSpark(new Vector3(origin.X, 24f, origin.Y), velocity, Age: 0f));
+            var velocity = new Vector3(
+                MathF.Cos(angle) * HorizontalSpeed,
+                BaseUpwardSpeed + ((i % 3) * UpwardSpeedStep),
+                MathF.Sin(angle) * HorizontalSpeed);
+            _sparks.Add(new GoldSpark(new Vector3(origin.X, SpawnHeightY, origin.Y), velocity, Age: 0f));
         }
     }
 

@@ -17,20 +17,18 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
     private readonly InteractionController _interaction = new();
     private readonly LootSparkRenderer _lootSparks = new();
     private readonly WorldLightingModule? _world;
-    private readonly List<LootCrate> _crates = new();
-    private VaultDoor _vaultDoor = null!;
-    private KeypadTerminal _keypad = null!;
+    private readonly List<IInteractable> _worldObjects = new();
     private HeistWorldRenderer? _renderer;
     private SoundMeter? _soundMeter;
     private HudRenderer? _hud;
     private RectangleBounds _getawayZone = HeistConstants.DefaultGetawayZone;
 
-    public float SoundMeterLevel => _soundMeter?.Level ?? 0f;
-
     public HeistWorldModule(WorldLightingModule? world = null)
     {
         _world = world;
     }
+
+    public float SoundMeterLevel => _soundMeter?.Level ?? 0f;
 
     public void Init(GameContext context)
     {
@@ -73,56 +71,77 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
 
     public void Dispose()
     {
-        _renderer?.Dispose();
+        _renderer?.ClearCachedReferences();
         _renderer = null;
     }
 
     private void BuildWorldObjects(GameContext context)
     {
-        _crates.Clear();
+        _worldObjects.Clear();
         _getawayZone = _world?.CurrentMap?.GetawayZone ?? HeistConstants.DefaultGetawayZone;
-        IReadOnlyList<MapInteractableDto>? items = _world?.CurrentMap?.Interactables;
 
-        VaultDoor? loadedDoor = null;
-        KeypadTerminal? loadedKeypad = null;
+        PopulateFromMap(_world?.CurrentMap?.Interactables);
+        EnsureRequiredFallbackObjects();
+        RegisterWorldObjects(context);
+    }
 
-        if (items is { Count: > 0 })
+    private void PopulateFromMap(IReadOnlyList<MapInteractableDto>? items)
+    {
+        if (items is not { Count: > 0 })
         {
-            foreach (MapInteractableDto dto in items)
+            return;
+        }
+
+        foreach (MapInteractableDto dto in items)
+        {
+            IInteractable? created = CreateInteractable(dto);
+            if (created is not null)
             {
-                switch (dto.Type)
-                {
-                    case "LootCrate":
-                        _crates.Add(new LootCrate(dto.Id, new Vector2(dto.X, dto.Y), dto.CashValue));
-                        break;
-                    case "VaultDoor":
-                        loadedDoor = new VaultDoor(dto.Id, new Vector2(dto.X, dto.Y));
-                        break;
-                    case "KeypadTerminal":
-                        loadedKeypad = new KeypadTerminal(dto.Id, new Vector2(dto.X, dto.Y), dto.TargetId ?? "vault_door");
-                        break;
-                }
+                _worldObjects.Add(created);
             }
         }
+    }
 
-        if (_crates.Count == 0)
+    private void EnsureRequiredFallbackObjects()
+    {
+        if (!_worldObjects.OfType<LootCrate>().Any())
         {
-            _crates.Add(new LootCrate("loot_vault_1", new Vector2(460f, 288f)));
-            _crates.Add(new LootCrate("loot_vault_2", new Vector2(720f, 288f)));
+            _worldObjects.Add(new LootCrate("loot_vault_1", new Vector2(460f, 288f)));
+            _worldObjects.Add(new LootCrate("loot_vault_2", new Vector2(720f, 288f)));
         }
 
-        _vaultDoor = loadedDoor ?? new VaultDoor("vault_door", new Vector2(944f, 288f));
-        _keypad = loadedKeypad ?? new KeypadTerminal("vault_keypad", new Vector2(988f, 368f), _vaultDoor.Id);
-
-        foreach (LootCrate crate in _crates) context.Interactables.Add(crate);
-        context.Interactables.Add(_vaultDoor);
-        context.Interactables.Add(_keypad);
-
-        if (!_vaultDoor.IsOpen && !context.Walls.Contains(_vaultDoor.DoorBounds))
+        VaultDoor? door = _worldObjects.OfType<VaultDoor>().FirstOrDefault();
+        if (door is null)
         {
-            context.Walls.Add(_vaultDoor.DoorBounds);
+            door = new VaultDoor("vault_door", new Vector2(944f, 288f));
+            _worldObjects.Add(door);
+        }
+
+        if (!_worldObjects.OfType<KeypadTerminal>().Any())
+        {
+            _worldObjects.Add(new KeypadTerminal("vault_keypad", new Vector2(988f, 368f), door.Id));
         }
     }
+
+    private void RegisterWorldObjects(GameContext context)
+    {
+        foreach (IInteractable item in _worldObjects)
+        {
+            context.Interactables.Add(item);
+            if (item is VaultDoor door && !door.IsOpen && !context.Walls.Contains(door.DoorBounds))
+            {
+                context.Walls.Add(door.DoorBounds);
+            }
+        }
+    }
+
+    private static IInteractable? CreateInteractable(MapInteractableDto dto) => dto.Type switch
+    {
+        "LootCrate" => new LootCrate(dto.Id, new Vector2(dto.X, dto.Y), dto.CashValue),
+        "VaultDoor" => new VaultDoor(dto.Id, new Vector2(dto.X, dto.Y)),
+        "KeypadTerminal" => new KeypadTerminal(dto.Id, new Vector2(dto.X, dto.Y), dto.TargetId ?? "vault_door"),
+        _ => null
+    };
 
     private static bool IsInsideZone(Vector2 pos, RectangleBounds zone) =>
         pos.X >= zone.X && pos.X <= zone.X + zone.Width &&

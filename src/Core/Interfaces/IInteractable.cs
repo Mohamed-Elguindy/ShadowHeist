@@ -4,7 +4,7 @@ using ShadowHeist.Core.Events;
 namespace ShadowHeist.Core.Interfaces;
 
 /// <summary>
-/// Polymorphic contract for world objects: LootCrate, VaultDoor, KeypadTerminal, FuseBox (Tickets #2, #9, #17 — Guindy).
+/// Polymorphic contract for world objects: LootCrate, VaultDoor, KeypadTerminal.
 /// </summary>
 public interface IInteractable
 {

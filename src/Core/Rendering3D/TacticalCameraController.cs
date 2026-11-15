@@ -10,6 +10,7 @@ public sealed class TacticalCameraController
 {
     private const float MaxGroundRayDistance = 5000f;
     private const float MinDownwardRaySlope = -0.001f;
+    private const float MinWheelDelta = 0.01f;
 
     private Camera3D _camera = new()
     {
@@ -35,7 +36,7 @@ public sealed class TacticalCameraController
 
     public void ApplyZoomWheel(float wheelDelta)
     {
-        if (MathF.Abs(wheelDelta) <= 0.01f)
+        if (MathF.Abs(wheelDelta) <= MinWheelDelta)
         {
             return;
         }

@@ -1,7 +1,7 @@
 namespace ShadowHeist.Core.Interfaces;
 
 /// <summary>
-/// Finite State Machine contract for Guard AI states: PatrolState, SuspiciousState, AlertChaseState (Tickets #5, #13, #21 — Hatem).
+/// Finite State Machine contract for Guard AI states: PatrolState, SuspiciousState, AlertChaseState.
 /// </summary>
 public interface IGuardState
 {

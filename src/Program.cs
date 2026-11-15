@@ -44,7 +44,7 @@ public static class Program
         {
             float deltaTime = Raylib.GetFrameTime();
             HandleGlobalHotkeys(context);
-            UpdateCameraAndLighting(context, deltaTime);
+            PrepareFrameViewport(context, deltaTime);
             context.UpdateAll(deltaTime);
             DrawFrame(context);
         }
@@ -75,7 +75,7 @@ public static class Program
         }
     }
 
-    private static void UpdateCameraAndLighting(GameContext context, float deltaTime)
+    private static void PrepareFrameViewport(GameContext context, float deltaTime)
     {
         context.Camera.ApplyZoomWheel(Raylib.GetMouseWheelMove());
         context.Camera.Update(deltaTime, context.PlayerPosition);

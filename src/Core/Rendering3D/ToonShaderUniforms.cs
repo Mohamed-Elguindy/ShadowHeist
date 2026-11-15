@@ -13,6 +13,9 @@ public sealed class ToonShaderUniforms : IDisposable
     private const string OutlineVsPath = "assets/shaders/outline.vs";
     private const string OutlineFsPath = "assets/shaders/outline.fs";
     private const int MaxShaderGuards = 2;
+    private const float AlarmPulseSpeed = 8f;
+    private const float ActorLightHeightY = 36f;
+    private const float LampLightHeightY = 64f;
 
     private static readonly Vector3 DefaultLightDirection = Vector3.Normalize(new Vector3(-0.48f, -1f, -0.52f));
     private static readonly Vector3 DefaultLightColor = new(0.56f, 0.60f, 0.72f);
@@ -54,13 +57,13 @@ public sealed class ToonShaderUniforms : IDisposable
         }
 
         float alarmPulse = context.IsAlarmTriggered
-            ? 0.5f + 0.5f * MathF.Sin(context.ElapsedSeconds * 8f)
+            ? 0.5f + 0.5f * MathF.Sin(context.ElapsedSeconds * AlarmPulseSpeed)
             : 0f;
 
         SetVec3(_viewPosLocation, cameraPosition);
         SetVec3(_ambientLocation, Vector3.Lerp(DefaultAmbient, AlarmAmbient, alarmPulse));
         SetVec3(_rimLocation, Vector3.Lerp(DefaultRim, AlarmRim, alarmPulse));
-        SetVec3(_playerPosLocation, new Vector3(context.PlayerPosition.X, 36f, context.PlayerPosition.Y));
+        SetVec3(_playerPosLocation, new Vector3(context.PlayerPosition.X, ActorLightHeightY, context.PlayerPosition.Y));
 
         if (_alarmLocation >= 0)
         {
@@ -76,7 +79,7 @@ public sealed class ToonShaderUniforms : IDisposable
         }
 
         float radians = rotationDegrees * HeistConstants.DegToRad;
-        SetVec3(_guardPosLocations[slotIndex], new Vector3(position.X, 36f, position.Y));
+        SetVec3(_guardPosLocations[slotIndex], new Vector3(position.X, ActorLightHeightY, position.Y));
         SetVec3(_guardDirLocations[slotIndex], new Vector3(MathF.Cos(radians), 0f, MathF.Sin(radians)));
     }
 
@@ -181,7 +184,7 @@ public sealed class ToonShaderUniforms : IDisposable
         {
             Vector2 lampPos = Viewport3DConfig.WarmLampPositions[i];
             int loc = Raylib.GetShaderLocation(_toonShader, $"lampPos{i}");
-            SetVec3(loc, new Vector3(lampPos.X, 64f, lampPos.Y));
+            SetVec3(loc, new Vector3(lampPos.X, LampLightHeightY, lampPos.Y));
         }
     }
 

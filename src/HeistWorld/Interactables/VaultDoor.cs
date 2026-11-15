@@ -30,7 +30,7 @@ public sealed class VaultDoor : WorldObject, IInteractable
 
     public void OnInteract(GameContext context, GameEventBus eventBus)
     {
-        if (IsLocked) return;
+        if (IsLocked || IsOpen) return;
 
         IsOpen = true;
         context.Walls.Remove(DoorBounds);

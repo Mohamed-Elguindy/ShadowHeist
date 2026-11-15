@@ -8,12 +8,14 @@ namespace ShadowHeist.HeistWorld.Interactables;
 public sealed class LootCrate : WorldObject, IInteractable
 {
     private const float NoiseRadius = 60f;
+    private const int DefaultCashValue = 250_000;
+    private const float DefaultInteractRadius = 55f;
 
     public int CashValue { get; }
     public bool IsCollected { get; private set; }
     public string PromptText => $"[E] Steal Cash (${CashValue:N0})";
 
-    public LootCrate(string id, Vector2 position, int cashValue = 250_000, float interactRadius = 55f)
+    public LootCrate(string id, Vector2 position, int cashValue = DefaultCashValue, float interactRadius = DefaultInteractRadius)
         : base(id, position, interactRadius)
     {
         CashValue = cashValue;

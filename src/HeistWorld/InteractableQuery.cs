@@ -1,7 +1,6 @@
 using ShadowHeist.Core;
 using ShadowHeist.Core.Interfaces;
 using ShadowHeist.HeistWorld.Interactables;
-using ShadowHeist.WorldLighting;
 
 namespace ShadowHeist.HeistWorld;
 
@@ -30,19 +29,7 @@ public static class InteractableQuery
             return true;
         }
 
-        if (item is VaultDoor door)
-        {
-            return HasLineOfSightIgnoringDoorFrame(context, door);
-        }
-
-        return CollisionHelper.HasLineOfSight(context.PlayerPosition, item.Position, context.Walls);
-    }
-
-    private static bool HasLineOfSightIgnoringDoorFrame(GameContext context, VaultDoor door)
-    {
-        List<RectangleBounds> wallsWithoutDoor = context.Walls
-            .Where(wall => wall != door.DoorBounds)
-            .ToList();
-        return CollisionHelper.HasLineOfSight(context.PlayerPosition, door.Position, wallsWithoutDoor);
+        RectangleBounds? ignoredBounds = item is VaultDoor door ? door.DoorBounds : null;
+        return Geometry2D.HasLineOfSight(context.PlayerPosition, item.Position, context.Walls, ignoredBounds);
     }
 }
