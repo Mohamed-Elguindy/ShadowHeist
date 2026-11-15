@@ -15,6 +15,17 @@ public sealed class Architecture3DRenderer
     private const string SteelFloorPath = "assets/sprites/floor_vault_steel.png";
     private const string WallTexturePath = "assets/sprites/wall_reinforced_concrete.png";
     private const float WallPanelLength = 64f;
+    private const float GetawayPulseMaxAlpha = 110f;
+    private const float GetawayPulseBase = 0.65f;
+    private const float GetawayPulseAmplitude = 0.35f;
+    private const float GetawayPulseSpeed = 3f;
+    private const float GetawayPadFillHeight = 1f;
+    private const float GetawayPadWireHeight = 1.5f;
+    private const float VaultWestPillarX = 336f;
+    private const float VaultEastPillarX = 944f;
+    private const float VaultNorthPillarZ = 176f;
+    private const float VaultSouthPillarZ = 400f;
+    private const float PillarHeightPadding = 2f;
 
     private static readonly Color CornerPillarColor = new(62, 72, 92, 255);
     private static readonly Color GetawayPadBorderColor = new(74, 222, 128, 220);
@@ -84,11 +95,11 @@ public sealed class Architecture3DRenderer
     private static void DrawGetawayPad(RectangleBounds? getawayZone, float timeSeconds)
     {
         RectangleBounds zone = getawayZone ?? HeistConstants.DefaultGetawayZone;
-        byte alpha = (byte)(110f * (0.65f + 0.35f * MathF.Sin(timeSeconds * 3f)));
-        var center = new Vector3(zone.X + (zone.Width * 0.5f), 0.5f, zone.Y + (zone.Height * 0.5f));
+        byte alpha = (byte)(GetawayPulseMaxAlpha * (GetawayPulseBase + GetawayPulseAmplitude * MathF.Sin(timeSeconds * GetawayPulseSpeed)));
+        var center = new Vector3(zone.X + (zone.Width * 0.5f), GetawayPadFillHeight * 0.5f, zone.Y + (zone.Height * 0.5f));
 
-        Raylib.DrawCube(center, zone.Width, 1f, zone.Height, new Color((byte)28, (byte)155, (byte)102, alpha));
-        Raylib.DrawCubeWires(center, zone.Width, 1.5f, zone.Height, GetawayPadBorderColor);
+        Raylib.DrawCube(center, zone.Width, GetawayPadFillHeight, zone.Height, new Color((byte)28, (byte)155, (byte)102, alpha));
+        Raylib.DrawCubeWires(center, zone.Width, GetawayPadWireHeight, zone.Height, GetawayPadBorderColor);
     }
 
     private void DrawWallsAndPillars(IReadOnlyList<RectangleBounds> walls)
@@ -100,10 +111,10 @@ public sealed class Architecture3DRenderer
             DrawSegmentedWall(wall, height, isCutaway);
         }
 
-        DrawCornerPillar(336f, 176f);
-        DrawCornerPillar(336f, 400f);
-        DrawCornerPillar(944f, 176f);
-        DrawCornerPillar(944f, 400f);
+        DrawCornerPillar(VaultWestPillarX, VaultNorthPillarZ);
+        DrawCornerPillar(VaultWestPillarX, VaultSouthPillarZ);
+        DrawCornerPillar(VaultEastPillarX, VaultNorthPillarZ);
+        DrawCornerPillar(VaultEastPillarX, VaultSouthPillarZ);
     }
 
     private static bool IsCutawayPerimeterWall(RectangleBounds wall)
@@ -149,7 +160,7 @@ public sealed class Architecture3DRenderer
 
     private static void DrawCornerPillar(float x, float z)
     {
-        float height = Viewport3DConfig.WallHeight + Viewport3DConfig.WallCapHeight + 2f;
+        float height = Viewport3DConfig.WallHeight + Viewport3DConfig.WallCapHeight + PillarHeightPadding;
         var center = new Vector3(x, height * 0.5f, z);
         var size = new Vector3(Viewport3DConfig.PillarSize, height, Viewport3DConfig.PillarSize);
         Raylib3DPrimitives.DrawOutlinedCube(center, size, CornerPillarColor, Viewport3DConfig.OutlineColor);

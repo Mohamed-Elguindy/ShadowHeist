@@ -21,6 +21,7 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
     private readonly LaserTripwire3DRenderer _laserRenderer = new();
     private readonly List<LaserTripwire> _lasers = new();
     private IReadOnlyList<Vector2> _visionConeVertices = Array.Empty<Vector2>();
+    private IReadOnlyList<RectangleBounds>? _visionBlockingWalls;
     private LevelMapData? _currentMap;
     private float _currentAimDegrees;
     private bool _modelsLoaded;
@@ -30,11 +31,12 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
     public IReadOnlyList<Vector2> PlayerVisionCone => _visionConeVertices;
 
     public IReadOnlyList<RectangleBounds> GetVisionBlockingWalls(GameContext context) =>
-        BuildWallsExcludingWaistHighObstacles(context);
+        _visionBlockingWalls ?? BuildWallsExcludingWaistHighObstacles(context);
 
     public void Init(GameContext context)
     {
         _currentMap = MapLoader.LoadFromFile(Level1MapPath, context);
+        _visionBlockingWalls = BuildWallsExcludingWaistHighObstacles(context);
         EnsureModelsLoaded(context);
         SpawnInitialLasers();
 
@@ -42,8 +44,8 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
         _visionConeVertices = VisionRaycaster.ComputeVisionCone(
             context.PlayerPosition,
             _currentAimDegrees,
-            _currentMap?.Walls ?? context.Walls);
-        UpdateLasers(context);
+            _visionBlockingWalls);
+        UpdateLasers(context, _visionBlockingWalls);
     }
 
     public void Update(float deltaTime, GameContext context)
@@ -56,7 +58,7 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
         Vector2 aimTarget = context.AimWorldOverride ?? context.CurrentInput.AimWorldPosition;
         UpdateAimAngle(context.PlayerPosition, aimTarget, context.PlayerRotationDegrees);
 
-        IReadOnlyList<RectangleBounds> visionWalls = BuildWallsExcludingWaistHighObstacles(context);
+        IReadOnlyList<RectangleBounds> visionWalls = GetVisionBlockingWalls(context);
         _visionConeVertices = VisionRaycaster.ComputeVisionCone(
             context.PlayerPosition,
             _currentAimDegrees,

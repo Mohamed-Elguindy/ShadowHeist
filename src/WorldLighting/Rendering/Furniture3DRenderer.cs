@@ -13,6 +13,7 @@ public sealed class Furniture3DRenderer
     private const string RugAssetKey = "rugRectangle";
     private const float RugLiftY = 1.2f;
     private const float PropOutlineWidth = 0.012f;
+    private const float GroundShadowRadiusScale = 0.42f;
 
     private readonly Dictionary<string, LoadedModel> _furnitureModels = new();
     private ToonModelLibrary? _library;
@@ -27,7 +28,7 @@ public sealed class Furniture3DRenderer
                 continue;
             }
 
-            string modelPath = Path.Combine(FurnitureFolder, $"{spec.AssetKey}.obj");
+            string modelPath = $"{FurnitureFolder}/{spec.AssetKey}.obj";
             if (library.LoadProp(modelPath, spec.TargetMaxExtent) is LoadedModel loaded)
             {
                 _furnitureModels[spec.AssetKey] = loaded;
@@ -58,7 +59,7 @@ public sealed class Furniture3DRenderer
         bool isRug = spec.AssetKey == RugAssetKey;
         if (!isRug)
         {
-            Raylib3DPrimitives.DrawGroundShadow(spec.Position, spec.TargetMaxExtent * 0.42f);
+            Raylib3DPrimitives.DrawGroundShadow(spec.Position, spec.TargetMaxExtent * GroundShadowRadiusScale);
         }
 
         float verticalOffset = model.BaseOffsetY + (isRug ? RugLiftY : 0f);

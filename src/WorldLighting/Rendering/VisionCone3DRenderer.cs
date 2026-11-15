@@ -9,6 +9,25 @@ namespace ShadowHeist.WorldLighting.Rendering;
 /// </summary>
 public static class VisionCone3DRenderer
 {
+    private const float LampPoolElevationY = 0.6f;
+    private const float OuterPoolRadius = 95f;
+    private const float OuterPoolHeight = 0.4f;
+    private const int OuterPoolSlices = 20;
+    private const float InnerPoolRadius = 46f;
+    private const float InnerPoolHeight = 0.6f;
+    private const int InnerPoolSlices = 16;
+    private const float LampBulbElevationY = 66f;
+    private const float LampBulbRadius = 7f;
+    private const float PlayerConeGroundY = 2.3f;
+    private const float PlayerConeSourceY = 34f;
+    private const float BeamEdgeAlphaMultiplier = 0.4f;
+
+    private static readonly Color OuterLampPoolColor = new(255, 214, 120, 34);
+    private static readonly Color InnerLampPoolColor = new(255, 224, 150, 56);
+    private static readonly Color LampBulbGlowColor = new(255, 236, 168, 225);
+    private static readonly Color PlayerConeFillColor = new(56, 225, 255, 36);
+    private static readonly Color PlayerConeEdgeColor = new(110, 235, 255, 115);
+
     public static void DrawWarmLampGlows()
     {
         foreach (FurnitureSpec spec in BankFurnitureLayout.LobbyFurniture)
@@ -18,20 +37,20 @@ public static class VisionCone3DRenderer
                 continue;
             }
 
-            var center = new Vector3(spec.Position.X, 0.6f, spec.Position.Y);
-            Raylib.DrawCylinder(center, 95f, 95f, 0.4f, 20, new Color(255, 214, 120, 34));
-            Raylib.DrawCylinder(center, 46f, 46f, 0.6f, 16, new Color(255, 224, 150, 56));
-            Raylib.DrawSphere(new Vector3(spec.Position.X, 66f, spec.Position.Y), 7f, new Color(255, 236, 168, 225));
+            var center = new Vector3(spec.Position.X, LampPoolElevationY, spec.Position.Y);
+            Raylib.DrawCylinder(center, OuterPoolRadius, OuterPoolRadius, OuterPoolHeight, OuterPoolSlices, OuterLampPoolColor);
+            Raylib.DrawCylinder(center, InnerPoolRadius, InnerPoolRadius, InnerPoolHeight, InnerPoolSlices, InnerLampPoolColor);
+            Raylib.DrawSphere(new Vector3(spec.Position.X, LampBulbElevationY, spec.Position.Y), LampBulbRadius, LampBulbGlowColor);
         }
     }
 
     public static void DrawPlayerVisionCone(IReadOnlyList<Vector2> coneVertices) =>
         DrawProjectedVisionPolygon(
             coneVertices,
-            groundY: 2.3f,
-            sourceY: 34f,
-            fill: new Color(56, 225, 255, 36),
-            edge: new Color(110, 235, 255, 115));
+            groundY: PlayerConeGroundY,
+            sourceY: PlayerConeSourceY,
+            fill: PlayerConeFillColor,
+            edge: PlayerConeEdgeColor);
 
     public static void DrawProjectedVisionPolygon(
         IReadOnlyList<Vector2> vertices,
@@ -47,7 +66,7 @@ public static class VisionCone3DRenderer
 
         var apex = new Vector3(vertices[0].X, groundY, vertices[0].Y);
         var beamOrigin = new Vector3(vertices[0].X, sourceY, vertices[0].Y);
-        var beamEdgeColor = new Color(edge.R, edge.G, edge.B, (byte)(edge.A * 0.4f));
+        var beamEdgeColor = new Color(edge.R, edge.G, edge.B, (byte)(edge.A * BeamEdgeAlphaMultiplier));
 
         for (int i = 1; i < vertices.Count - 1; i++)
         {

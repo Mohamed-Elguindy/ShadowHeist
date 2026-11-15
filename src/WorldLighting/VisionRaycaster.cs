@@ -48,6 +48,30 @@ public static class VisionRaycaster
         return origin + (rayDirection * closestDistance);
     }
 
+    public static float FindClosestWallHitDistance(
+        Vector2 origin,
+        Vector2 direction,
+        float maxDistance,
+        IEnumerable<RectangleBounds> walls)
+    {
+        if (maxDistance <= 0f || IsOriginInsideAnyWall(origin, walls))
+        {
+            return 0f;
+        }
+
+        float closestDistance = maxDistance;
+
+        foreach (var wall in walls)
+        {
+            if (TryIntersectRayWithWall(origin, direction, wall, out float wallDistance) && wallDistance < closestDistance)
+            {
+                closestDistance = wallDistance;
+            }
+        }
+
+        return closestDistance;
+    }
+
     public static bool TryIntersectRayWithSegment(
         Vector2 rayOrigin,
         Vector2 rayDirection,
@@ -96,21 +120,6 @@ public static class VisionRaycaster
         }
 
         return false;
-    }
-
-    private static float FindClosestWallHitDistance(Vector2 origin, Vector2 direction, float maxDistance, IEnumerable<RectangleBounds> walls)
-    {
-        float closestDistance = maxDistance;
-
-        foreach (var wall in walls)
-        {
-            if (TryIntersectRayWithWall(origin, direction, wall, out float wallDistance) && wallDistance < closestDistance)
-            {
-                closestDistance = wallDistance;
-            }
-        }
-
-        return closestDistance;
     }
 
     private static bool TryIntersectRayWithWall(Vector2 origin, Vector2 direction, RectangleBounds wall, out float closestWallDistance)
