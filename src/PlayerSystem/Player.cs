@@ -12,7 +12,7 @@ namespace ShadowHeist.PlayerSystem;
 /// </summary>
 public sealed class Player
 {
-    private const float BaseSpeed = 160f;
+    private const float BaseSpeed = 190f;
     private const float MinAimDistance = 16f;
     private const float WalkStepIntervalSeconds = 0.40f;
 

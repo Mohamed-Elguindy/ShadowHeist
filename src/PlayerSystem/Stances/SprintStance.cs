@@ -8,7 +8,7 @@ namespace ShadowHeist.PlayerSystem.Stances;
 /// </summary>
 public sealed class SprintStance : IPlayerStance
 {
-    private const float Speed = 1.6f;
+    private const float Speed = 1.35f;
     private const float Noise = 220f;
 
     public string Name => "Sprint";

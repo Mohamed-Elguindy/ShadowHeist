@@ -35,7 +35,7 @@ public sealed class StanceTests
         var nextStance = stance.HandleInput(CreateCommand(isSprintHeld: true));
 
         Assert.IsType<SprintStance>(nextStance);
-        Assert.Equal(1.6f, nextStance.SpeedMultiplier);
+        Assert.Equal(1.35f, nextStance.SpeedMultiplier);
         Assert.Equal(220f, nextStance.NoiseRadius);
     }
 

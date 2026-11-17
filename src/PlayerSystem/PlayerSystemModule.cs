@@ -14,6 +14,7 @@ public sealed class PlayerSystemModule : IGameSystem, IDisposable
 {
     private readonly IInputProvider _input;
     private readonly PlayerSoundRippleRenderer _rippleRenderer = new();
+    private readonly SprintStamina _stamina = new();
     private Player _player = null!;
     private PlayerRenderer? _renderer;
 
@@ -24,6 +25,7 @@ public sealed class PlayerSystemModule : IGameSystem, IDisposable
 
     public void Init(GameContext context)
     {
+        _stamina.Reset();
         _player = new Player(context.PlayerPosition);
         _renderer ??= new PlayerRenderer();
         _renderer.Load(context.Models);
@@ -46,8 +48,14 @@ public sealed class PlayerSystemModule : IGameSystem, IDisposable
             input = input with { AimWorldPosition = aimOverride };
         }
 
+        if (!_stamina.CanSprint)
+        {
+            input = input with { IsSprintHeld = false };
+        }
+
         context.CurrentInput = input;
         _player.Update(input, deltaTime, context.Walls, context.EventBus);
+        _stamina.Update(deltaTime, _player.CurrentStance is SprintStance && input.MoveDirection != System.Numerics.Vector2.Zero);
         _renderer?.UpdateAnimation(_player.Position, deltaTime);
 
         context.PlayerPosition = _player.Position;
@@ -60,6 +68,9 @@ public sealed class PlayerSystemModule : IGameSystem, IDisposable
         _rippleRenderer.Draw(context);
         _renderer?.Draw(_player, context);
     }
+
+    public void DrawHud(GameContext context) =>
+        SprintBarRenderer.Draw(_stamina.Ratio, _stamina.IsOnCooldown);
 
     public void Dispose()
     {

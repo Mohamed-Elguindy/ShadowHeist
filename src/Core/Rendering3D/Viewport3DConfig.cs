@@ -28,17 +28,17 @@ public static class Viewport3DConfig
     public const float VisionHalfAngleDegrees = 32f;
     public const int VisionRayCount = 26;
 
-    public const float FollowFovDegrees = 50f;
-    public const float OverviewFovDegrees = 62f;
+    public const float FollowFovDegrees = 58f;
+    public const float OverviewFovDegrees = 68f;
     public const float CameraFollowSpeed = 6.5f;
     public const float FollowOverviewBlend = 0.22f;
     public const float MinZoom = 0.7f;
-    public const float MaxZoom = 1.65f;
+    public const float MaxZoom = 2.6f;
     public const float ZoomStep = 0.1f;
 
-    public static readonly Vector3 FollowCameraOffset = new(-200f, 410f, 350f);
+    public static readonly Vector3 FollowCameraOffset = new(-240f, 560f, 460f);
     public static readonly Vector3 OverviewTarget = new(630f, 0f, 385f);
-    public static readonly Vector3 OverviewCameraOffset = new(-105f, 500f, 340f);
+    public static readonly Vector3 OverviewCameraOffset = new(-120f, 640f, 440f);
     public static readonly Vector2 VaultZoneMin = new(320f, 160f);
     public static readonly Vector2 VaultZoneMax = new(960f, 416f);
     public static readonly Vector2[] WarmLampPositions = [new(84f, 344f), new(912f, 646f)];

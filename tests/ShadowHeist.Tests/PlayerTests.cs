@@ -23,11 +23,11 @@ public sealed class PlayerTests
             IsUseGadgetPressed: false
         );
 
-        // Act (delta time = 1.0s, base speed = 160f)
+        // Act (delta time = 1.0s, base speed = 190f)
         player.Update(input, 1f, Array.Empty<RectangleBounds>(), new GameEventBus());
 
         // Assert
-        Assert.Equal(260f, player.Position.X);
+        Assert.Equal(290f, player.Position.X);
         Assert.Equal(100f, player.Position.Y);
     }
 
