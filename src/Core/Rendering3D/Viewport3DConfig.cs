@@ -36,9 +36,9 @@ public static class Viewport3DConfig
     public const float MaxZoom = 2.6f;
     public const float ZoomStep = 0.1f;
 
-    public static readonly Vector3 FollowCameraOffset = new(-240f, 560f, 460f);
+    public static readonly Vector3 FollowCameraOffset = new(120f, 560f, 460f);
     public static readonly Vector3 OverviewTarget = new(630f, 0f, 385f);
-    public static readonly Vector3 OverviewCameraOffset = new(-120f, 640f, 440f);
+    public static readonly Vector3 OverviewCameraOffset = new(100f, 640f, 440f);
     public static readonly Vector2 VaultZoneMin = new(320f, 160f);
     public static readonly Vector2 VaultZoneMax = new(960f, 416f);
     public static readonly Vector2[] WarmLampPositions = [new(84f, 344f), new(912f, 646f)];

@@ -15,6 +15,9 @@ public sealed class Architecture3DRenderer
     private const string SteelFloorPath = "assets/sprites/floor_vault_steel.png";
     private const string WallTexturePath = "assets/sprites/wall_reinforced_concrete.png";
     private const float WallPanelLength = 64f;
+    private const float OcclusionPadding = 28f;
+    private const byte OccludedWallAlpha = 60;
+    private const byte OccludedOutlineAlpha = 90;
     private const float GetawayPulseMaxAlpha = 110f;
     private const float GetawayPulseBase = 0.65f;
     private const float GetawayPulseAmplitude = 0.35f;
@@ -46,11 +49,11 @@ public sealed class Architecture3DRenderer
         _wallUnitBox = library.LoadTexturedBox(WallTexturePath, 1f, 1f, 1f);
     }
 
-    public void Draw(IReadOnlyList<RectangleBounds> architecturalWalls, RectangleBounds? getawayZone, float elapsedSeconds)
+    public void Draw(IReadOnlyList<RectangleBounds> architecturalWalls, RectangleBounds? getawayZone, float elapsedSeconds, Vector2 playerPosition, Vector3 cameraPosition)
     {
         DrawFloorZones();
         DrawGetawayPad(getawayZone, elapsedSeconds);
-        DrawWallsAndPillars(architecturalWalls);
+        DrawWallsAndPillars(architecturalWalls, playerPosition, new Vector2(cameraPosition.X, cameraPosition.Z));
     }
 
     private void DrawFloorZones()
@@ -102,13 +105,14 @@ public sealed class Architecture3DRenderer
         Raylib.DrawCubeWires(center, zone.Width, GetawayPadWireHeight, zone.Height, GetawayPadBorderColor);
     }
 
-    private void DrawWallsAndPillars(IReadOnlyList<RectangleBounds> walls)
+    private void DrawWallsAndPillars(IReadOnlyList<RectangleBounds> walls, Vector2 playerPos, Vector2 cameraPos)
     {
         foreach (RectangleBounds wall in walls)
         {
             bool isCutaway = IsCutawayPerimeterWall(wall);
             float height = isCutaway ? Viewport3DConfig.CutawayWallHeight : Viewport3DConfig.WallHeight;
-            DrawSegmentedWall(wall, height, isCutaway);
+            bool isOccluding = !isCutaway && SegmentIntersectsBounds(cameraPos, playerPos, wall, OcclusionPadding);
+            DrawSegmentedWall(wall, height, isCutaway, isOccluding);
         }
 
         DrawCornerPillar(VaultWestPillarX, VaultNorthPillarZ);
@@ -124,7 +128,7 @@ public sealed class Architecture3DRenderer
         return isWestOuter || isSouthOuter;
     }
 
-    private void DrawSegmentedWall(RectangleBounds wall, float height, bool isCutaway)
+    private void DrawSegmentedWall(RectangleBounds wall, float height, bool isCutaway, bool isOccluding)
     {
         bool splitAlongX = wall.Width >= wall.Height;
         float span = splitAlongX ? wall.Width : wall.Height;
@@ -138,24 +142,51 @@ public sealed class Architecture3DRenderer
             float centerX = splitAlongX ? wall.X + segmentStep * (i + 0.5f) : wall.X + (wall.Width * 0.5f);
             float centerZ = splitAlongX ? wall.Y + (wall.Height * 0.5f) : wall.Y + segmentStep * (i + 0.5f);
 
-            DrawSingleWallSegment(new Vector3(centerX, height * 0.5f, centerZ), new Vector3(segmentWidth, height, segmentLength), isCutaway);
+            DrawSingleWallSegment(new Vector3(centerX, height * 0.5f, centerZ), new Vector3(segmentWidth, height, segmentLength), isCutaway, isOccluding);
         }
     }
 
-    private void DrawSingleWallSegment(Vector3 center, Vector3 dimensions, bool isCutaway)
+    private void DrawSingleWallSegment(Vector3 center, Vector3 dimensions, bool isCutaway, bool isOccluding)
     {
+        Color wallTint = isOccluding ? WithAlpha(Viewport3DConfig.WallTint, OccludedWallAlpha) : Viewport3DConfig.WallTint;
+        Color capTint = isOccluding ? WithAlpha(Viewport3DConfig.WallCapColor, OccludedWallAlpha) : Viewport3DConfig.WallCapColor;
+        Color wireTint = isOccluding ? WithAlpha(Viewport3DConfig.OutlineColor, OccludedOutlineAlpha) : Viewport3DConfig.OutlineColor;
+
+        if (isOccluding) Rlgl.DisableDepthMask();
         if (_wallUnitBox is Model boxModel)
         {
-            Raylib.DrawModelEx(boxModel, center, Vector3.UnitY, 0f, dimensions, Viewport3DConfig.WallTint);
+            Raylib.DrawModelEx(boxModel, center, Vector3.UnitY, 0f, dimensions, wallTint);
         }
 
         if (!isCutaway)
         {
             var capCenter = new Vector3(center.X, dimensions.Y + (Viewport3DConfig.WallCapHeight * 0.5f), center.Z);
-            Raylib.DrawCube(capCenter, dimensions.X + 1f, Viewport3DConfig.WallCapHeight, dimensions.Z + 1f, Viewport3DConfig.WallCapColor);
+            Raylib.DrawCube(capCenter, dimensions.X + 1f, Viewport3DConfig.WallCapHeight, dimensions.Z + 1f, capTint);
         }
 
-        Raylib.DrawCubeWires(center, dimensions.X, dimensions.Y, dimensions.Z, Viewport3DConfig.OutlineColor);
+        Raylib.DrawCubeWires(center, dimensions.X, dimensions.Y, dimensions.Z, wireTint);
+        if (isOccluding) Rlgl.EnableDepthMask();
+    }
+
+    private static Color WithAlpha(Color color, byte alpha) => new(color.R, color.G, color.B, alpha);
+
+    private static bool SegmentIntersectsBounds(Vector2 start, Vector2 end, RectangleBounds box, float pad)
+    {
+        float minT = 0f, maxT = 1f;
+        Vector2 delta = end - start;
+        if (!ClipAxis(delta.X, start.X, box.X - pad, box.X + box.Width + pad, ref minT, ref maxT)) return false;
+        return ClipAxis(delta.Y, start.Y, box.Y - pad, box.Y + box.Height + pad, ref minT, ref maxT);
+    }
+
+    private static bool ClipAxis(float delta, float origin, float minBound, float maxBound, ref float minT, ref float maxT)
+    {
+        if (MathF.Abs(delta) < 0.0001f) return origin >= minBound && origin <= maxBound;
+        float t1 = (minBound - origin) / delta;
+        float t2 = (maxBound - origin) / delta;
+        if (t1 > t2) (t1, t2) = (t2, t1);
+        minT = MathF.Max(minT, t1);
+        maxT = MathF.Min(maxT, t2);
+        return minT <= maxT;
     }
 
     private static void DrawCornerPillar(float x, float z)
