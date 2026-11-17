@@ -16,6 +16,7 @@ public sealed class Architecture3DRenderer
     private const string WallTexturePath = "assets/sprites/wall_reinforced_concrete.png";
     private const float WallPanelLength = 64f;
     private const float OuterBorderMargin = 48f;
+    private const float NearbyWallFadeDistance = 80f;
     private const float MaxOcclusionPlayerDistance = 180f;
     private const byte OccludedWallAlpha = 60;
     private const byte OccludedOutlineAlpha = 90;
@@ -112,10 +113,11 @@ public sealed class Architecture3DRenderer
         {
             bool isCutaway = IsCutawayPerimeterWall(wall);
             float height = isCutaway ? Viewport3DConfig.CutawayWallHeight : Viewport3DConfig.WallHeight;
+            float wallDistance = Geometry2D.DistanceToBounds(playerPos, wall);
             bool isOccluding = !isCutaway
                 && !IsOuterPerimeterWall(wall)
-                && Geometry2D.DistanceToBounds(playerPos, wall) <= MaxOcclusionPlayerDistance
-                && Geometry2D.SegmentIntersectsBounds(cameraPos, playerPos, wall);
+                && (wallDistance <= NearbyWallFadeDistance
+                    || (wallDistance <= MaxOcclusionPlayerDistance && Geometry2D.SegmentIntersectsBounds(cameraPos, playerPos, wall)));
             DrawSegmentedWall(wall, height, isCutaway, isOccluding);
         }
 
