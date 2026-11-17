@@ -15,7 +15,8 @@ public sealed class Architecture3DRenderer
     private const string SteelFloorPath = "assets/sprites/floor_vault_steel.png";
     private const string WallTexturePath = "assets/sprites/wall_reinforced_concrete.png";
     private const float WallPanelLength = 64f;
-    private const float OcclusionPadding = 28f;
+    private const float OcclusionPadding = 22f;
+    private const float MaxOcclusionPlayerDistance = 135f;
     private const byte OccludedWallAlpha = 60;
     private const byte OccludedOutlineAlpha = 90;
     private const float GetawayPulseMaxAlpha = 110f;
@@ -111,7 +112,9 @@ public sealed class Architecture3DRenderer
         {
             bool isCutaway = IsCutawayPerimeterWall(wall);
             float height = isCutaway ? Viewport3DConfig.CutawayWallHeight : Viewport3DConfig.WallHeight;
-            bool isOccluding = !isCutaway && SegmentIntersectsBounds(cameraPos, playerPos, wall, OcclusionPadding);
+            bool isOccluding = !isCutaway
+                && Geometry2D.DistanceToBounds(playerPos, wall) <= MaxOcclusionPlayerDistance
+                && Geometry2D.SegmentIntersectsBounds(cameraPos, playerPos, wall, OcclusionPadding);
             DrawSegmentedWall(wall, height, isCutaway, isOccluding);
         }
 
@@ -169,25 +172,6 @@ public sealed class Architecture3DRenderer
     }
 
     private static Color WithAlpha(Color color, byte alpha) => new(color.R, color.G, color.B, alpha);
-
-    private static bool SegmentIntersectsBounds(Vector2 start, Vector2 end, RectangleBounds box, float pad)
-    {
-        float minT = 0f, maxT = 1f;
-        Vector2 delta = end - start;
-        if (!ClipAxis(delta.X, start.X, box.X - pad, box.X + box.Width + pad, ref minT, ref maxT)) return false;
-        return ClipAxis(delta.Y, start.Y, box.Y - pad, box.Y + box.Height + pad, ref minT, ref maxT);
-    }
-
-    private static bool ClipAxis(float delta, float origin, float minBound, float maxBound, ref float minT, ref float maxT)
-    {
-        if (MathF.Abs(delta) < 0.0001f) return origin >= minBound && origin <= maxBound;
-        float t1 = (minBound - origin) / delta;
-        float t2 = (maxBound - origin) / delta;
-        if (t1 > t2) (t1, t2) = (t2, t1);
-        minT = MathF.Max(minT, t1);
-        maxT = MathF.Min(maxT, t2);
-        return minT <= maxT;
-    }
 
     private static void DrawCornerPillar(float x, float z)
     {

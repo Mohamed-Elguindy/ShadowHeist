@@ -89,4 +89,20 @@ public static class Geometry2D
         farDistance = MathF.Min(farDistance, exitDistance);
         return nearDistance <= farDistance;
     }
+
+    public static float DistanceToBounds(Vector2 point, RectangleBounds box)
+    {
+        float dx = MathF.Max(0f, MathF.Max(box.X - point.X, point.X - (box.X + box.Width)));
+        float dy = MathF.Max(0f, MathF.Max(box.Y - point.Y, point.Y - (box.Y + box.Height)));
+        return MathF.Sqrt((dx * dx) + (dy * dy));
+    }
+
+    public static bool SegmentIntersectsBounds(Vector2 start, Vector2 end, RectangleBounds box, float pad = 0f)
+    {
+        float minT = 0f;
+        float maxT = 1f;
+        Vector2 delta = end - start;
+        return ClipAxis(start.X, delta.X, box.X - pad, box.X + box.Width + pad, ref minT, ref maxT)
+            && ClipAxis(start.Y, delta.Y, box.Y - pad, box.Y + box.Height + pad, ref minT, ref maxT);
+    }
 }
