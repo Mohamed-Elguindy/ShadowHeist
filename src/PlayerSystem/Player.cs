@@ -36,12 +36,28 @@ public sealed class Player
 
     private void MoveWithCollision(Vector2 moveDirection, float deltaTime, IEnumerable<RectangleBounds> walls)
     {
-        if (moveDirection != Vector2.Zero)
+        if (moveDirection == Vector2.Zero)
         {
-            Position += moveDirection * MoveSpeed * deltaTime;
+            Position = CollisionHelper.ResolveWallCollision(Position, Radius, walls);
+            return;
         }
 
-        Position = CollisionHelper.ResolveWallCollision(Position, Radius, walls);
+        Vector2 totalMove = moveDirection * MoveSpeed * deltaTime;
+        float maxStep = MathF.Max(1f, Radius * 0.5f);
+        int steps = Math.Max(1, (int)MathF.Ceiling(totalMove.Length() / maxStep));
+        if (steps == 1)
+        {
+            Position += totalMove;
+            Position = CollisionHelper.ResolveWallCollision(Position, Radius, walls);
+            return;
+        }
+
+        Vector2 stepDelta = totalMove / steps;
+        for (int i = 0; i < steps; i++)
+        {
+            Position += stepDelta;
+            Position = CollisionHelper.ResolveWallCollision(Position, Radius, walls);
+        }
     }
 
     private void FaceAimPosition(Vector2 targetPosition)
