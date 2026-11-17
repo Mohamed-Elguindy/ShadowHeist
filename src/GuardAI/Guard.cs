@@ -2,7 +2,9 @@ using System.Numerics;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Events;
 using ShadowHeist.Core.Interfaces;
+using ShadowHeist.GuardAI.Pathfinding;
 using ShadowHeist.GuardAI.States;
+using ShadowHeist.WorldLighting;
 
 namespace ShadowHeist.GuardAI;
 
@@ -66,16 +68,30 @@ public sealed class Guard
         }
 
         float distanceSquared = Vector2.DistanceSquared(Position, noiseEvent.Origin);
-        if (distanceSquared > noiseEvent.Radius * noiseEvent.Radius)
+        if (distanceSquared > noiseEvent.Radius * noiseEvent.Radius || !CanReachOrigin(noiseEvent.Origin, walls))
         {
             return false;
         }
 
-        NotifyNoise(noiseEvent.Origin, walls);
+        NotifyReachableNoise(noiseEvent.Origin, walls);
         return true;
     }
 
     public void NotifyNoise(Vector2 origin, IReadOnlyList<RectangleBounds>? walls = null)
+    {
+        if (CanReachOrigin(origin, walls))
+        {
+            NotifyReachableNoise(origin, walls);
+        }
+    }
+
+    private static bool CanReachOrigin(Vector2 guardPos, Vector2 origin, IReadOnlyList<RectangleBounds>? walls) =>
+        walls is not { Count: > 0 } || AStarPathfinder.FindPath(guardPos, origin, walls).Count > 0;
+
+    private bool CanReachOrigin(Vector2 origin, IReadOnlyList<RectangleBounds>? walls) =>
+        CanReachOrigin(Position, origin, walls);
+
+    private void NotifyReachableNoise(Vector2 origin, IReadOnlyList<RectangleBounds>? walls)
     {
         if (CurrentState is AlertChaseState)
         {
@@ -94,6 +110,11 @@ public sealed class Guard
     public void Update(float deltaTime, GameContext context)
     {
         IGuardState nextState = CurrentState.Update(deltaTime, context);
+        if (context.Walls.Count > 0)
+        {
+            Position = CollisionHelper.ResolveWallCollision(Position, CollisionHelper.DefaultActorRadius, context.Walls);
+        }
+
         if (!ReferenceEquals(nextState, CurrentState))
         {
             TransitionTo(nextState);

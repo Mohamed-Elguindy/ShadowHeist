@@ -8,12 +8,14 @@ using ShadowHeist.WorldLighting;
 namespace ShadowHeist.GuardAI;
 
 /// <summary>
-/// Shared guard vision cone raycast, alarm detection, and wall-sliding movement helpers.
+/// Shared guard vision cone raycast and alarm detection helpers.
 /// </summary>
 public static class GuardSensorHelper
 {
     public const float DefaultVisionRange = 235f;
     public const float DefaultHalfAngleDegrees = 32f;
+
+    private const float MinVisibleDistanceSquared = 1f;
 
     public static bool TrySpotIntruder(
         Guard guard,
@@ -46,7 +48,7 @@ public static class GuardSensorHelper
         Vector2 toPlayer = context.PlayerPosition - guard.Position;
         float distSq = toPlayer.LengthSquared();
         if (distSq > visionRange * visionRange) return false;
-        if (distSq < 1f) return true;
+        if (distSq < MinVisibleDistanceSquared) return true;
 
         float rad = guard.RotationDegrees * HeistConstants.DegToRad;
         Vector2 forward = new(MathF.Cos(rad), MathF.Sin(rad));
@@ -56,14 +58,5 @@ public static class GuardSensorHelper
 
         return context.Walls.Count == 0 ||
                CollisionHelper.HasLineOfSight(guard.Position, context.PlayerPosition, context.Walls);
-    }
-
-    public static void MoveWithCollision(Guard guard, Vector2 step, IReadOnlyList<RectangleBounds> walls)
-    {
-        guard.Position += step;
-        if (walls.Count > 0)
-        {
-            guard.Position = CollisionHelper.ResolveWallCollision(guard.Position, CollisionHelper.DefaultActorRadius, walls);
-        }
     }
 }

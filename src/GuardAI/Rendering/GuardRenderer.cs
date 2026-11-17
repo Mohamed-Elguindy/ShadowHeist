@@ -14,6 +14,32 @@ public sealed class GuardRenderer : IDisposable
 {
     private const string CharacterAssetDir = "assets/models/characters";
     private const string GuardSkinPath = "assets/models/characters/skin_guard.png";
+    private const float VisionConeGroundY = 2.0f;
+    private const float VisionConeSourceY = 36f;
+    private const float FullConeFovScale = 2f;
+    private const float AlertPulseBaseAlpha = 95f;
+    private const float AlertPulseAmplitude = 35f;
+    private const float AlertPulseSpeed = 8f;
+    private const float FlashlightTipOffsetY = -12f;
+    private const float FlashlightTipOffsetZ = 2f;
+    private const float FlashlightStartRadius = 2.2f;
+    private const float FlashlightEndRadius = 3.2f;
+    private const int FlashlightCylinderSides = 8;
+    private const float FlashlightBulbOffsetY = -13f;
+    private const float FlashlightBulbOffsetZ = 2.2f;
+    private const float FlashlightBulbRadius = 2.8f;
+    private const float BadgeBaseElevationY = 84f;
+    private const float BadgeAlertBobSpeed = 10f;
+    private const float BadgeIdleBobSpeed = 3f;
+    private const float BadgeBobAmplitude = 2.5f;
+    private const float BadgeAlertConeHeight = 12f;
+    private const float BadgeIdleConeHeight = 6f;
+    private const float BadgeAlertConeRadius = 4.5f;
+    private const float BadgeIdleConeRadius = 3.2f;
+    private const float BadgeConeTipRadius = 0.5f;
+    private const int BadgeConeSides = 6;
+    private const float BadgeDotOffsetY = -4f;
+    private const float BadgeDotRadius = 2.5f;
 
     private readonly CharacterPoseAnimator _poseAnimator = new();
     private readonly GuardPathGizmo3DRenderer _pathGizmoRenderer = new();
@@ -80,18 +106,18 @@ public sealed class GuardRenderer : IDisposable
             guard.Position,
             guard.RotationDegrees,
             visionBlockers,
-            fovDegrees: Viewport3DConfig.VisionHalfAngleDegrees * 2f,
+            fovDegrees: Viewport3DConfig.VisionHalfAngleDegrees * FullConeFovScale,
             maxDistance: Viewport3DConfig.VisionRange,
             rayCount: Viewport3DConfig.VisionRayCount);
 
-        VisionCone3DRenderer.DrawProjectedVisionPolygon(cone, groundY: 2.0f, sourceY: 36f, fill, edge);
+        VisionCone3DRenderer.DrawProjectedVisionPolygon(cone, groundY: VisionConeGroundY, sourceY: VisionConeSourceY, fill, edge);
     }
 
     private static (Color Fill, Color Edge) ResolveGuardConeColors(string stateName, bool alarmActive, float timeSeconds)
     {
         if (alarmActive || stateName == "Alert")
         {
-            byte pulseAlpha = (byte)(95f + (35f * MathF.Sin(timeSeconds * 8f)));
+            byte pulseAlpha = (byte)(AlertPulseBaseAlpha + (AlertPulseAmplitude * MathF.Sin(timeSeconds * AlertPulseSpeed)));
             return (new Color((byte)244, (byte)63, (byte)94, pulseAlpha), new Color(255, 110, 125, 220));
         }
 
@@ -112,27 +138,30 @@ public sealed class GuardRenderer : IDisposable
 
     private static void DrawGuardFlashlight(Vector3 handPosition)
     {
-        Raylib.DrawCylinderEx(handPosition, handPosition + new Vector3(0f, -12f, 2f), 2.2f, 3.2f, 8, new Color(24, 28, 36, 255));
-        Raylib.DrawSphere(handPosition + new Vector3(0f, -13f, 2.2f), 2.8f, new Color(255, 240, 160, 235));
+        Vector3 flashlightTip = handPosition + new Vector3(0f, FlashlightTipOffsetY, FlashlightTipOffsetZ);
+        Vector3 bulbCenter = handPosition + new Vector3(0f, FlashlightBulbOffsetY, FlashlightBulbOffsetZ);
+        Raylib.DrawCylinderEx(handPosition, flashlightTip, FlashlightStartRadius, FlashlightEndRadius, FlashlightCylinderSides, new Color(24, 28, 36, 255));
+        Raylib.DrawSphere(bulbCenter, FlashlightBulbRadius, new Color(255, 240, 160, 235));
     }
 
     private static void DrawAwarenessBadge(Vector2 position, string stateName, float timeSeconds)
     {
         bool isAlert = stateName == "Alert";
         bool isSuspicious = stateName == "Suspicious";
-        float bobY = 84f + (MathF.Sin(timeSeconds * (isAlert ? 10f : 3f)) * 2.5f);
+        float bobSpeed = isAlert ? BadgeAlertBobSpeed : BadgeIdleBobSpeed;
+        float bobY = BadgeBaseElevationY + (MathF.Sin(timeSeconds * bobSpeed) * BadgeBobAmplitude);
         var badgeBase = new Vector3(position.X, bobY, position.Y);
         Color badgeColor = isAlert
             ? new Color(244, 63, 94, 245)
             : isSuspicious ? new Color(250, 204, 21, 240) : new Color(255, 214, 78, 175);
 
-        float coneHeight = isAlert ? 12f : 6f;
-        float coneRadius = isAlert ? 4.5f : 3.2f;
-        Raylib.DrawCylinderEx(badgeBase, badgeBase + new Vector3(0f, coneHeight, 0f), 0.5f, coneRadius, 6, badgeColor);
+        float coneHeight = isAlert ? BadgeAlertConeHeight : BadgeIdleConeHeight;
+        float coneRadius = isAlert ? BadgeAlertConeRadius : BadgeIdleConeRadius;
+        Raylib.DrawCylinderEx(badgeBase, badgeBase + new Vector3(0f, coneHeight, 0f), BadgeConeTipRadius, coneRadius, BadgeConeSides, badgeColor);
 
         if (isAlert || isSuspicious)
         {
-            Raylib.DrawSphere(badgeBase + new Vector3(0f, -4f, 0f), 2.5f, badgeColor);
+            Raylib.DrawSphere(badgeBase + new Vector3(0f, BadgeDotOffsetY, 0f), BadgeDotRadius, badgeColor);
         }
     }
 }

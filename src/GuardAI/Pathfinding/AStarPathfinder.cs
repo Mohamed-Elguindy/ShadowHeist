@@ -42,7 +42,10 @@ public static class AStarPathfinder
 
         if (start == goal)
         {
-            return new List<Vector2> { targetWorld };
+            Vector2 sameCellTarget = graph.IsWalkable(graph.WorldToGrid(targetWorld))
+                ? targetWorld
+                : graph.GridToWorld(goal);
+            return new List<Vector2> { sameCellTarget };
         }
 
         var openSet = new PriorityQueue<GridCoord, float>();
@@ -133,7 +136,10 @@ public static class AStarPathfinder
             worldWaypoints.Add(graph.GridToWorld(gridNodes[nodeIndex]));
         }
 
-        worldWaypoints.Add(exactTargetWorld);
+        Vector2 finalTarget = graph.IsWalkable(graph.WorldToGrid(exactTargetWorld))
+            ? exactTargetWorld
+            : graph.GridToWorld(goal);
+        worldWaypoints.Add(finalTarget);
         return worldWaypoints;
     }
 }

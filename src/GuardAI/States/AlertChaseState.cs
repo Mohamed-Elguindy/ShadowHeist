@@ -113,8 +113,7 @@ public sealed class AlertChaseState : IGuardPathState
         if (walls.Count > 0)
         {
             _pathComputedWithWalls = true;
-            IReadOnlyList<Vector2> computed = AStarPathfinder.FindPath(_guard.Position, _lastSeenPosition, walls);
-            _pathWaypoints = computed.Count > 0 ? computed : new List<Vector2> { _lastSeenPosition };
+            _pathWaypoints = AStarPathfinder.FindPath(_guard.Position, _lastSeenPosition, walls);
             return;
         }
 

@@ -93,7 +93,11 @@ public sealed class SuspiciousState : IGuardPathState
 
         if (_guard.StepAlongPath(_pathWaypoints, ref _currentPathIndex, deltaTime, SuspiciousSpeedMultiplier))
         {
-            _guard.Position = InvestigationTarget;
+            if (_pathWaypoints.Count > 0)
+            {
+                _guard.Position = _pathWaypoints[^1];
+            }
+
             _isInvestigating = true;
             _investigateTimer = _investigateDuration;
         }
@@ -108,8 +112,7 @@ public sealed class SuspiciousState : IGuardPathState
         if (walls is { Count: > 0 })
         {
             _pathComputedWithWalls = true;
-            IReadOnlyList<Vector2> path = AStarPathfinder.FindPath(_guard.Position, InvestigationTarget, walls);
-            _pathWaypoints = path.Count > 0 ? path : new List<Vector2> { InvestigationTarget };
+            _pathWaypoints = AStarPathfinder.FindPath(_guard.Position, InvestigationTarget, walls);
             return;
         }
 

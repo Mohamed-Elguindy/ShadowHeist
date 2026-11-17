@@ -86,6 +86,7 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
         _guards.Clear();
     }
 
+    // TODO (Hatem - Week 3 / Before Final Release): Remove debug left-click noise once CoinGadget (Ticket #20) is integrated.
     private static void PublishDebugClickNoiseIfTriggered(GameContext context)
     {
         if (!Raylib.IsWindowReady() || !Raylib.IsMouseButtonPressed(MouseButton.Left))
