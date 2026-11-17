@@ -19,7 +19,7 @@ public static class Program
 
     public static void Main()
     {
-        Raylib.SetConfigFlags(ConfigFlags.Msaa4xHint);
+        Raylib.SetConfigFlags(ConfigFlags.Msaa4xHint | ConfigFlags.ResizableWindow);
         Raylib.InitWindow(ScreenWidth, ScreenHeight, "ShadowHeist 3D — Raylib C#");
         Raylib.SetTargetFPS(TargetFps);
 
@@ -72,6 +72,11 @@ public static class Program
         if (Raylib.IsKeyPressed(KeyboardKey.F6))
         {
             context.Camera.ToggleOverviewMode();
+        }
+
+        if (Raylib.IsKeyPressed(KeyboardKey.F11))
+        {
+            Raylib.ToggleBorderlessWindowed();
         }
     }
 
