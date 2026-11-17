@@ -41,7 +41,10 @@ public sealed class PlayerSoundRippleRenderer
     public void Draw(GameContext context)
     {
         DrawAcousticRipples();
-        DrawAimReticle(context.PlayerPosition, context.AimWorldOverride, context.ElapsedSeconds);
+        if (context.Outcome == HeistOutcome.Playing)
+        {
+            DrawAimReticle(context.PlayerPosition, context.AimWorldOverride, context.ElapsedSeconds);
+        }
     }
 
     private void OnNoiseEmitted(NoiseEmittedEvent noiseEvent)

@@ -2,6 +2,7 @@ using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Rendering3D;
+using ShadowHeist.PlayerSystem.Stances;
 
 namespace ShadowHeist.PlayerSystem.Rendering;
 
@@ -18,6 +19,7 @@ public sealed class PlayerRenderer : IDisposable
 
     public void Load(ToonModelLibrary models)
     {
+        _poseAnimator.Reset();
         if (_thiefRig is not null || !Raylib.IsWindowReady())
         {
             return;
@@ -37,7 +39,7 @@ public sealed class PlayerRenderer : IDisposable
             return;
         }
 
-        Color ringColor = context.CurrentInput.IsSprintHeld
+        Color ringColor = player.CurrentStance is SprintStance
             ? Color.Orange
             : new Color(56, 225, 255, 190);
         CharacterPose pose = _poseAnimator.ComputePose(
