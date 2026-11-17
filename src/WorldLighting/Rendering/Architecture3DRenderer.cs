@@ -15,7 +15,7 @@ public sealed class Architecture3DRenderer
     private const string SteelFloorPath = "assets/sprites/floor_vault_steel.png";
     private const string WallTexturePath = "assets/sprites/wall_reinforced_concrete.png";
     private const float WallPanelLength = 64f;
-    private const float OcclusionPadding = 22f;
+    private const float OuterBorderMargin = 48f;
     private const float MaxOcclusionPlayerDistance = 135f;
     private const byte OccludedWallAlpha = 60;
     private const byte OccludedOutlineAlpha = 90;
@@ -113,8 +113,9 @@ public sealed class Architecture3DRenderer
             bool isCutaway = IsCutawayPerimeterWall(wall);
             float height = isCutaway ? Viewport3DConfig.CutawayWallHeight : Viewport3DConfig.WallHeight;
             bool isOccluding = !isCutaway
+                && !IsOuterPerimeterWall(wall)
                 && Geometry2D.DistanceToBounds(playerPos, wall) <= MaxOcclusionPlayerDistance
-                && Geometry2D.SegmentIntersectsBounds(cameraPos, playerPos, wall, OcclusionPadding);
+                && Geometry2D.SegmentIntersectsBounds(cameraPos, playerPos, wall);
             DrawSegmentedWall(wall, height, isCutaway, isOccluding);
         }
 
@@ -130,6 +131,12 @@ public sealed class Architecture3DRenderer
         bool isSouthOuter = wall.Y > Viewport3DConfig.BottomCutawayMinY && wall.Width > wall.Height;
         return isWestOuter || isSouthOuter;
     }
+
+    private static bool IsOuterPerimeterWall(RectangleBounds wall) =>
+        wall.X <= OuterBorderMargin
+        || wall.Y <= OuterBorderMargin
+        || wall.X + wall.Width >= Viewport3DConfig.MapWidth - OuterBorderMargin
+        || wall.Y + wall.Height >= Viewport3DConfig.MapHeight - OuterBorderMargin;
 
     private void DrawSegmentedWall(RectangleBounds wall, float height, bool isCutaway, bool isOccluding)
     {
