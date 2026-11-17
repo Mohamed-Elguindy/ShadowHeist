@@ -1,55 +1,66 @@
 using System.Numerics;
 using Raylib_cs;
+using ShadowHeist.Core;
+using ShadowHeist.Core.Rendering3D;
+using ShadowHeist.PlayerSystem.Stances;
 
 namespace ShadowHeist.PlayerSystem.Rendering;
 
 /// <summary>
-/// Renders the Player sprite and visual orientation (Ticket #4 - Mahmoud).
-/// Decoupled from Player movement logic (Single Responsibility Principle).
+/// Renders the articulated 3D thief character rig, ground stance ring, and suppressed pistol.
 /// </summary>
 public sealed class PlayerRenderer : IDisposable
 {
-    private const string SpritePath = "assets/sprites/player_sneak.png";
-    private const float SpriteSize = 48f;
-    private const float SpriteFacesUpOffsetDegrees = 90f;
-    private const float FallbackAimLineLength = 24f;
-    private static readonly Vector2 SpriteOrigin = new(SpriteSize / 2f, SpriteSize / 2f);
-    private readonly Texture2D _texture;
-    private readonly bool _hasTexture;
+    private const string CharacterAssetDir = "assets/models/characters";
+    private const string ThiefSkinPath = "assets/models/characters/skin_thief.png";
 
-    public PlayerRenderer()
+    private readonly CharacterPoseAnimator _poseAnimator = new();
+    private CharacterRig? _thiefRig;
+
+    public void Load(ToonModelLibrary models)
     {
-        _texture = Raylib.LoadTexture(SpritePath);
-        _hasTexture = _texture.Id > 0;
+        _poseAnimator.Reset();
+        if (_thiefRig is not null || !Raylib.IsWindowReady())
+        {
+            return;
+        }
+
+        models.EnsureLoaded();
+        _thiefRig = models.LoadCharacterRig(CharacterAssetDir, ThiefSkinPath, Viewport3DConfig.CharacterUnitScale);
     }
 
-    public void Draw(Player player)
-    {
-        if (_hasTexture)
-        {
-            var source = new Rectangle(0, 0, _texture.Width, _texture.Height);
-            var dest = new Rectangle(player.Position.X, player.Position.Y, SpriteSize, SpriteSize);
-            float spriteRotation = player.RotationDegrees + SpriteFacesUpOffsetDegrees;
-            Raylib.DrawTexturePro(_texture, source, dest, SpriteOrigin, spriteRotation, Color.White);
-        }
-        else
-        {
-            // Fallback rendering if the sprite fails to load
-            Raylib.DrawCircleV(player.Position, player.Radius, Color.SkyBlue);
+    public void UpdateAnimation(Vector2 playerPosition, float deltaTime) =>
+        _poseAnimator.UpdateActor("player", playerPosition, deltaTime);
 
-            // Draw a line showing facing direction
-            float radians = player.RotationDegrees * Raylib.DEG2RAD;
-            var facingEnd = player.Position + new Vector2(MathF.Cos(radians), MathF.Sin(radians)) * FallbackAimLineLength;
-            Raylib.DrawLineV(player.Position, facingEnd, Color.White);
+    public void Draw(Player player, GameContext context)
+    {
+        if (_thiefRig is not CharacterRig thiefRig)
+        {
+            return;
         }
+
+        Color ringColor = player.CurrentStance is SprintStance
+            ? Color.Orange
+            : new Color(56, 225, 255, 190);
+        CharacterPose pose = _poseAnimator.ComputePose(
+            "player",
+            thiefRig.Scale,
+            context.IsPlayerSneaking,
+            isGuard: false,
+            context.ElapsedSeconds);
+
+        Raylib3DPrimitives.DrawGroundRing(player.Position, ringColor);
+        CharacterMeshDrawer.DrawCharacterRig(
+            context.Models,
+            thiefRig,
+            player.Position,
+            player.RotationDegrees,
+            pose,
+            DrawPlayerPistol);
     }
 
-    public void Dispose()
-    {
-        if (_hasTexture)
-        {
-            Raylib.UnloadTexture(_texture);
-        }
-    }
+    public void Dispose() => _thiefRig = null;
+
+    private static void DrawPlayerPistol(Vector3 handPosition) =>
+        Raylib.DrawCube(handPosition + new Vector3(0f, -4f, 4f), 2.5f, 3.5f, 11f, new Color(22, 26, 34, 255));
 }
-

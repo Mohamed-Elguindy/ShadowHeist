@@ -1,140 +1,167 @@
 using System.Numerics;
 using Raylib_cs;
-using ShadowHeist.GuardAI.States;
+using ShadowHeist.Core;
+using ShadowHeist.Core.Rendering3D;
+using ShadowHeist.WorldLighting;
+using ShadowHeist.WorldLighting.Rendering;
 
 namespace ShadowHeist.GuardAI.Rendering;
 
 /// <summary>
-/// Handles rendering of Guard entities, rotation transforms, and patrol/pathfinding gizmos.
+/// Renders articulated 3D guard rigs, patrol/A* gizmos, wall-clipped 3D vision cones, flashlights, and awareness badges.
 /// </summary>
 public sealed class GuardRenderer : IDisposable
 {
-    private const string GuardTexturePath = "assets/sprites/guard_patrol.png";
-    private const float GuardSpriteSize = 48f;
-    private const float WaypointDotRadius = 4f;
-    private const float TargetRingRadius = 6f;
-    private const float ForwardGizmoLength = 30f;
-    private const float DegToRad = MathF.PI / 180f;
+    private const string CharacterAssetDir = "assets/models/characters";
+    private const string GuardSkinPath = "assets/models/characters/skin_guard.png";
+    private const float VisionConeGroundY = 2.0f;
+    private const float VisionConeSourceY = 36f;
+    private const float FullConeFovScale = 2f;
+    private const float AlertPulseBaseAlpha = 95f;
+    private const float AlertPulseAmplitude = 35f;
+    private const float AlertPulseSpeed = 8f;
+    private const float FlashlightTipOffsetY = -12f;
+    private const float FlashlightTipOffsetZ = 2f;
+    private const float FlashlightStartRadius = 2.2f;
+    private const float FlashlightEndRadius = 3.2f;
+    private const int FlashlightCylinderSides = 8;
+    private const float FlashlightBulbOffsetY = -13f;
+    private const float FlashlightBulbOffsetZ = 2.2f;
+    private const float FlashlightBulbRadius = 2.8f;
+    private const float BadgeBaseElevationY = 84f;
+    private const float BadgeAlertBobSpeed = 10f;
+    private const float BadgeIdleBobSpeed = 3f;
+    private const float BadgeBobAmplitude = 2.5f;
+    private const float BadgeAlertConeHeight = 12f;
+    private const float BadgeIdleConeHeight = 6f;
+    private const float BadgeAlertConeRadius = 4.5f;
+    private const float BadgeIdleConeRadius = 3.2f;
+    private const float BadgeConeTipRadius = 0.5f;
+    private const int BadgeConeSides = 6;
+    private const float BadgeDotOffsetY = -4f;
+    private const float BadgeDotRadius = 2.5f;
 
-    private static readonly Color PatrolLineColor = new(100, 116, 139, 120);
-    private static readonly Color WaypointDotColor = new(245, 158, 11, 160);
-    private static readonly Color ActivePathColor = new(250, 204, 21, 180);
-    private static readonly Color NoiseRingColor = new(250, 204, 21, 110);
+    private readonly CharacterPoseAnimator _poseAnimator = new();
+    private readonly GuardPathGizmo3DRenderer _pathGizmoRenderer = new();
+    private CharacterRig? _guardRig;
 
-    private Texture2D _guardTexture;
-    private bool _textureLoaded;
-    private Vector2 _lastNoiseOrigin;
-    private float _lastNoiseRadius;
-
-    public GuardRenderer()
+    public void Load(ToonModelLibrary models)
     {
-        LoadTexture();
-    }
-
-    public void RecordNoisePulse(Vector2 origin, float radius)
-    {
-        _lastNoiseOrigin = origin;
-        _lastNoiseRadius = radius;
-    }
-
-    public void Draw(IEnumerable<Guard> guards)
-    {
-        bool anyFollowingPath = false;
-
-        foreach (var guard in guards)
+        if (_guardRig is not null || !Raylib.IsWindowReady())
         {
-            DrawPatrolGizmos(guard);
+            return;
+        }
 
-            if (guard.CurrentState is IGuardPathState pathState)
+        models.EnsureLoaded();
+        _guardRig = models.LoadCharacterRig(CharacterAssetDir, GuardSkinPath, Viewport3DConfig.CharacterUnitScale);
+    }
+
+    public void RecordNoisePulse(Vector2 origin, float radius) =>
+        _pathGizmoRenderer.RecordNoisePulse(origin, radius);
+
+    public void Update(float deltaTime, IReadOnlyList<Guard> guards, ToonModelLibrary models)
+    {
+        for (int guardIndex = 0; guardIndex < guards.Count; guardIndex++)
+        {
+            Guard guard = guards[guardIndex];
+            _poseAnimator.UpdateActor(guard.Id, guard.Position, deltaTime);
+            models.SetGuardFlashlight(guardIndex, guard.Position, guard.RotationDegrees);
+        }
+
+        models.ClearUnusedGuardFlashlights(guards.Count);
+    }
+
+    public void Draw(IReadOnlyList<Guard> guards, IReadOnlyList<RectangleBounds> visionBlockers, GameContext context)
+    {
+        _pathGizmoRenderer.Draw(guards, context.ElapsedSeconds);
+
+        foreach (Guard guard in guards)
+        {
+            DrawGuardVisionCone(guard, visionBlockers, context.IsAlarmTriggered, context.ElapsedSeconds);
+
+            if (_guardRig is not CharacterRig guardRig)
             {
-                anyFollowingPath = true;
-                DrawActivePathGizmos(guard.Position, pathState);
+                continue;
             }
 
-            DrawGuardBody(guard);
-            DrawForwardFacingGizmo(guard, guard.CurrentState is IGuardPathState);
-        }
+            string stateName = guard.CurrentState.StateName;
+            CharacterPose pose = _poseAnimator.ComputePose(guard.Id, guardRig.Scale, isSneaking: false, isGuard: true, context.ElapsedSeconds);
 
-        if (anyFollowingPath && _lastNoiseRadius > 0f)
-        {
-            Raylib.DrawCircleLines((int)_lastNoiseOrigin.X, (int)_lastNoiseOrigin.Y, _lastNoiseRadius, NoiseRingColor);
-        }
-    }
-
-    public void Dispose()
-    {
-        if (_textureLoaded)
-        {
-            Raylib.UnloadTexture(_guardTexture);
-            _textureLoaded = false;
+            Raylib3DPrimitives.DrawGroundRing(guard.Position, ResolveGuardRingColor(stateName));
+            CharacterMeshDrawer.DrawCharacterRig(context.Models, guardRig, guard.Position, guard.RotationDegrees, pose, DrawGuardFlashlight);
+            DrawAwarenessBadge(guard.Position, stateName, context.ElapsedSeconds);
         }
     }
 
-    private void DrawGuardBody(Guard guard)
-    {
-        if (_textureLoaded)
-        {
-            var sourceRect = new Rectangle(0, 0, _guardTexture.Width, _guardTexture.Height);
-            var destRect = new Rectangle(guard.Position.X, guard.Position.Y, GuardSpriteSize, GuardSpriteSize);
-            var origin = new Vector2(GuardSpriteSize / 2f, GuardSpriteSize / 2f);
-            Raylib.DrawTexturePro(_guardTexture, sourceRect, destRect, origin, guard.RotationDegrees, Color.White);
-            return;
-        }
+    public void Dispose() => _guardRig = null;
 
-        Raylib.DrawCircleV(guard.Position, GuardSpriteSize / 2f, Color.Maroon);
-        Raylib.DrawCircleLines((int)guard.Position.X, (int)guard.Position.Y, GuardSpriteSize / 2f, Color.Red);
+    private static void DrawGuardVisionCone(
+        Guard guard,
+        IReadOnlyList<RectangleBounds> visionBlockers,
+        bool alarmActive,
+        float elapsedSeconds)
+    {
+        (Color fill, Color edge) = ResolveGuardConeColors(guard.CurrentState.StateName, alarmActive, elapsedSeconds);
+        IReadOnlyList<Vector2> cone = VisionRaycaster.ComputeVisionCone(
+            guard.Position,
+            guard.RotationDegrees,
+            visionBlockers,
+            fovDegrees: Viewport3DConfig.VisionHalfAngleDegrees * FullConeFovScale,
+            maxDistance: Viewport3DConfig.VisionRange,
+            rayCount: Viewport3DConfig.VisionRayCount);
+
+        VisionCone3DRenderer.DrawProjectedVisionPolygon(cone, groundY: VisionConeGroundY, sourceY: VisionConeSourceY, fill, edge);
     }
 
-    private static void DrawForwardFacingGizmo(Guard guard, bool isAlertedPath)
+    private static (Color Fill, Color Edge) ResolveGuardConeColors(string stateName, bool alarmActive, float timeSeconds)
     {
-        float angleRad = guard.RotationDegrees * DegToRad;
-        var forward = new Vector2(MathF.Cos(angleRad), MathF.Sin(angleRad));
-        var lineEnd = guard.Position + forward * ForwardGizmoLength;
-
-        Raylib.DrawLineV(guard.Position, lineEnd, isAlertedPath ? Color.Yellow : Color.Orange);
-    }
-
-    private static void DrawPatrolGizmos(Guard guard)
-    {
-        var waypoints = guard.Waypoints;
-        if (waypoints.Count < 2)
+        if (alarmActive || stateName == "Alert")
         {
-            return;
+            byte pulseAlpha = (byte)(AlertPulseBaseAlpha + (AlertPulseAmplitude * MathF.Sin(timeSeconds * AlertPulseSpeed)));
+            return (new Color((byte)244, (byte)63, (byte)94, pulseAlpha), new Color(255, 110, 125, 220));
         }
 
-        for (int i = 0; i < waypoints.Count; i++)
+        if (stateName == "Suspicious")
         {
-            var current = waypoints[i];
-            var next = waypoints[(i + 1) % waypoints.Count];
-
-            Raylib.DrawLineV(current, next, PatrolLineColor);
-            Raylib.DrawCircleV(current, WaypointDotRadius, WaypointDotColor);
-        }
-    }
-
-    private static void DrawActivePathGizmos(Vector2 guardPos, IGuardPathState pathState)
-    {
-        Vector2 previous = guardPos;
-        for (int i = pathState.CurrentPathIndex; i < pathState.PathWaypoints.Count; i++)
-        {
-            Vector2 current = pathState.PathWaypoints[i];
-            Raylib.DrawLineV(previous, current, ActivePathColor);
-            previous = current;
+            return (new Color(251, 146, 60, 112), new Color(253, 186, 116, 215));
         }
 
-        Raylib.DrawCircleLines(
-            (int)pathState.TargetPosition.X,
-            (int)pathState.TargetPosition.Y,
-            TargetRingRadius,
-            ActivePathColor);
+        return (new Color(255, 214, 78, 108), new Color(255, 238, 145, 210));
     }
 
-    private void LoadTexture()
+    private static Color ResolveGuardRingColor(string stateName) => stateName switch
     {
-        if (Raylib.IsWindowReady() && File.Exists(GuardTexturePath))
+        "Alert" => new Color(244, 63, 94, 225),
+        "Suspicious" => new Color(250, 204, 21, 210),
+        _ => new Color(255, 208, 92, 165)
+    };
+
+    private static void DrawGuardFlashlight(Vector3 handPosition)
+    {
+        Vector3 flashlightTip = handPosition + new Vector3(0f, FlashlightTipOffsetY, FlashlightTipOffsetZ);
+        Vector3 bulbCenter = handPosition + new Vector3(0f, FlashlightBulbOffsetY, FlashlightBulbOffsetZ);
+        Raylib.DrawCylinderEx(handPosition, flashlightTip, FlashlightStartRadius, FlashlightEndRadius, FlashlightCylinderSides, new Color(24, 28, 36, 255));
+        Raylib.DrawSphere(bulbCenter, FlashlightBulbRadius, new Color(255, 240, 160, 235));
+    }
+
+    private static void DrawAwarenessBadge(Vector2 position, string stateName, float timeSeconds)
+    {
+        bool isAlert = stateName == "Alert";
+        bool isSuspicious = stateName == "Suspicious";
+        float bobSpeed = isAlert ? BadgeAlertBobSpeed : BadgeIdleBobSpeed;
+        float bobY = BadgeBaseElevationY + (MathF.Sin(timeSeconds * bobSpeed) * BadgeBobAmplitude);
+        var badgeBase = new Vector3(position.X, bobY, position.Y);
+        Color badgeColor = isAlert
+            ? new Color(244, 63, 94, 245)
+            : isSuspicious ? new Color(250, 204, 21, 240) : new Color(255, 214, 78, 175);
+
+        float coneHeight = isAlert ? BadgeAlertConeHeight : BadgeIdleConeHeight;
+        float coneRadius = isAlert ? BadgeAlertConeRadius : BadgeIdleConeRadius;
+        Raylib.DrawCylinderEx(badgeBase, badgeBase + new Vector3(0f, coneHeight, 0f), BadgeConeTipRadius, coneRadius, BadgeConeSides, badgeColor);
+
+        if (isAlert || isSuspicious)
         {
-            _guardTexture = Raylib.LoadTexture(GuardTexturePath);
-            _textureLoaded = true;
+            Raylib.DrawSphere(badgeBase + new Vector3(0f, BadgeDotOffsetY, 0f), BadgeDotRadius, badgeColor);
         }
     }
 }

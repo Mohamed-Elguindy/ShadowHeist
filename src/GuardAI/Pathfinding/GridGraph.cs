@@ -86,9 +86,9 @@ public sealed class GridGraph
 
     public IEnumerable<GridCoord> GetWalkableNeighbors(GridCoord coord)
     {
-        foreach (var dir in CardinalDirections)
+        foreach (var direction in CardinalDirections)
         {
-            var neighbor = new GridCoord(coord.Col + dir.Col, coord.Row + dir.Row);
+            var neighbor = new GridCoord(coord.Col + direction.Col, coord.Row + direction.Row);
             if (IsWalkable(neighbor))
             {
                 yield return neighbor;
@@ -126,13 +126,13 @@ public sealed class GridGraph
 
     private bool TryFindWalkableAtRadius(GridCoord origin, int radius, out GridCoord result)
     {
-        for (int dCol = -radius; dCol <= radius; dCol++)
+        for (int columnOffset = -radius; columnOffset <= radius; columnOffset++)
         {
-            for (int dRow = -radius; dRow <= radius; dRow++)
+            for (int rowOffset = -radius; rowOffset <= radius; rowOffset++)
             {
-                if (Math.Abs(dCol) == radius || Math.Abs(dRow) == radius)
+                if (Math.Abs(columnOffset) == radius || Math.Abs(rowOffset) == radius)
                 {
-                    var candidate = new GridCoord(origin.Col + dCol, origin.Row + dRow);
+                    var candidate = new GridCoord(origin.Col + columnOffset, origin.Row + rowOffset);
                     if (IsWalkable(candidate))
                     {
                         result = candidate;

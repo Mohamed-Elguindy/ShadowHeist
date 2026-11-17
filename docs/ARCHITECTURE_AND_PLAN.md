@@ -1,23 +1,23 @@
 # 🕵️‍♂️ ShadowHeist (`Raylib-cs`) — 4-Week Engineering & Architecture Plan
 
 > [!IMPORTANT]
-> **Project Mission:** Build a polished **2D/3D Dual-Viewport Tactical Stealth Heist** game in C# (`Raylib-cs`) while mastering **Clean C# Architecture (SOLID, Interfaces, Design Patterns, LINQ, Unit Testing)** and **Professional GitHub Workflows (Feature Branches, Pull Requests, Mandatory Peer Code Reviews)** ahead of the Graduation Project.
-> **Strategic Roadmap Update (Post-Week 2):** With Week 1 & Week 2 core simulation systems complete and in PR review, the **3D Tactical Perspective Overhaul (`Camera3D` + `[F5]` live 2D/3D toggle)** has been promoted from a post-launch bonus into **Week 3 (immediately after Week 2)** so the entire team builds and demos Weeks 3 & 4 in full 3D!
+> **Project Mission:** Build a polished **100% Native 3D Isometric Tactical Stealth Heist** game in C# (`.NET 8` + `Raylib-cs`) while mastering **Clean C# Architecture (SOLID, Interfaces, Design Patterns, LINQ, Unit Testing)** and **Professional GitHub Workflows (Feature Branches, Pull Requests, Mandatory Peer Code Reviews)** ahead of the Graduation Project.
+> **Current Milestone Status:** **Weeks 1 & 2 (`#1`–`#16`)**, **Native 3D Tactical Overhaul (`#33`–`#36`)**, and **`#21` (`AlertChaseState`)** are **complete, merged, and verified** with **97 passing `xUnit` unit tests** (`0` warnings, `0` errors), strict `<200`-line files in `src/`, and Newspaper Layout across every module.
 
 ---
 
 ## 1. Team Ownership & Subsystem Architecture
 
-To prevent merge conflicts and ensure clean separation of concerns, each engineer owns **one decoupled C# namespace/folder**, while **all 4 team members review each other's Pull Requests**.
+To prevent merge conflicts and ensure clean separation of concerns, each engineer owns **one decoupled C# namespace/folder**, while **all 4 team members review each other's Pull Requests**. Shared 3D rendering primitives, cel-shaded `ToonModelLibrary`, character animation, and `TacticalCameraController` live in `src/Core/Rendering3D/` with zero dependencies on feature modules.
 
 ```mermaid
 flowchart TD
-    Guindy["👤 Guindy<br/>Core Engine, World Interactables & Tactical HUD"]
-    Mahmoud["🎮 Mahmoud<br/>Player Engine, Stance State Machine, Inventory & Gadgets"]
-    Hatem["🧠 Hatem<br/>Guard AI State Machine, Sensors & A* Pathfinding"]
-    Ali["🔦 Ali<br/>Level Loader, Vision Raycasting, Lasers & 2D Lighting"]
+    Guindy["👤 Guindy<br/>Core Engine, Shared 3D Foundation, Interactables & Unified HUD"]
+    Mahmoud["🎮 Mahmoud<br/>Player Engine, Stance FSM, 3D Rig & Inventory/Gadgets"]
+    Hatem["🧠 Hatem<br/>Guard AI FSM, A* Pathfinding, 3D Cones & Gizmos"]
+    Ali["🔦 Ali<br/>JSON Level Loader, Raycasting, 3D Lasers & 3D World"]
 
-    Core["Shared Contracts & Event Bus (src/Core/)"]
+    Core["Shared Contracts, Event Bus & Core 3D Engine (src/Core/)"]
     Guindy --> Core
     Mahmoud --> Core
     Hatem --> Core
@@ -28,327 +28,330 @@ flowchart TD
 
 | Engineer | Assigned Module (`src/`) | Key Systems Owned | Core Engineering Patterns Practiced |
 | :--- | :--- | :--- | :--- |
-| **Guindy** | `src/Core/` & `src/HeistWorld/` | `GameContext`, `GameEventBus`, `VaultDoor`, `KeypadTerminal`, `LootCrate`, `FuseBox`, `HudRenderer`, `GameStateManager` | **Observer Pattern (Event Bus)**, **Polymorphism (`IInteractable`)**, High-Level State Management |
-| **Mahmoud** | `src/PlayerSystem/` | `IInputProvider`, `PlayerMovement`, `PlayerRenderer`, Stances (`SneakStance`, `WalkStance`, `SprintStance`), `PlayerInventory`, Gadgets (`CoinGadget`, `EmpGadget`, `SuppressedPistol`) | **Dependency Injection (`IInputProvider`)**, **State Pattern (`IPlayerStance`)**, **Strategy Pattern (`IGadget`)**, **C# Collections & LINQ**, **xUnit Testing** |
-| **Hatem** | `src/GuardAI/` | `Guard`, AI States (`PatrolState`, `SuspiciousState`, `AlertChaseState`), `SecurityCamera`, Detection Meter, 2D Grid `AStarPathfinder` | **Finite State Machine (`IGuardState`)**, **Graph Algorithms (A\*)**, Event-Driven AI Transitions, **xUnit Testing** |
-| **Ali** | `src/WorldLighting/` | JSON `MapLoader`, Wall Collision, `VisionRaycaster` (2D line-of-sight polygons), `LaserTripwire`, `BrokenGlassTile`, `ShadowRenderer` & Bloom Shader | **Data-Driven Design (JSON DTOs)**, **Computational Geometry (Raycasting)**, Custom Render Pipelines (`RenderTexture2D` & GLSL) |
+| **Guindy** | `src/Core/` & `src/HeistWorld/` | `GameContext`, `GameEventBus`, `Core/Rendering3D/` (`TacticalCameraController`, `ToonModelLibrary`, `CharacterMeshDrawer`), `VaultDoor`, `KeypadTerminal`, `LootCrate`, `FuseBox`, `HeistWorldRenderer`, `HudRenderer`, `GameStateManager` | **Observer Pattern (Event Bus)**, **Polymorphism (`IInteractable`, `IHoldInteractable`)**, Dependency Injection, High-Level State Machines |
+| **Mahmoud** | `src/PlayerSystem/` | `IInputProvider` (`KeyboardInputProvider`), `Player`, Stances (`SneakStance`, `WalkStance`, `SprintStance`), `PlayerRenderer`, `PlayerSoundRippleRenderer`, upcoming `PlayerInventory` & `IGadget` (`CoinGadget`, `EmpGadget`, `SuppressedPistol`) | **Dependency Injection (`IInputProvider`)**, **State Pattern (`IPlayerStance`)**, **Strategy Pattern (`IGadget`)**, **C# Collections & LINQ**, **xUnit Testing** |
+| **Hatem** | `src/GuardAI/` | `Guard`, AI States (`PatrolState`, `SuspiciousState`, `AlertChaseState`), `IGuardPathState`, `GuardSensorHelper`, `AStarPathfinder` & `GridGraph`, `GuardRenderer`, `GuardPathGizmo3DRenderer`, upcoming `SecurityCamera` & Detection Meter | **Finite State Machine (`IGuardState`)**, **Graph Algorithms (A\*)**, Event-Driven AI Transitions, **xUnit Testing** |
+| **Ali** | `src/WorldLighting/` | JSON `MapLoader` & `LevelMapData`, `CollisionHelper`, `VisionRaycaster`, `LaserTripwire`, `Architecture3DRenderer`, `Furniture3DRenderer`, `BankDecorRenderer`, `LaserTripwire3DRenderer`, `VisionCone3DRenderer`, upcoming lighting/glass hazards | **Data-Driven Design (JSON DTOs)**, **Computational Geometry (Raycasting)**, Modular 3D Environment Pipelines |
 
 ---
 
 ## 2. Clean C# Architecture Blueprint (SOLID & Zero Merge Conflicts)
 
 > [!TIP]
-> **The Golden Rule of Team Git:** Never let 4 engineers edit `Program.cs` at the same time. On Day 1, `Program.cs` is locked at ~40 lines of code, and each engineer only adds/edits classes inside their own folder under `src/`.
+> **Clean Code & Structural Rules:** Every `.cs` file in `src/` stays strictly **under 200 lines**, follows **Newspaper Layout** (public entry points at top, private helpers below in call order), avoids noisy inline comments, and isolates Raylib 3D rendering into dedicated `Rendering/` classes so all gameplay systems run headlessly in `xUnit`.
 
 ### Folder Structure (`ShadowHeist.sln`)
 
 ```text
 ShadowHeist/
 ├── assets/
-│   ├── sprites/          # Player, Guard, Furniture, Vault, Loot PNGs
-│   ├── shaders/          # 2d_lighting.fs, bloom.fs
-│   ├── maps/             # level1_bank.json, level2_penthouse.json
-│   └── audio/            # footstep.wav, hack.wav, alarm.wav
+│   ├── maps/                     # level1_city_bank.json (+ planned level2_penthouse.json)
+│   ├── models/
+│   │   ├── characters/           # Articulated low-poly parts, basicCharacter, skins
+│   │   ├── furniture/            # Sofas, chairs, tables, rugs, lamps, plants + palette
+│   │   └── props/                # getaway_van.obj + props_palette.png
+│   ├── shaders/                  # toon.vs/fs, outline.vs/fs (+ planned shadow_mask.fs, bloom.fs)
+│   └── sprites/                  # Floors, reinforced wall textures, UI & prop textures
 ├── src/
-│   ├── Program.cs        # Entry point ONLY (initializes GameManager)
-│   ├── Core/             # Shared Interfaces, Structs & EventBus (Initialized on Day 1)
+│   ├── Program.cs                # Entry point (<100 lines): RegisterSystems, hotkeys, 3D + HUD passes
+│   ├── Core/                     # Shared Contracts, Events & Core 3D Engine (Guindy)
 │   │   ├── Interfaces/
-│   │   │   ├── IGameSystem.cs
+│   │   │   ├── IGameSystem.cs    # Init, Update, Draw, DrawHud
 │   │   │   ├── IInputProvider.cs
 │   │   │   ├── IPlayerStance.cs
 │   │   │   ├── IInteractable.cs
 │   │   │   ├── IGuardState.cs
 │   │   │   └── IGadget.cs
-│   │   ├── Events/
-│   │   │   ├── GameEventBus.cs
-│   │   │   ├── NoiseEmittedEvent.cs
-│   │   │   └── AlarmTriggeredEvent.cs
-│   │   └── GameContext.cs
-│   ├── PlayerSystem/     # 🎮 Owned by Mahmoud
+│   │   ├── Events/               # GameEventBus, NoiseEmittedEvent, NoiseCategory, AlarmTriggeredEvent
+│   │   ├── Rendering3D/          # Viewport3DConfig, TacticalCameraController, ToonModelLibrary,
+│   │   │                         # ToonShaderUniforms, CharacterPoseAnimator, CharacterMeshDrawer, Raylib3DPrimitives
+│   │   ├── GameContext.cs
+│   │   └── HeistConstants.cs
+│   ├── PlayerSystem/             # 🎮 Owned by Mahmoud
+│   │   ├── PlayerSystemModule.cs
 │   │   ├── Player.cs
-│   │   ├── Input/        # KeyboardInputProvider.cs, PlayerInputCommand.cs
-│   │   ├── Stances/      # SneakStance.cs, WalkStance.cs, SprintStance.cs
-│   │   ├── Inventory/    # PlayerInventory.cs, LootItem.cs
-│   │   └── Gadgets/      # CoinGadget.cs, EmpGadget.cs, SuppressedPistol.cs
-│   ├── HeistWorld/       # 👤 Owned by Guindy
-│   │   ├── Interactables/# VaultDoor.cs, KeypadTerminal.cs, LootCrate.cs, FuseBox.cs
-│   │   ├── UI/           # HudRenderer.cs, MainMenuScreen.cs
-│   │   └── GameStateManager.cs
-│   ├── GuardAI/          # 🧠 Owned by Hatem
+│   │   ├── Input/                # KeyboardInputProvider.cs
+│   │   ├── Stances/              # SneakStance.cs, WalkStance.cs, SprintStance.cs
+│   │   ├── Rendering/            # PlayerRenderer.cs, PlayerSoundRippleRenderer.cs
+│   │   ├── Inventory/            # Planned (#19): PlayerInventory.cs
+│   │   └── Gadgets/              # Planned (#20, #27): CoinGadget.cs, EmpGadget.cs, SuppressedPistol.cs
+│   ├── HeistWorld/               # 👤 Owned by Guindy
+│   │   ├── HeistWorldModule.cs
+│   │   ├── InteractionController.cs
+│   │   ├── InteractableQuery.cs
+│   │   ├── Interactables/        # WorldObject.cs, IHoldInteractable.cs, VaultDoor.cs, KeypadTerminal.cs, LootCrate.cs
+│   │   ├── Rendering/            # HeistWorldRenderer.cs, LootSparkRenderer.cs
+│   │   └── UI/                   # HudRenderer.cs, SoundMeter.cs, SoundMeterBarRenderer.cs,
+│   │                             # HoldProgressRingRenderer.cs, HudPromptRenderer.cs
+│   ├── GuardAI/                  # 🧠 Owned by Hatem
+│   │   ├── GuardAiModule.cs
 │   │   ├── Guard.cs
-│   │   ├── SecurityCamera.cs
-│   │   ├── States/       # PatrolState.cs, SuspiciousState.cs, AlertChaseState.cs
-│   │   └── Pathfinding/  # GridGraph.cs, AStarPathfinder.cs
-│   └── WorldLighting/    # 🔦 Owned by Ali
+│   │   ├── GuardSensorHelper.cs
+│   │   ├── States/               # IGuardPathState.cs, PatrolState.cs, SuspiciousState.cs, AlertChaseState.cs
+│   │   ├── Pathfinding/          # GridCoord.cs, GridGraph.cs, AStarPathfinder.cs
+│   │   └── Rendering/            # GuardRenderer.cs, GuardPathGizmo3DRenderer.cs
+│   └── WorldLighting/            # 🔦 Owned by Ali
+│       ├── WorldLightingModule.cs
 │       ├── MapLoader.cs
+│       ├── LevelMapData.cs
 │       ├── CollisionHelper.cs
 │       ├── VisionRaycaster.cs
 │       ├── LaserTripwire.cs
-│       └── ShadowRenderer.cs
+│       └── Rendering/            # Architecture3DRenderer.cs, Furniture3DRenderer.cs, BankFurnitureLayout.cs,
+│                                 # BankDecorRenderer.cs, LaserTripwire3DRenderer.cs, VisionCone3DRenderer.cs
 └── tests/
-    └── ShadowHeist.Tests/# xUnit tests for PlayerInventory, Stances, and AStarPathfinder
+    └── ShadowHeist.Tests/        # 15 xUnit test files (97 passing automated tests)
 ```
 
 ### Core Interfaces & Design Patterns Diagram
 
 ```mermaid
 classDiagram
+    class IGameSystem {
+        <<interface>>
+        +Init(GameContext context) void
+        +Update(float deltaTime, GameContext context) void
+        +Draw(GameContext context) void
+        +DrawHud(GameContext context) void
+    }
+
     class IPlayerStance {
         <<interface>>
         +Name string
         +SpeedMultiplier float
         +NoiseRadius float
-        +HandleStanceChange(PlayerInputCommand input) IPlayerStance
+        +HandleInput(PlayerInputCommand command) IPlayerStance
     }
 
     class IGadget {
         <<interface>>
         +Name string
         +RemainingCharges int
-        +Use(Vector2 origin, Vector2 target, GameEventBus bus) bool
+        +TryUse(Vector2 origin, Vector2 target, GameEventBus eventBus) bool
     }
 
     class IInteractable {
         <<interface>>
+        +Id string
         +Position Vector2
         +InteractRadius float
         +PromptText string
-        +CanInteract(Player p) bool
-        +OnInteract(Player p, GameEventBus bus) void
+        +CanInteract(Vector2 playerPosition) bool
+        +OnInteract(GameContext context, GameEventBus eventBus) void
+    }
+
+    class IHoldInteractable {
+        <<interface>>
+        +HoldProgress float
+        +Hold(float deltaTime, GameContext context, GameEventBus eventBus) void
+        +Release() void
     }
 
     class IGuardState {
         <<interface>>
-        +Enter(Guard guard) void
-        +Update(Guard guard, float dt, GameContext ctx) IGuardState
-        +DrawGizmos(Guard guard) void
+        +StateName string
+        +Enter() void
+        +Update(float deltaTime, GameContext context) IGuardState
     }
 
-    IPlayerStance <|.. SneakStance : implements
-    IPlayerStance <|.. WalkStance : implements
-    IPlayerStance <|.. SprintStance : implements
-    IGadget <|.. CoinGadget : implements
-    IGadget <|.. EmpGadget : implements
-    IInteractable <|.. KeypadTerminal : implements
-    IInteractable <|.. VaultDoor : implements
-    IGuardState <|.. PatrolState : implements
-    IGuardState <|.. SuspiciousState : implements
-    IGuardState <|.. AlertChaseState : implements
+    class IGuardPathState {
+        <<interface>>
+        +TargetPosition Vector2
+        +PathWaypoints IReadOnlyList~Vector2~
+        +CurrentPathIndex int
+    }
+
+    IPlayerStance <|.. SneakStance
+    IPlayerStance <|.. WalkStance
+    IPlayerStance <|.. SprintStance
+    IGadget <|.. CoinGadget
+    IGadget <|.. EmpGadget
+    IGadget <|.. SuppressedPistol
+    IInteractable <|-- IHoldInteractable
+    IInteractable <|.. LootCrate
+    IInteractable <|.. VaultDoor
+    IHoldInteractable <|.. KeypadTerminal
+    IGuardState <|-- IGuardPathState
+    IGuardState <|.. PatrolState
+    IGuardPathState <|.. SuspiciousState
+    IGuardPathState <|.. AlertChaseState
 ```
 
 1. **Input & Rendering Separation (Single Responsibility Principle):**
-   * In `src/PlayerSystem/`, **Mahmoud** separates input reading (`KeyboardInputProvider : IInputProvider`) from player logic (`Player.cs`) and rendering (`PlayerRenderer.cs`). This makes `Player` and `PlayerInventory` 100% unit-testable without opening a Raylib window.
+   * In `src/PlayerSystem/`, **Mahmoud** separates input reading (`KeyboardInputProvider : IInputProvider`) from player logic (`Player.cs`) and 3D rendering (`PlayerRenderer.cs`, `PlayerSoundRippleRenderer.cs`). All domain classes stay 100% unit-testable without a window.
 2. **State Pattern Over `if/else` Chains:**
-   * Both **Mahmoud** (`IPlayerStance`) and **Hatem** (`IGuardState`) use the **State Pattern** so behavior changes cleanly via polymorphism instead of giant nested `if/else` blocks.
+   * Both **Mahmoud** (`IPlayerStance`) and **Hatem** (`IGuardState` / `IGuardPathState`) use polymorphism so movement and AI transitions remain small, modular, and Open/Closed.
 3. **Dependency Inversion & Event Bus:**
-   * When **Mahmoud's** `Player` sprints or throws a `CoinGadget`, it publishes `EventBus.Publish(new NoiseEmittedEvent(pos, radius))`.
-   * **Hatem's** `GuardAI` and **Guindy's** `HudRenderer` subscribe to `NoiseEmittedEvent`—zero tight coupling between files!
+   * When `Player` sprints or activates a distraction, it publishes `NoiseEmittedEvent` on `GameEventBus`. `GuardAiModule`, `PlayerSoundRippleRenderer`, and `SoundMeter` subscribe independently with zero cross-module coupling.
 
 ---
 
 ## 3. GitHub Workflow & Peer PR Review Playbook
 
 > [!NOTE]
-> **Team Standard:** Every feature is built on a short-lived branch, verified to compile cleanly, and merged via a **Pull Request (PR)** reviewed by teammates.
+> **Team Standard:** Every feature is built on a short-lived branch, verified to compile cleanly with all `xUnit` tests passing, and merged via a **Pull Request (PR)** reviewed by teammates.
 
 ### Rule 1: Branch Protection & Naming Convention
 * Direct pushes to `main` are disabled.
 * Branch naming format: `<type>/<owner>-<short-description>`
-  * `feat/mahmoud-player-stances`
-  * `feat/hatem-guard-patrol-state`
-  * `feat/ali-vision-raycaster`
-  * `feat/guindy-keypad-terminal`
+  * `feat/mahmoud-inventory-linq`
+  * `feat/hatem-detection-meter`
+  * `feat/ali-shadow-renderer`
+  * `feat/guindy-fusebox-laserswitch`
 
 ### Rule 2: The Daily Git Routine (5 Commands)
-Before starting any ticket, run:
 ```bash
 # 1. Switch to main and pull latest merged team code
 git checkout main
 git pull origin main
 
 # 2. Create a branch for ONE ticket only
-git checkout -b feat/mahmoud-inventory-system
+git checkout -b feat/mahmoud-inventory-linq
 
-# 3. Write code, verify `dotnet build` succeeds, then commit
-git add .
-git commit -m "feat(player): implement PlayerInventory with LINQ weight calculation"
+# 3. Verify build & tests pass cleanly locally
+dotnet build && dotnet test
 
 # 4. Push branch to GitHub and open a Pull Request
-git push -u origin feat/mahmoud-inventory-system
+git push -u origin feat/mahmoud-inventory-linq
 ```
 
-### Rule 3: Mandatory Peer Review Matrix (Everyone Reviews!)
-Every Pull Request requires **2 Approvals** before merging so all 4 team members practice reading and reviewing C# code every week:
+### Rule 3: Mandatory Peer Review Matrix (2 Approvals Required)
 
-| PR Author | Primary Reviewer | Secondary Reviewer |
-| :--- | :--- | :--- |
-| **Mahmoud** | Hatem | Guindy |
-| **Hatem** | Mahmoud | Ali |
-| **Ali** | Mahmoud | Guindy |
-| **Guindy** | Hatem | Ali |
+| PR Author | Primary Reviewer | Secondary Reviewer | What Reviewers Focus On |
+| :--- | :--- | :--- | :--- |
+| **Mahmoud** | Hatem | Guindy | `IInputProvider` DI, clean State/Strategy classes, LINQ correctness, `<200`-line files |
+| **Hatem** | Guindy | Ali | Guard FSM state transitions, `AStarPathfinder` caching/safety, Newspaper Layout |
+| **Ali** | Mahmoud | Guindy | JSON DTO models, raycast math helpers, 3D renderer modularity |
+| **Guindy** | Hatem | Ali | `Core` contracts, `Rendering3D` resource disposal order, `IInteractable` & HUD clarity |
 
-### Rule 4: The 5-Point "Clean Code" PR Checklist (`.github/pull_request_template.md`)
-Every reviewer verifies these 5 points before clicking **Approve**:
-* [ ] **Builds Cleanly:** Does `dotnet build` succeed with 0 errors and 0 warnings?
-* [ ] **Single Responsibility:** Is each class under ~150 lines and focused on **one** clear responsibility?
-* [ ] **No Magic Numbers:** Are speeds, radii, and cooldowns declared as named constants (`private const float SneakSpeed = 95f;`)?
-* [ ] **C# Naming Standards:** Are classes/methods/properties `PascalCase`, private fields `_camelCase`, and interfaces prefixed with `I`?
-* [ ] **Module Boundaries:** Did the PR stay inside its assigned module and communicate with other modules via interfaces/events?
+### Rule 4: The Enforced Clean Code PR Checklist (`.github/pull_request_template.md`)
+* [ ] **Builds & Tests Cleanly:** Does `dotnet build && dotnet test` succeed with `0` warnings and `0` errors?
+* [ ] **Strict `<200`-Line File Limit:** Is every `.cs` file in `src/` strictly under **200 lines** with clear single responsibility?
+* [ ] **Newspaper Layout:** Are public constructors/methods placed at the top and private helpers ordered logically underneath?
+* [ ] **Self-Documenting Code & Named Constants:** Are names descriptive, magic numbers extracted to named constants, and inline comments avoided?
+* [ ] **Module Boundaries:** Did the PR stay inside its assigned module and communicate across subsystems only via `src/Core/` interfaces and `GameEventBus`?
 
 ---
 
-## 4. The 4-Week Sprint Plan & Ticket Backlog (32 GitHub Issues)
+## 4. The 4-Week Sprint Plan & Ticket Backlog (36 GitHub Issues)
 
-Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where everyone pulls `main` and tests the integrated build together.
+Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where everyone pulls `main` and playtests the integrated 3D build.
 
-### 🗓️ Week 1: Core Skeleton, Input Abstraction, Map Loading & First Patrols
-**Goal:** Master the Git branch $\rightarrow$ PR $\rightarrow$ Code Review workflow while getting the player, guards, and map running.
+### 🗓️ Week 1: Core Skeleton, Input Abstraction, Map Loading & First Patrols (`#1`–`#8` ✅ Completed)
 
-| Ticket | Owner | Task Description | Engineering Focus |
-| :--- | :--- | :--- | :--- |
-| **#1** | 👤 Guindy | Initialize Day-1 Skeleton (`GameContext`, `IGameSystem`, `IInteractable`, `GameEventBus`) | Interfaces & DI |
-| **#2** | 👤 Guindy | Implement `LootCrate.cs : IInteractable` & basic `HudRenderer.cs` (`\$0 / \$500,000`) | Interface implementation |
-| **#3** | 🎮 Mahmoud | Create `IInputProvider` + `KeyboardInputProvider.cs` returning `PlayerInputCommand` (WASD move, Left Ctrl crouch/sneak toggle, Shift sprint, E interact) | Input Abstraction (DI) |
-| **#4** | 🎮 Mahmoud | Implement `Player.cs` movement & smooth mouse-aim rotation separated from `PlayerRenderer.cs` | Single Responsibility Principle |
-| **#5** | 🧠 Hatem | Create `Guard.cs` entity + `PatrolState.cs : IGuardState` (walks between patrol waypoints) | State Pattern basics |
-| **#6** | 🧠 Hatem | Add smooth guard rotation toward next waypoint + debug gizmo lines | Vector2 math encapsulation |
-| **#7** | 🔦 Ali | Create `MapLoader.cs` loading walls, marble floor tiles, and entity spawns from JSON | Data-Driven Design (DTOs) |
-| **#8** | 🔦 Ali | Implement `CollisionHelper.ResolveWallCollision` for smooth sliding along walls | Pure static utility functions |
+| Ticket | Status | Owner | Task Description | Engineering Focus |
+| :--- | :--- | :--- | :--- | :--- |
+| **#1** | ✅ | 👤 Guindy | Initialize skeleton (`GameContext`, `IGameSystem`, `IInteractable`, `GameEventBus`) | Interfaces & DI |
+| **#2** | ✅ | 👤 Guindy | Implement `LootCrate.cs : IInteractable` & `HudRenderer.cs` (`\$0 / \$500,000`) | Interface implementation |
+| **#3** | ✅ | 🎮 Mahmoud | Create `IInputProvider` + `KeyboardInputProvider.cs` returning `PlayerInputCommand` | Input Abstraction (DI) |
+| **#4** | ✅ | 🎮 Mahmoud | Implement `Player.cs` movement & smooth mouse-aim rotation separated from rendering | Single Responsibility |
+| **#5** | ✅ | 🧠 Hatem | Create `Guard.cs` entity + `PatrolState.cs : IGuardState` | State Pattern basics |
+| **#6** | ✅ | 🧠 Hatem | Add smooth guard rotation (`MoveTowardsAngle`) + patrol gizmos | Math encapsulation |
+| **#7** | ✅ | 🔦 Ali | Create `MapLoader.cs` loading walls, obstacles, interactables & guards from JSON | Data-Driven Design (DTOs) |
+| **#8** | ✅ | 🔦 Ali | Implement `CollisionHelper.ResolveWallCollision` & `HasLineOfSight` | Pure static helpers |
 
----
+### 🗓️ Week 2: State Machines, Event Bus, Vision Raycasting & Keypad Hacking (`#9`–`#16` ✅ Completed)
 
-### 🗓️ Week 2: State Machines, Event Bus, Vision Raycasting & Keypad Hacking
-**Goal:** Eliminate `if/else` spaghetti with the **State Pattern** and connect modules using the **Event Bus**.
-
-| Ticket | Owner | Task Description | Engineering Focus |
-| :--- | :--- | :--- | :--- |
-| **#9** | 👤 Guindy | Create `VaultDoor.cs` and `KeypadTerminal.cs : IInteractable` (holding `E` fills bypass bar) | Object composition & IDs |
-| **#10** | 👤 Guindy | Add animated **Sound Meter Bar** & **Interaction Progress Ring** to `HudRenderer.cs` | Event Bus subscriptions |
-| **#11** | 🎮 Mahmoud | Implement `IPlayerStance` with `SneakStance.cs` (toggled via `Left Ctrl`), `WalkStance.cs`, and `SprintStance.cs` | State Pattern & Polymorphism |
-| **#12** | 🎮 Mahmoud | Publish `NoiseEmittedEvent` based on active stance & floor surface (silent crouch vs. loud sprint) | Event-Driven Architecture |
-| **#13** | 🧠 Hatem | Implement `SuspiciousState.cs` (guard hears `NoiseEmittedEvent` and walks to investigate) | Event-driven state transitions |
-| **#14** | 🧠 Hatem | Implement 2D Grid `AStarPathfinder.cs` so guards navigate cleanly around walls and rooms | Algorithm encapsulation |
-| **#15** | 🔦 Ali | Implement `VisionRaycaster.cs` (computes guard vision cone polygon clipped by walls) | Ray-segment math |
-| **#16** | 🔦 Ali | Create `LaserTripwire.cs` (red beam that stops at walls/player and fires `AlarmTriggeredEvent`) | Raycasting & Events |
+| Ticket | Status | Owner | Task Description | Engineering Focus |
+| :--- | :--- | :--- | :--- | :--- |
+| **#9** | ✅ | 👤 Guindy | Create `VaultDoor.cs` & `KeypadTerminal.cs : IHoldInteractable` (hold `E` to unlock) | Composition & IDs |
+| **#10** | ✅ | 👤 Guindy | Add animated `SoundMeter` / `SoundMeterBarRenderer` & `HoldProgressRingRenderer` via EventBus | Observer Pattern in UI |
+| **#11** | ✅ | 🎮 Mahmoud | Implement `IPlayerStance`: `SneakStance.cs`, `WalkStance.cs`, and `SprintStance.cs` | State Pattern |
+| **#12** | ✅ | 🎮 Mahmoud | Publish `NoiseEmittedEvent` from active stance (silent crouch vs. loud sprint) | Event-Driven Publishing |
+| **#13** | ✅ | 🧠 Hatem | Implement `SuspiciousState.cs : IGuardPathState` (hears `NoiseEmittedEvent`, investigates) | Event-driven FSM |
+| **#14** | ✅ | 🧠 Hatem | Implement 2D Grid `AStarPathfinder.cs` & `GridGraph.cs` around walls | Algorithm encapsulation |
+| **#15** | ✅ | 🔦 Ali | Implement `VisionRaycaster.cs` computing wall-clipped FOV visibility polygons | Ray-segment math |
+| **#16** | ✅ | 🔦 Ali | Create `LaserTripwire.cs` firing `AlarmTriggeredEvent` on wall-clipped contact | Raycasting & Events |
 
 > [!NOTE]
 > **Noise Attribution Contract (`NoiseCategory` in Core):**
-> `NoiseEmittedEvent` includes `NoiseCategory Category = NoiseCategory.Player` (`Player`, `Distraction`, `Environment`). `SoundMeter` filters exclusively for `NoiseCategory.Player`, while `GuardAI` reacts to all audible categories. In Ticket #20 (`CoinGadget`), pass `NoiseCategory.Distraction` so remote coin throws lure guards without spiking the player's personal stealth meter.
+> `NoiseEmittedEvent` includes `NoiseCategory Category = NoiseCategory.Player` (`Player`, `Distraction`, `Environment`). `SoundMeter` filters for `NoiseCategory.Player`, while `GuardAI` reacts to all audible categories. In Ticket #20 (`CoinGadget`), pass `NoiseCategory.Distraction` so remote coin throws lure guards without spiking the player's personal stealth meter.
+
+---
+
+### 🗓️ Week 3: Native 3D Overhaul (✅ Done) + Inventory, Gadgets & Sensors (`#33`–`#36`, `#21` ✅ Done; `#17`–`#20`, `#22`–`#24` In Progress)
+
+**Goal:** Run the entire game natively in **3D Isometric Tactical View (`src/Core/Rendering3D/` + per-module `Rendering/` classes)** while delivering `FuseBox`/`LaserSwitch`, `TacticalCameraController` shake/peek, `PlayerInventory` (LINQ), `IGadget`, Guard Detection Meter, and 3D darkness/glass hazards.
+
+| Ticket | Status | Owner | Task Description | Engineering Focus |
+| :--- | :--- | :--- | :--- | :--- |
+| **#33** | ✅ | 👤 Guindy | **Native 3D Engine & Camera (`src/Core/Rendering3D/`):** `TacticalCameraController` (`[F6]` Follow/Overview, scroll zoom, `ScreenToGroundPoint`), `ToonModelLibrary` (`toon.fs` + `outline.fs`), `CharacterPoseAnimator`, `CharacterMeshDrawer`, and unified `HudRenderer` (`GetWorldToScreen` rings & prompts). | Ray-Plane Math & Shared 3D Core |
+| **#34** | ✅ | 🔦 Ali | **Native 3D Environment (`src/WorldLighting/Rendering/`):** `Architecture3DRenderer` (textured 3D concrete walls & multi-zone floor tiles), `Furniture3DRenderer` + `BankDecorRenderer` (sofas, lamps, plants, getaway van), `LaserTripwire3DRenderer`, and `VisionCone3DRenderer`. | 3D Geometry & Modular Renderers |
+| **#35** | ✅ | 🎮 Mahmoud | **Native 3D Player Presentation (`src/PlayerSystem/Rendering/`):** Articulated cel-shaded 3D thief rig with stance pose animation, weapon prop, ground ring (`PlayerRenderer`), and expanding 3D floor acoustic ripples (`PlayerSoundRippleRenderer`). | Character Animation & 3D VFX |
+| **#36** | ✅ | 🧠 Hatem | **Native 3D Guard & Path Presentation (`src/GuardAI/Rendering/`):** Articulated 3D guard rigs + flashlights, wall-clipped 3D floor vision cones, overhead `?`/`!` badges (`GuardRenderer`), and 3D patrol/A* path/noise ring gizmos (`GuardPathGizmo3DRenderer`). | 3D Gizmos & Open/Closed `IGuardPathState` |
+| **#21** | ✅ | 🧠 Hatem | **Alert Chase State:** `AlertChaseState.cs : IGuardPathState` + `GuardSensorHelper` (vision detection, alarm broadcast, A* pursuit around walls, and `HeistOutcome.Caught`). | Complete Guard FSM & A* Pursuit |
+| **#17** | 🔜 | 👤 Guindy | Create `FuseBox.cs` & `LaserSwitch.cs : IInteractable` publishing `PowerStateChangedEvent` to toggle linked lights/lasers | Loose coupling via EventBus IDs |
+| **#18** | 🔜 | 👤 Guindy | Extend `TacticalCameraController` with alarm camera shake & Right-Click directional tactical peek | Clean 3D Camera Effects |
+| **#19** | 🔜 | 🎮 Mahmoud | Build `PlayerInventory.cs` using `List<LootItem>`, `Dictionary`, and **LINQ** (`Sum` for loot weight slowdown) | C# Collections & LINQ |
+| **#20** | 🔜 | 🎮 Mahmoud | Implement `IGadget` Strategy Pattern: `CoinGadget.cs` (`NoiseCategory.Distraction`) & `EmpGadget.cs` in 3D | Strategy Pattern (`IGadget`) |
+| **#22** | 🔜 | 🧠 Hatem | Add progressive Guard Detection Meter (`0% -> 100%` fill scaling with distance/sneak) driving 3D `?`/`!` gauges | Clean state timers |
+| **#23** | 🔜 | 🔦 Ali | Enhance `WorldLighting/Rendering` dynamic 3D lighting & darkness/shadow mood pass | Custom 3D Lighting Pipeline |
+| **#24** | 🔜 | 🔦 Ali | Add `BrokenGlassTile` 3D floor hazard (spikes footstep noise) + emissive keypad glow accents | World Hazard Integration |
+
+> [!NOTE]
+> **Week 3 Architecture Contracts (#17 & #18):**
+> - **Draw-Pass Split (`IGameSystem`):** `Program.cs` calls `context.DrawAll()` inside `BeginMode3D(context.Camera.Camera)` for world 3D meshes/gizmos, then calls `context.DrawHudAll()` in screen space after `EndMode3D()`, keeping all `DrawHud` projection (`GetWorldToScreen`) isolated to UI renderers.
+> - **Power Mechanism (#17):** Use `PowerStateChangedEvent(string TargetGroupId, bool IsPowered)` on `GameEventBus` (`FuseBox` one-shot `[E] Cut Power`; `LaserSwitch` toggle).
+
+---
+
+### 🗓️ Week 4: Menus, Security Cameras, Level 2, Audio/Bloom & Final Polish (`#25`–`#32`)
+
+| Ticket | Status | Owner | Task Description | Engineering Focus |
+| :--- | :--- | :--- | :--- | :--- |
+| **#25** | 🔜 | 👤 Guindy | Implement `GameStateManager` (`MainMenu` $\rightarrow$ `LevelSelect` $\rightarrow$ `Playing` $\rightarrow$ `Paused` $\rightarrow$ `Summary`), Start Menu, Pause Menu (`Esc`, `[F6]` Overview, `[R]` Restart), and 3D `GetawayVanZone` extraction UI | High-level State Machine & UI Screens |
+| **#26** | 🔜 | 👤 Guindy | Build Mission Summary Screen (`SummaryScreen.cs`: Timer, Loot, Alarms, Stealth Rank `S/A/B/C`) + final `README.md` | Documentation & UI States |
+| **#27** | 🔜 | 🎮 Mahmoud | Add `SuppressedPistol.cs : IGadget` (limited rounds to disable lights or stun guards, with 3D tracer VFX) | Extending `IGadget` cleanly |
+| **#28** | 🔜 | 🎮 Mahmoud | Expand `xUnit` tests covering `PlayerInventory` weight math, stance noise, and gadget charges | Automated Unit Testing |
+| **#29** | 🔜 | 🧠 Hatem | Create wall-mounted 3D `SecurityCamera.cs` with sweeping `VisionRaycaster` cone (disabled by EMP/`FuseBox`) | Component Reuse |
+| **#30** | 🔜 | 🧠 Hatem | Expand `xUnit` tests covering `DetectionMeter`, `SecurityCamera`, and `AlertChaseState` A* edge cases | Automated Unit Testing |
+| **#31** | 🔜 | 🔦 Ali | Design **Level 2 (`level2_penthouse.json`)** multi-room bank/penthouse layout + furniture & laser placements | Content Pipeline |
+| **#32** | 🔜 | 🔦 Ali | Add GLSL Bloom post-processing (`bloom.fs`) + `AudioManager : IDisposable` with safe teardown order before `CloseWindow()` | Resource Lifecycle (`IDisposable`) |
+
+---
+
+## 5. 📐 Native 3D Tactical Architecture & Asset Reference
 
 > [!TIP]
-> **Coordinate Space Architecture (#10 HUD $\leftrightarrow$ #18 Camera2D):**
-> - **Screen-Space HUD:** Elements like `SoundMeterBarRenderer`, Cash Counter, and UI Menus render directly in screen pixel coordinates (outside `BeginMode2D`).
-> - **World-Space Overlays:** Elements like `HoldProgressRingRenderer` and interaction prompts take world positions (`Vector2 center`). In Week 2 (static viewport), world equals screen. When Ticket #18 (`Camera2D`) lands in Week 3, world overlays will be rendered either inside the camera pass (`BeginMode2D`) or projected via `Raylib.GetWorldToScreen2D(worldPos, camera)`.
+> **Proof of Decoupled Architecture:**
+> Every simulation rule (`Player`, `Guard`, `AStarPathfinder`, `CollisionHelper`, `VisionRaycaster`, `LaserTripwire`, `VaultDoor`, `KeypadTerminal`, `SoundMeter`) operates strictly on the 2D logical plane `(X, Y)`. Moving from dual-mode 2D/`Viewport3D` to **100% Native 3D** preserved 100% of game logic while giving all 4 modules their own focused `Rendering/` sublayer backed by `src/Core/Rendering3D/`.
 
----
-
-### 🗓️ Week 3 (Promoted Right After Week 2): 3D Tactical Perspective Overhaul + Inventory, Gadgets & Alert Chase
-**Goal:** Transition immediately from our completed Week 2 2D simulation into a **Dual-Mode 2D/3D Tactical Viewport (`Camera3D` + `[F5]` Live Toggle)** while building `PlayerInventory` (LINQ), `IGadget`, `AlertChaseState`, and 3D level extrusion.
-
-> [!IMPORTANT]
-> **Why We Move to 3D Right After Week 2:**
-> All core 2D simulation mechanics (`Player`, `IPlayerStance`, `Guard`, `AStarPathfinder`, `VisionRaycaster`, `LaserTripwire`, `VaultDoor`, `KeypadTerminal`, `SoundMeter`) are now implemented on the pure 2D logical plane `(X, Y)` and in final PR review. Because our SOLID architecture decouples simulation from rendering, we promote the **3D Tactical Overhaul (Tickets #33–#36)** directly into **Week 3** alongside the Week 3 gameplay tickets (#17–#24). Every feature built in Weeks 3 & 4 runs natively in both 2D Blueprint Mode and 3D Isometric Mode!
-
-| Ticket | Owner | Task Description | Engineering Focus |
-| :--- | :--- | :--- | :--- |
-| **#33** | 👤 Guindy | **`Camera3D` Controller & `[F5]` Dual-Mode Viewport (Upgrades #18 Camera):** Smooth isometric follow `Camera3D`, `[F5]` live 2D/3D toggle, screen-shake on alarm, Right-Click peek, and ray-to-ground-plane mouse picking (`GetMouseRay` at `Y = 0`) + `GetWorldToScreen` projection for `HoldProgressRingRenderer` & prompts. | Ray-Plane Math & Viewport Abstraction |
-| **#34** | 🔦 Ali | **3D Level Geometry, Wall Extrusion & 3D Lasers:** Extrude `RectangleBounds` walls into 3D textured concrete blocks (`DrawCube` / custom mesh UVs), render high-contrast 3D floor tiles (`floor_marble_dark`, `floor_slate_corridor`, `floor_vault_steel`) on the `Y = 0` plane, and render `LaserTripwire` as glowing 3D beam cylinders. | 3D Primitives & Texture Mapping |
-| **#35** | 🎮 Mahmoud | **3D Character Billboarding & 3D Gadgets:** Render `Player` sprite as a camera-oriented 3D billboard (`DrawBillboardPro`) standing on the 3D ground plane, project footstep sound rings onto `Y = 0.05f`, and render thrown coins/EMPs as 3D meshes. | Billboard Math & 3D Gizmos |
-| **#36** | 🧠 Hatem | **3D Guard Presentation & Volumetric Vision Cones:** Render `Guard` sprites as 3D billboards, render `VisionRaycaster` polygons as elevated 3D translucent light meshes on the floor (`Y = 0.08f`), and draw 3D overhead `?` / `!` detection meters via `GetWorldToScreen`. | Volumetric Cones & World-Space UI |
-| **#17** | 👤 Guindy | Create `FuseBox.cs` & `LaserSwitch.cs : IInteractable` (disables linked room lights/lasers; rendered as wall-mounted 3D props in 3D mode) | Loose coupling via IDs |
-| **#18** | 👤 Guindy | Unify `Camera2D` (Blueprint View) & `Camera3D` (Isometric Tactical View) inside `CameraController` with smooth follow, alarm shake, and Right-Click peek | Clean `Camera2D`/`Camera3D` math |
-| **#19** | 🎮 Mahmoud | Build `PlayerInventory.cs` using `List<LootItem>`, `Dictionary`, and **LINQ** (`Sum` for loot weight slowdown) | C# Collections, LINQ & Encapsulation |
-| **#20** | 🎮 Mahmoud | Implement `IGadget` Strategy Pattern: `CoinGadget.cs` (throwable distraction) & `EmpGadget.cs` (disables electronics) *(Pass `NoiseCategory.Distraction` on `NoiseEmittedEvent`)* | Strategy Pattern (`IGadget`) |
-| **#21** | 🧠 Hatem | Implement `AlertChaseState.cs` (guard spots player, raises alarm, chases last seen position using `AStarPathfinder`) | Complete Finite State Machine |
-| **#22** | 🧠 Hatem | Add Guard Detection Meter (0% $\rightarrow$ 100% fill before instant alarm, scales with distance) | Clean timer/interpolation |
-| **#23** | 🔦 Ali | Implement `ShadowRenderer.cs` darkness mask & 3D directional/ambient lighting pass | Custom rendering pipeline |
-| **#24** | 🔦 Ali | Add `BrokenGlassTile` floor hazard (multiplies footstep noise) + emissive keypad glow overlays | Layered rendering order |
-
----
-
-### 🗓️ Week 4: Unit Testing, Security Cameras, Menus & Final 3D Polish
-**Goal:** Write automated `xUnit` tests on decoupled C# logic, add `SecurityCamera` & `SuppressedPistol`, build Level 2, and complete the full 2D/3D game loop.
-
-| Ticket | Owner | Task Description | Engineering Focus |
-| :--- | :--- | :--- | :--- |
-| **#25** | 👤 Guindy | Implement `GameStateManager` (`MainMenu` $\rightarrow$ `Playing` $\rightarrow$ `Paused` $\rightarrow$ `Victory` / `Busted`) + 3D `GetawayVanZone` extraction | High-level State Machine |
-| **#26** | 👤 Guindy | Build Mission Summary Screen (Time, Stolen Loot, Stealth Rating `S/A/B/C`) + Architecture `README.md` | Documentation & UI states |
-| **#27** | 🎮 Mahmoud | Add `SuppressedPistol.cs : IGadget` (limited ammo to shoot out light bulbs or stun guards, with 3D tracer line) | Extending `IGadget` cleanly |
-| **#28** | 🎮 Mahmoud | Write **5 `xUnit` Unit Tests** testing `PlayerInventory` weight math, stance transitions, and gadget charges | Automated Unit Testing (`xUnit`) |
-| **#29** | 🧠 Hatem | Create `SecurityCamera.cs` (wall-mounted in 3D with sweeping volumetric vision cone; disabled by EMP/FuseBox) | Reusing `VisionRaycaster` |
-| **#30** | 🧠 Hatem | Write **5 `xUnit` Unit Tests** verifying `AStarPathfinder` shortest paths and `Guard` state transitions | Automated Unit Testing (`xUnit`) |
-| **#31** | 🔦 Ali | Build **Level 1 (City Bank)** and **Level 2 (Luxury Penthouse)** JSON maps + multi-zone floor textures (`marble`, `slate`, `vault_steel`) | Content pipeline |
-| **#32** | 🔦 Ali | Add Bloom shader (`BeginShaderMode` post-processing over 3D/2D scene) and `AudioManager` (`IDisposable` sound cleanup) | Resource lifecycle (`IDisposable`) |
-
----
-
-## 5. 📐 Post-Week 2 3D Tactical Overhaul — Technical Blueprint & Asset Guide
-
-> [!TIP]
-> **The Ultimate Proof of SOLID Architecture:** 
-> Because gameplay logic (`Player`, `Guard`, `A* Pathfinding`, `CollisionHelper`, `VaultDoor`, `KeypadTerminal`, `SoundMeter`) is strictly decoupled from Raylib drawing calls, the entire game simulation runs on a 2D mathematical ground plane (`X, Y` in 2D $\rightarrow$ `X, 0, Z` in 3D). 
-> Promoting the 3D overhaul right after Week 2 swaps the presentation layer from 2D top-down sprites to a **3D Isometric Tactical View (`Camera3D`)** with **zero breaking changes to Week 1–2 gameplay logic and zero broken unit tests**.
-
-### 5.1 2D-to-3D Coordinate Mapping Architecture
+### 5.1 2D Logical Plane to 3D World Mapping
 
 ```mermaid
 flowchart LR
-    subgraph Simulation2D["Pure 2D Logic Plane (X, Y) — Unchanged!"]
+    subgraph Simulation["Pure 2D Logic Plane (X, Y) — Headless & Tested (97 xUnit Tests)"]
         P2D["Player.Position (X, Y)"]
         G2D["Guard.Position (X, Y)"]
-        W2D["RectangleBounds Walls"]
-        AStar["2D A* Grid Pathfinding"]
-        Ray2D["VisionRaycaster 2D Polygon"]
+        W2D["RectangleBounds Walls & Furniture"]
+        AStar["AStarPathfinder GridGraph"]
+        Ray2D["VisionRaycaster Polygon"]
     end
 
-    subgraph Renderer3D["Raylib Camera3D Presentation (X, Y_up, Z)"]
-        Floor3D["Textured 3D Ground Quads (X, 0, Z)"]
-        Walls3D["Extruded 3D Concrete Walls (Height = 96)"]
-        Billboards["3D Y-Axis Billboard Characters & Props"]
-        Vision3D["3D Floor-Projected Vision Fan (Y = 0.08)"]
+    subgraph Rendering3D["Native Raylib 3D Layer (src/Core/Rendering3D + Module Rendering/)"]
+        FloorWalls["Architecture3DRenderer + Furniture3DRenderer"]
+        Chars["CharacterMeshDrawer (Cel-Shaded Rig + Outline Shader)"]
+        Cones["VisionCone3DRenderer (Y = 2.0 Ground Projected)"]
+        Gizmos["GuardPathGizmo3DRenderer + PlayerSoundRippleRenderer"]
+        Hud["HudRenderer.DrawHud (GetWorldToScreen Overlays + HUD Bars)"]
     end
 
-    Simulation2D -->|"World (x, y) -> 3D (x, height, y)"| Renderer3D
+    Simulation -->|"World (x, y) -> 3D (x, heightY, y)"| Rendering3D
 ```
 
-* **Coordinate Mapping Formula:**
-  * 2D Logical Position `(pos.X, pos.Y)` maps to 3D World Position `new Vector3(pos.X, heightY, pos.Y)`.
-  * **Floor Plane:** `Y = 0f` (each `64x64` grid tile is drawn as a 3D quad or thin cube at `new Vector3(col * 64 + 32, -1f, row * 64 + 32)` with size `(64, 2, 64)`).
-  * **Extruded Walls:** Each `RectangleBounds(X, Y, Width, Height)` is drawn in 3D at center `new Vector3(wall.X + wall.Width / 2f, WallHeight3D / 2f, wall.Y + wall.Height / 2f)` with dimensions `new Vector3(wall.Width, WallHeight3D, wall.Height)` where `WallHeight3D = 96f`.
-  * **Mouse Aiming in 3D (Ticket #33):** When in 3D mode, convert `GetMousePosition()` to a 3D ray via `Ray ray = Raylib.GetMouseRay(mousePos, camera3D)`, intersect with the ground plane `Y = 0` (`float t = -ray.Position.Y / ray.Direction.Y`), and map `(hit.X, hit.Z)` back into `PlayerInputCommand.MouseWorldPosition`!
-  * **World-Space UI in 3D (Ticket #33 & #36):** Convert 3D positions `new Vector3(target.X, 48f, target.Y)` to 2D screen coordinates via `Raylib.GetWorldToScreen(pos3D, camera3D)` so `HoldProgressRingRenderer`, `[E]` prompts, and guard `?`/`!` icons render crisp in screen space after `EndMode3D()`.
+* **Coordinate Mapping Formula:** Logical `(pos.X, pos.Y)` maps to 3D `new Vector3(pos.X, heightY, pos.Y)`.
+* **Mouse Ground Picking:** `TacticalCameraController.ScreenToGroundPoint` casts `Raylib.GetMouseRay(mousePos, _camera)` onto `Y = 0` (`hitDistance = -ray.Position.Y / ray.Direction.Y`) and writes `GameContext.AimWorldOverride` for both player aiming (`PlayerSystem`) and 3D click-to-noise debugging (`GuardAiModule`).
+* **OpenGL Disposal Safety:** `Program.cs` disposes `GameContext` (`ToonModelLibrary`, textures, shaders) **inside `try`** *before* `finally { Raylib.CloseWindow(); }` to ensure clean GPU resource release on Linux/Windows without segfaults.
 
-### 5.2 Ground & Environment Assets for 2D/3D High-Contrast Visibility
+### 5.2 Ground, Shader & 3D Model Assets
 
-To ensure dark-clothed characters (`player_sneak.png`, `guard_patrol.png`, `guard_swat_alert.png`) and dark extruded concrete walls (`wall_reinforced_concrete.png`) have crisp silhouette separation in both 2D and 3D views, the floor textures in `assets/sprites/` are calibrated to a **light/medium-light cool architectural palette**:
+| Asset Folder | Key Assets | 3D Role & Visual Contrast Profile |
+| :--- | :--- | :--- |
+| `assets/shaders/` | `toon.vs`, `toon.fs`, `outline.vs`, `outline.fs` | Cel-shaded 3D lighting + comic silhouette outlines; uniforms updated per frame in `ToonShaderUniforms` for lobby lamps and guard flashlights |
+| `assets/models/characters/` | `part_head.obj`, `part_body.obj`, `part_arm_*.obj`, `part_leg_*.obj`, `skin_thief.png`, `skin_guard.png` | Articulated character rigs animated by `CharacterPoseAnimator` and drawn via `CharacterMeshDrawer` |
+| `assets/models/furniture/` | `loungeSofa`, `loungeChair`, `tableCoffee`, `table`, `rugRectangle`, `lampRoundFloor`, `plantSmall1`, `pottedPlant` | Low-poly bank lobby furniture placed around centered AABB colliders from `level1_city_bank.json` |
+| `assets/models/props/` | `getaway_van.obj`, `props_palette.png` | 3D extraction vehicle parked outside the getaway zone |
+| `assets/sprites/` | `floor_marble_dark.png`, `floor_slate_corridor.png`, `floor_vault_steel.png`, `wall_reinforced_concrete.png`, `prop_loot_crate.png` | High-contrast architectural floor tiles and reinforced wall/crate textures |
 
-| Asset File (`assets/sprites/`) | Resolution | 2D / 3D Role | Visual & Contrast Profile |
-| :--- | :--- | :--- | :--- |
-| `floor_marble_dark.png` | `256x256` | Main Bank Lobby Floor (`MapRenderer` default) | Cool silver-grey & pale dove-grey polished marble (`4x4` tile grid) — high contrast under dark player/guard silhouettes |
-| `floor_slate_corridor.png` | `256x256` | Hallway & Security Corridor Floor | Medium-light honed ash-stone slabs (`4x4` grid) with fine mineral grain and crisp grout lines |
-| `floor_vault_steel.png` | `256x256` | High-Security Vault Room Floor | Brushed silver-steel diamond tread plates (`2x2` grid) with perimeter rivets |
-| `wall_reinforced_concrete.png` | `256x256` | Extruded 3D Wall Blocks & 2D Walls | Dark charcoal reinforced concrete with steel rivets — contrasts strongly against the lighter floors |
-| `prop_vault_door.png` | `256x256` | 3D Vault Door Slab / Billboard | Heavy circular steel vault door mounted into the vault wall |
-| `prop_keypad_terminal.png` | `192x192` | Wall-Mounted 3D Keypad Prop | High-tech security keypad rendered at `Y = 48f` against vault walls |
-| `prop_loot_crate.png` | `256x256` | 3D Loot Crate Prop / Billboard | Open tactical case with cash & gold bars on the vault floor |
-| `prop_fusebox.png` | `192x192` | Wall-Mounted 3D FuseBox (Ticket #17) | Industrial electrical breaker box with colored conduits |
-
-### 5.3 Step-by-Step Team Execution Plan After Week 2 PRs Merge
-
-1. **Step 1 — Merge Pending Week 2 PRs into `main`:**
-   * Merge `feat/guindy-sound-meter-hud` (Tickets #9 & #10), `feat/ali-vision-raycaster` (Tickets #15 & #16), and `feat/hatem-suspicious-state` (Tickets #13 & #14).
-2. **Step 2 — Add `ViewportMode` & `Camera3D` to `GameContext` (Guindy — Ticket #33):**
-   * Add `public bool Is3DMode { get; set; } = true;` (toggled by `[F5]`) and `public Camera3D Camera3D { get; set; }` to `GameContext`.
-   * In the main draw loop, when `Is3DMode` is active, wrap world rendering in `Raylib.BeginMode3D(context.Camera3D)` ... `Raylib.EndMode3D()`, followed by screen-space HUD (`HudRenderer`).
-3. **Step 3 — Upgrade Each Module's Renderer for 3D (Parallel Branches, Zero Conflicts):**
-   * **Ali (`src/WorldLighting/` — Ticket #34):** Add `Draw3D` to `MapRenderer` and `LightingEffectRenderer` (textured 3D ground plane tiles, extruded 3D concrete walls, 3D laser beams, and 3D floor-projected vision cones).
-   * **Mahmoud (`src/PlayerSystem/` — Ticket #35):** Add `Draw3D` to `PlayerRenderer` using `Raylib.DrawBillboardPro` (or `DrawPlane` with rotation on the ground plane) + 3D footstep noise rings.
-   * **Hatem (`src/GuardAI/` — Ticket #36):** Add `Draw3D` to `GuardRenderer` using `Raylib.DrawBillboardPro` + 3D overhead `?`/`!` detection indicators.
-   * **Guindy (`src/HeistWorld/` — Ticket #33 & #17):** Add `Draw3D` to `HeistWorldRenderer` (3D vault door block, keypad wall plate, loot crate prop) and project `HoldProgressRingRenderer` via `GetWorldToScreen`.
-
----
-
-### 🎓 Academic & Graduation Project Defense Note
-When defending the project in front of professors and committee evaluators:
-> *"Right after finishing our core 2D simulation in Week 2, we pivoted the presentation layer to 3D for Weeks 3 and 4, and added a live `[F5]` switch that toggles between 2D Blueprint Mode and 3D Isometric Mode in real-time. Notice that not a single line of Guard AI, A\* pathfinding, vision raycasting, or player stance logic had to be rewritten — all 49+ unit tests pass identically in both 2D and 3D because our business logic is 100% agnostic of how graphics are rendered."*
-
+### 🎓 Graduation Defense Summary
+> *"ShadowHeist pairs a strictly decoupled, headless C# stealth simulation (`Player`, `Guard` FSM, `AStarPathfinder`, `VisionRaycaster`, `LaserTripwire`, `IInteractable`, `GameEventBus`) with a modular Native 3D presentation layer (`src/Core/Rendering3D/` + per-module `Rendering/` folders) using custom GLSL cel-shading and comic outlines. Every source file stays under 200 lines in Newspaper Layout, and all 97 `xUnit` tests execute headlessly in ~0.1s against the exact same simulation rules rendered in 3D."*

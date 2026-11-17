@@ -6,7 +6,7 @@ using ShadowHeist.GuardAI.Pathfinding;
 namespace ShadowHeist.GuardAI.States;
 
 /// <summary>
-/// Patrol behavior: walks sequentially between designated waypoints, pausing briefly at each stop.
+/// Patrol behavior: walks sequentially between designated waypoints using A* navigation, pausing at each stop.
 /// </summary>
 public sealed class PatrolState : IGuardState
 {
@@ -53,6 +53,11 @@ public sealed class PatrolState : IGuardState
 
     public IGuardState Update(float deltaTime, GameContext context)
     {
+        if (GuardSensorHelper.TrySpotIntruder(_guard, _waypoints, context, out IGuardState alertState))
+        {
+            return alertState;
+        }
+
         if (_isWaiting)
         {
             UpdateWaiting(deltaTime);
@@ -66,21 +71,23 @@ public sealed class PatrolState : IGuardState
     private void UpdateWaiting(float deltaTime)
     {
         _waitTimer -= deltaTime;
-        if (_waitTimer <= 0f)
+        if (_waitTimer > 0f)
         {
-            _waitTimer = 0f;
-            _isWaiting = false;
-            _currentWaypointIndex = (_currentWaypointIndex + 1) % _waypoints.Count;
-            _activePath = Array.Empty<Vector2>();
-            _activePathIndex = 0;
+            return;
         }
+
+        _waitTimer = 0f;
+        _isWaiting = false;
+        _currentWaypointIndex = (_currentWaypointIndex + 1) % _waypoints.Count;
+        _activePath = Array.Empty<Vector2>();
+        _activePathIndex = 0;
     }
 
     private void UpdatePatrolMovement(float deltaTime, IReadOnlyList<RectangleBounds> walls)
     {
         if (_activePath.Count == 0)
         {
-            var computed = AStarPathfinder.FindPath(_guard.Position, TargetWaypoint, walls);
+            IReadOnlyList<Vector2> computed = AStarPathfinder.FindPath(_guard.Position, TargetWaypoint, walls);
             _activePath = computed.Count > 0 ? computed : new List<Vector2> { TargetWaypoint };
             _activePathIndex = 0;
         }

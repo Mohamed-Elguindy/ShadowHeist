@@ -32,7 +32,10 @@ public sealed class LaserTripwire
         BeamEnd = origin;
     }
 
-    public void Update(GameContext context, float actorRadius = CollisionHelper.DefaultActorRadius)
+    public void Update(
+        GameContext context,
+        float actorRadius = CollisionHelper.DefaultActorRadius,
+        IReadOnlyList<RectangleBounds>? walls = null)
     {
         if (!IsActive)
         {
@@ -40,7 +43,7 @@ public sealed class LaserTripwire
             return;
         }
 
-        BeamEnd = VisionRaycaster.CastRay(Origin, Direction, MaxLength, context.Walls);
+        BeamEnd = VisionRaycaster.CastRay(Origin, Direction, MaxLength, walls ?? context.Walls);
 
         if (DoesActorIntersectBeam(context.PlayerPosition, actorRadius))
         {

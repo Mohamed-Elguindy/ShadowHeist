@@ -4,7 +4,7 @@ using ShadowHeist.Core.Events;
 namespace ShadowHeist.Core.Interfaces;
 
 /// <summary>
-/// Strategy Pattern contract for heist gadgets: CoinGadget, EmpGadget, SuppressedPistol (Ticket #20 &amp; #27 — Mahmoud).
+/// Strategy Pattern contract for heist gadgets.
 /// </summary>
 public interface IGadget
 {

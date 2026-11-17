@@ -120,4 +120,18 @@ public sealed class InteractableQueryTests
 
         Assert.Null(result);
     }
+
+    [Fact]
+    public void FindHoldInRange_ReturnsNull_WhenWallBlocksLineOfSight()
+    {
+        using var context = new GameContext();
+        context.PlayerPosition = new Vector2(100f, 200f);
+        context.Walls.Add(new RectangleBounds(140f, 150f, 20f, 100f));
+        var keypad = new KeypadTerminal("keypad", TargetPosition, DoorId, interactRadius: 200f);
+        context.Interactables.Add(keypad);
+
+        var result = InteractableQuery.FindHoldInRange(context);
+
+        Assert.Null(result);
+    }
 }

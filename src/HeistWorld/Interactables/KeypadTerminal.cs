@@ -7,6 +7,7 @@ namespace ShadowHeist.HeistWorld.Interactables;
 public sealed class KeypadTerminal : WorldObject, IHoldInteractable
 {
     public const float HackDurationSeconds = 3f;
+    private const float DefaultInteractRadius = 55f;
 
     public string TargetId { get; }
     public float HoldProgress { get; private set; }
@@ -16,7 +17,7 @@ public sealed class KeypadTerminal : WorldObject, IHoldInteractable
         ? $"Hacking... {HoldProgress:P0}"
         : "[Hold E] Hack Keypad";
 
-    public KeypadTerminal(string id, Vector2 position, string targetId, float interactRadius = 55f)
+    public KeypadTerminal(string id, Vector2 position, string targetId, float interactRadius = DefaultInteractRadius)
         : base(id, position, interactRadius)
     {
         TargetId = targetId;
@@ -30,11 +31,17 @@ public sealed class KeypadTerminal : WorldObject, IHoldInteractable
         if (IsHacked) return;
 
         AdvanceHoldProgress(deltaTime);
-
         if (IsHoldComplete)
         {
             OnInteract(context, eventBus);
         }
+    }
+
+    public void OnInteract(GameContext context, GameEventBus eventBus)
+    {
+        IsHacked = true;
+        HoldProgress = 1f;
+        FindTargetDoor(context)?.Unlock();
     }
 
     public void Release()
@@ -43,12 +50,6 @@ public sealed class KeypadTerminal : WorldObject, IHoldInteractable
         {
             HoldProgress = 0f;
         }
-    }
-
-    public void OnInteract(GameContext context, GameEventBus eventBus)
-    {
-        IsHacked = true;
-        FindTargetDoor(context)?.Unlock();
     }
 
     private bool IsHoldComplete => HoldProgress >= 1f;

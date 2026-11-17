@@ -1,23 +1,33 @@
 using System.Numerics;
 using ShadowHeist.Core.Events;
 using ShadowHeist.Core.Interfaces;
+using ShadowHeist.Core.Rendering3D;
 
 namespace ShadowHeist.Core;
 
 /// <summary>
-/// Shared dependency container &amp; state context passed to all IGameSystem modules.
+/// Shared dependency container, 3D graphics state, and game loop coordinator for all IGameSystem modules.
 /// </summary>
 public sealed class GameContext : IDisposable
 {
+    private static readonly Vector2 DefaultPlayerPosition = new(160f, 360f);
+
     private readonly List<IGameSystem> _systems = new();
 
     public GameEventBus EventBus { get; } = new();
     public List<IInteractable> Interactables { get; } = new();
     public List<RectangleBounds> Walls { get; } = new();
+    public TacticalCameraController Camera { get; } = new();
+    public ToonModelLibrary Models { get; } = new();
 
-    public Vector2 PlayerPosition { get; set; } = new(160f, 360f);
+    public Vector2 PlayerPosition { get; set; } = DefaultPlayerPosition;
+    public float PlayerRotationDegrees { get; set; }
+    public bool IsPlayerSneaking { get; set; }
+    public Vector2? AimWorldOverride { get; set; }
+    public float ElapsedSeconds { get; private set; }
     public int StolenCash { get; set; }
     public bool IsAlarmTriggered { get; set; }
+    public HeistOutcome Outcome { get; set; } = HeistOutcome.Playing;
     public PlayerInputCommand CurrentInput { get; set; }
 
     public void RegisterSystem(IGameSystem system)
@@ -28,7 +38,7 @@ public sealed class GameContext : IDisposable
 
     public void InitializeAll()
     {
-        foreach (var system in _systems)
+        foreach (IGameSystem system in _systems)
         {
             system.Init(this);
         }
@@ -36,7 +46,8 @@ public sealed class GameContext : IDisposable
 
     public void UpdateAll(float deltaTime)
     {
-        foreach (var system in _systems)
+        ElapsedSeconds += deltaTime;
+        foreach (IGameSystem system in _systems)
         {
             system.Update(deltaTime, this);
         }
@@ -44,25 +55,48 @@ public sealed class GameContext : IDisposable
 
     public void DrawAll()
     {
-        foreach (var system in _systems)
+        foreach (IGameSystem system in _systems)
         {
             system.Draw(this);
         }
     }
 
+    public void DrawHudAll()
+    {
+        foreach (IGameSystem system in _systems)
+        {
+            system.DrawHud(this);
+        }
+    }
+
+    public void RestartMission()
+    {
+        Interactables.Clear();
+        Walls.Clear();
+        EventBus.ClearSubscribers();
+        ElapsedSeconds = 0f;
+        StolenCash = 0;
+        IsAlarmTriggered = false;
+        Outcome = HeistOutcome.Playing;
+        CurrentInput = default;
+        AimWorldOverride = null;
+        PlayerPosition = DefaultPlayerPosition;
+        PlayerRotationDegrees = 0f;
+        IsPlayerSneaking = false;
+        InitializeAll();
+        Camera.Reset(PlayerPosition);
+    }
+
     public void Dispose()
     {
-        foreach (var system in _systems)
+        foreach (IGameSystem system in _systems)
         {
             if (system is IDisposable disposable)
             {
                 disposable.Dispose();
             }
         }
+
+        Models.Dispose();
     }
 }
-
-/// <summary>
-/// Pure C# AABB rectangle struct so core collision logic can be unit-tested without Raylib window dependencies.
-/// </summary>
-public readonly record struct RectangleBounds(float X, float Y, float Width, float Height);

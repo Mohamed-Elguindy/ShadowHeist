@@ -2,7 +2,9 @@ using System.Numerics;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Events;
 using ShadowHeist.Core.Interfaces;
+using ShadowHeist.GuardAI.Pathfinding;
 using ShadowHeist.GuardAI.States;
+using ShadowHeist.WorldLighting;
 
 namespace ShadowHeist.GuardAI;
 
@@ -15,7 +17,6 @@ public sealed class Guard
     private const float DefaultTurnRate = 360f;
     private const float WaypointReachThreshold = 6f;
     private const float DirectionEpsilonSquared = 0.0001f;
-    private const float RadToDeg = 180f / MathF.PI;
     private const float FullCircleDegrees = 360f;
     private const float HalfCircleDegrees = 180f;
 
@@ -67,24 +68,53 @@ public sealed class Guard
         }
 
         float distanceSquared = Vector2.DistanceSquared(Position, noiseEvent.Origin);
-        if (distanceSquared > noiseEvent.Radius * noiseEvent.Radius)
+        if (distanceSquared > noiseEvent.Radius * noiseEvent.Radius || !CanReachOrigin(noiseEvent.Origin, walls))
         {
             return false;
         }
 
-        if (CurrentState is SuspiciousState activeSuspicious)
+        NotifyReachableNoise(noiseEvent.Origin, walls);
+        return true;
+    }
+
+    public void NotifyNoise(Vector2 origin, IReadOnlyList<RectangleBounds>? walls = null)
+    {
+        if (CanReachOrigin(origin, walls))
         {
-            activeSuspicious.UpdateInvestigationTarget(noiseEvent.Origin, walls);
-            return true;
+            NotifyReachableNoise(origin, walls);
+        }
+    }
+
+    private static bool CanReachOrigin(Vector2 guardPos, Vector2 origin, IReadOnlyList<RectangleBounds>? walls) =>
+        walls is not { Count: > 0 } || AStarPathfinder.FindPath(guardPos, origin, walls).Count > 0;
+
+    private bool CanReachOrigin(Vector2 origin, IReadOnlyList<RectangleBounds>? walls) =>
+        CanReachOrigin(Position, origin, walls);
+
+    private void NotifyReachableNoise(Vector2 origin, IReadOnlyList<RectangleBounds>? walls)
+    {
+        if (CurrentState is AlertChaseState)
+        {
+            return;
         }
 
-        TransitionTo(new SuspiciousState(this, noiseEvent.Origin, CurrentState, walls));
-        return true;
+        if (CurrentState is SuspiciousState activeSuspicious)
+        {
+            activeSuspicious.UpdateInvestigationTarget(origin, walls);
+            return;
+        }
+
+        TransitionTo(new SuspiciousState(this, origin, CurrentState, walls));
     }
 
     public void Update(float deltaTime, GameContext context)
     {
-        var nextState = CurrentState.Update(deltaTime, context);
+        IGuardState nextState = CurrentState.Update(deltaTime, context);
+        if (context.Walls.Count > 0)
+        {
+            Position = CollisionHelper.ResolveWallCollision(Position, CollisionHelper.DefaultActorRadius, context.Walls);
+        }
+
         if (!ReferenceEquals(nextState, CurrentState))
         {
             TransitionTo(nextState);
@@ -123,7 +153,7 @@ public sealed class Guard
             return;
         }
 
-        float targetAngle = MathF.Atan2(direction.Y, direction.X) * RadToDeg;
+        float targetAngle = MathF.Atan2(direction.Y, direction.X) * HeistConstants.RadToDeg;
         RotationDegrees = MoveTowardsAngle(RotationDegrees, targetAngle, turnRate * deltaTime);
     }
 
@@ -138,6 +168,6 @@ public sealed class Guard
             return target;
         }
 
-        return current + MathF.Sign(diff) * maxDelta;
+        return current + (MathF.Sign(diff) * maxDelta);
     }
 }

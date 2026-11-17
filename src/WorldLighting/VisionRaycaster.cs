@@ -9,7 +9,6 @@ public static class VisionRaycaster
     public const float MaxVisionDist = 240f;
     public const int DefaultRayCount = 32;
 
-    private const float DegToRad = MathF.PI / 180f;
     private const float ParallelEpsilon = 0.00001f;
     private const float HalfMultiplier = 0.5f;
 
@@ -49,6 +48,30 @@ public static class VisionRaycaster
         return origin + (rayDirection * closestDistance);
     }
 
+    public static float FindClosestWallHitDistance(
+        Vector2 origin,
+        Vector2 direction,
+        float maxDistance,
+        IEnumerable<RectangleBounds> walls)
+    {
+        if (maxDistance <= 0f || IsOriginInsideAnyWall(origin, walls))
+        {
+            return 0f;
+        }
+
+        float closestDistance = maxDistance;
+
+        foreach (var wall in walls)
+        {
+            if (TryIntersectRayWithWall(origin, direction, wall, out float wallDistance) && wallDistance < closestDistance)
+            {
+                closestDistance = wallDistance;
+            }
+        }
+
+        return closestDistance;
+    }
+
     public static bool TryIntersectRayWithSegment(
         Vector2 rayOrigin,
         Vector2 rayDirection,
@@ -80,7 +103,7 @@ public static class VisionRaycaster
 
     public static Vector2 DirectionFromDegrees(float angleDegrees)
     {
-        float radians = angleDegrees * DegToRad;
+        float radians = angleDegrees * HeistConstants.DegToRad;
         return new Vector2(MathF.Cos(radians), MathF.Sin(radians));
     }
 
@@ -97,21 +120,6 @@ public static class VisionRaycaster
         }
 
         return false;
-    }
-
-    private static float FindClosestWallHitDistance(Vector2 origin, Vector2 direction, float maxDistance, IEnumerable<RectangleBounds> walls)
-    {
-        float closestDistance = maxDistance;
-
-        foreach (var wall in walls)
-        {
-            if (TryIntersectRayWithWall(origin, direction, wall, out float wallDistance) && wallDistance < closestDistance)
-            {
-                closestDistance = wallDistance;
-            }
-        }
-
-        return closestDistance;
     }
 
     private static bool TryIntersectRayWithWall(Vector2 origin, Vector2 direction, RectangleBounds wall, out float closestWallDistance)

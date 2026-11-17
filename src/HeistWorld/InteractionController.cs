@@ -28,6 +28,8 @@ public sealed class InteractionController
         }
     }
 
+    public void Reset() => _activeHold = null;
+
     private IHoldInteractable? ResolveHoldTarget(GameContext context)
     {
         if (_activeHold is not null && _activeHold.CanInteract(context.PlayerPosition))

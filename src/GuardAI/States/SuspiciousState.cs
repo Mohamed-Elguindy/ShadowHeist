@@ -6,8 +6,7 @@ using ShadowHeist.GuardAI.Pathfinding;
 namespace ShadowHeist.GuardAI.States;
 
 /// <summary>
-/// Suspicious behavior: triggered when a guard hears a NoiseEmittedEvent within range.
-/// Navigates to the noise origin via A* pathfinding, scans the area, then resumes PatrolState (Ticket #13 — Hatem).
+/// Guard navigates via A* to the last heard sound origin, scans the surroundings, and resumes its prior state.
 /// </summary>
 public sealed class SuspiciousState : IGuardPathState
 {
@@ -34,6 +33,14 @@ public sealed class SuspiciousState : IGuardPathState
     public int CurrentPathIndex => _currentPathIndex;
     public bool IsInvestigating => _isInvestigating;
     public float InvestigateTimer => _investigateTimer;
+
+    public SuspiciousState(
+        Guard guard,
+        IReadOnlyList<Vector2> patrolWaypoints,
+        Vector2 investigationTarget)
+        : this(guard, investigationTarget, new PatrolState(guard, patrolWaypoints))
+    {
+    }
 
     public SuspiciousState(
         Guard guard,
@@ -69,6 +76,11 @@ public sealed class SuspiciousState : IGuardPathState
 
     public IGuardState Update(float deltaTime, GameContext context)
     {
+        if (GuardSensorHelper.TrySpotIntruder(_guard, _guard.Waypoints, context, out IGuardState alertState))
+        {
+            return alertState;
+        }
+
         if (!_pathComputedWithWalls && context.Walls.Count > 0)
         {
             RebuildPath(context.Walls);
@@ -81,7 +93,11 @@ public sealed class SuspiciousState : IGuardPathState
 
         if (_guard.StepAlongPath(_pathWaypoints, ref _currentPathIndex, deltaTime, SuspiciousSpeedMultiplier))
         {
-            _guard.Position = InvestigationTarget;
+            if (_pathWaypoints.Count > 0)
+            {
+                _guard.Position = _pathWaypoints[^1];
+            }
+
             _isInvestigating = true;
             _investigateTimer = _investigateDuration;
         }
@@ -96,8 +112,7 @@ public sealed class SuspiciousState : IGuardPathState
         if (walls is { Count: > 0 })
         {
             _pathComputedWithWalls = true;
-            var path = AStarPathfinder.FindPath(_guard.Position, InvestigationTarget, walls);
-            _pathWaypoints = path.Count > 0 ? path : new List<Vector2> { InvestigationTarget };
+            _pathWaypoints = AStarPathfinder.FindPath(_guard.Position, InvestigationTarget, walls);
             return;
         }
 
@@ -109,7 +124,7 @@ public sealed class SuspiciousState : IGuardPathState
     {
         _investigateTimer -= deltaTime;
         float scanWave = MathF.Sin((_investigateDuration - _investigateTimer) * ScanFrequencyRadians);
-        _guard.RotationDegrees = (_guard.RotationDegrees + scanWave * ScanTurnSpeed * deltaTime + FullCircleDegrees) % FullCircleDegrees;
+        _guard.RotationDegrees = (_guard.RotationDegrees + (scanWave * ScanTurnSpeed * deltaTime) + FullCircleDegrees) % FullCircleDegrees;
 
         if (_investigateTimer <= 0f)
         {

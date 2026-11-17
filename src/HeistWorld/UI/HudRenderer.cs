@@ -6,11 +6,36 @@ using ShadowHeist.HeistWorld.Interactables;
 
 namespace ShadowHeist.HeistWorld.UI;
 
+/// <summary>
+/// Renders tactical screen-space HUD banners, sound meter, 3D-projected hold rings &amp; prompts, and outcome overlays.
+/// </summary>
 public sealed class HudRenderer
 {
-    private const int TargetHeistGoal = 500_000;
-    private const int CashFontSize = 20;
-    private const int PromptFontSize = 16;
+    private const int BannerFontSize = 20;
+    private const int BannerBoxHeight = 36;
+    private const int BannerHorizontalPadding = 28;
+    private const int BannerTextOffsetX = 14;
+    private const int BannerTextOffsetY = 8;
+    private const int HintFontSize = 18;
+    private const int HudMargin = 20;
+    private const int VignetteBandSize = 64;
+    private const int OutcomeTitleFontSize = 34;
+    private const int OutcomeSubtitleFontSize = 20;
+    private const int OutcomePanelHeight = 110;
+    private const int OutcomePanelPadding = 64;
+    private const float HoldRingHeightOverGround = 42f;
+    private const float PromptHeightOverGround = 88f;
+
+    private static readonly Color HintTextColor = new(110, 225, 255, 255);
+    private static readonly Color VignetteEdge = new(4, 6, 12, 130);
+    private static readonly Color AlarmBoxBackground = new(48, 12, 22, 225);
+    private static readonly Color AlarmBoxBorder = new(244, 63, 94, 235);
+    private static readonly Color AlarmTextColor = new(255, 110, 130, 255);
+    private static readonly Color CashBoxBackground = new(15, 23, 42, 220);
+    private static readonly Color CashBoxBorder = new(56, 189, 248, 180);
+    private static readonly Color OutcomePanelBackground = new(10, 14, 24, 235);
+    private static readonly Color EscapedAccentColor = new(74, 222, 128, 255);
+    private static readonly Color CaughtAccentColor = new(244, 63, 94, 255);
 
     private readonly SoundMeter _soundMeter;
 
@@ -21,69 +46,132 @@ public sealed class HudRenderer
 
     public void DrawHudOverlay(GameContext context)
     {
+        DrawVignette();
+        SoundMeterBarRenderer.Draw(_soundMeter.Level);
+        DrawAlarmBanner(context.IsAlarmTriggered, context.Outcome);
         DrawStolenCashBanner(context.StolenCash);
-        DrawContextualPrompt(context);
-        DrawSoundMeter();
+        DrawHintBar(context.Camera.IsOverviewMode);
         DrawHoldProgressRing(context);
+        DrawContextualPrompt(context);
+        DrawOutcomeOverlay(context.Outcome);
     }
 
-    private void DrawSoundMeter()
+    private static void DrawVignette()
     {
-        SoundMeterBarRenderer.Draw(_soundMeter.Level);
+        int width = Raylib.GetScreenWidth();
+        int height = Raylib.GetScreenHeight();
+        Color transparent = new(0, 0, 0, 0);
+
+        Raylib.DrawRectangleGradientV(0, 0, width, VignetteBandSize, VignetteEdge, transparent);
+        Raylib.DrawRectangleGradientV(0, height - VignetteBandSize, width, VignetteBandSize, transparent, VignetteEdge);
+        Raylib.DrawRectangleGradientH(0, 0, VignetteBandSize, height, VignetteEdge, transparent);
+        Raylib.DrawRectangleGradientH(width - VignetteBandSize, 0, VignetteBandSize, height, transparent, VignetteEdge);
+    }
+
+    private static void DrawAlarmBanner(bool isAlarmTriggered, HeistOutcome outcome)
+    {
+        if (!isAlarmTriggered || outcome != HeistOutcome.Playing)
+        {
+            return;
+        }
+
+        const string text = "! ALARM TRIGGERED !";
+        int textWidth = Raylib.MeasureText(text, BannerFontSize);
+        int boxWidth = textWidth + BannerHorizontalPadding;
+        int boxX = (Raylib.GetScreenWidth() - boxWidth) / 2;
+
+        Raylib.DrawRectangle(boxX, HudMargin, boxWidth, BannerBoxHeight, AlarmBoxBackground);
+        Raylib.DrawRectangleLines(boxX, HudMargin, boxWidth, BannerBoxHeight, AlarmBoxBorder);
+        Raylib.DrawText(text, boxX + BannerTextOffsetX, HudMargin + BannerTextOffsetY, BannerFontSize, AlarmTextColor);
+    }
+
+    private static void DrawStolenCashBanner(int stolenCash)
+    {
+        string text = $"STOLEN CASH: ${stolenCash:N0} / ${HeistConstants.TargetCashGoal:N0}";
+        int textWidth = Raylib.MeasureText(text, BannerFontSize);
+        int boxWidth = textWidth + BannerHorizontalPadding;
+        int boxX = Raylib.GetScreenWidth() - boxWidth - HudMargin;
+
+        Raylib.DrawRectangle(boxX, HudMargin, boxWidth, BannerBoxHeight, CashBoxBackground);
+        Raylib.DrawRectangleLines(boxX, HudMargin, boxWidth, BannerBoxHeight, CashBoxBorder);
+
+        Color textColor = stolenCash >= HeistConstants.TargetCashGoal ? Color.Gold : Color.Green;
+        Raylib.DrawText(text, boxX + BannerTextOffsetX, HudMargin + BannerTextOffsetY, BannerFontSize, textColor);
+    }
+
+    private static void DrawHintBar(bool isOverviewCamera)
+    {
+        string cameraLabel = isOverviewCamera ? "FOLLOW" : "OVERVIEW";
+        string text = $"[F6] {cameraLabel}   |   [SCROLL] ZOOM   |   [R] RESTART";
+        Raylib.DrawText(text, HudMargin, Raylib.GetScreenHeight() - 30, HintFontSize, HintTextColor);
     }
 
     private static void DrawHoldProgressRing(GameContext context)
     {
         IHoldInteractable? activeHold = InteractableQuery.FindHoldInProgress(context);
-        if (activeHold == null)
+        if (activeHold is null)
         {
             return;
         }
 
-        HoldProgressRingRenderer.Draw(activeHold.Position, activeHold.HoldProgress);
-    }
-
-    private static void DrawStolenCashBanner(int stolenCash)
-    {
-        string text = $"STOLEN CASH: ${stolenCash:N0} / ${TargetHeistGoal:N0}";
-        int textWidth = Raylib.MeasureText(text, CashFontSize);
-
-        int boxWidth = textWidth + 28;
-        int boxHeight = 36;
-        int boxX = Raylib.GetScreenWidth() - boxWidth - 20;
-        const int boxY = 20;
-
-        Raylib.DrawRectangle(boxX, boxY, boxWidth, boxHeight, new Color(15, 23, 42, 220));
-        Raylib.DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, new Color(56, 189, 248, 180));
-
-        Color textColor = stolenCash >= TargetHeistGoal ? Color.Gold : Color.Green;
-        Raylib.DrawText(text, boxX + 14, boxY + 8, CashFontSize, textColor);
+        var worldPos = new Vector3(activeHold.Position.X, HoldRingHeightOverGround, activeHold.Position.Y);
+        if (TryProjectInFrontOfCamera(worldPos, context.Camera.Camera, out Vector2 screenPosition))
+        {
+            HoldProgressRingRenderer.Draw(screenPosition, activeHold.HoldProgress);
+        }
     }
 
     private static void DrawContextualPrompt(GameContext context)
     {
         IInteractable? activeItem = InteractableQuery.FindInPlayerRange(context);
-        if (activeItem == null || string.IsNullOrWhiteSpace(activeItem.PromptText))
+        if (activeItem is null || string.IsNullOrWhiteSpace(activeItem.PromptText))
         {
             return;
         }
 
-        DrawPromptBox(activeItem.PromptText, activeItem.Position);
+        var worldPos = new Vector3(activeItem.Position.X, PromptHeightOverGround, activeItem.Position.Y);
+        if (TryProjectInFrontOfCamera(worldPos, context.Camera.Camera, out Vector2 screenPosition))
+        {
+            HudPromptRenderer.DrawPromptBox(activeItem.PromptText, screenPosition);
+        }
     }
 
-    private static void DrawPromptBox(string prompt, Vector2 worldPosition)
+    private static void DrawOutcomeOverlay(HeistOutcome outcome)
     {
-        int textWidth = Raylib.MeasureText(prompt, PromptFontSize);
-        int promptX = (int)worldPosition.X - textWidth / 2;
-        int promptY = (int)worldPosition.Y - 45;
+        if (outcome == HeistOutcome.Playing)
+        {
+            return;
+        }
 
-        int boxX = promptX - 10;
-        int boxY = promptY - 5;
-        int boxW = textWidth + 20;
-        int boxH = PromptFontSize + 10;
+        bool won = outcome == HeistOutcome.Escaped;
+        string title = won ? "HEIST COMPLETE — ESCAPED!" : "BUSTED — CAUGHT BY SECURITY!";
+        const string subtitle = "Press [R] to Restart Mission";
+        Color accent = won ? EscapedAccentColor : CaughtAccentColor;
 
-        Raylib.DrawRectangle(boxX, boxY, boxW, boxH, new Color(0, 0, 0, 200));
-        Raylib.DrawRectangleLines(boxX, boxY, boxW, boxH, Color.White);
-        Raylib.DrawText(prompt, promptX, promptY, PromptFontSize, Color.Yellow);
+        int screenWidth = Raylib.GetScreenWidth();
+        int screenHeight = Raylib.GetScreenHeight();
+        int titleWidth = Raylib.MeasureText(title, OutcomeTitleFontSize);
+        int subtitleWidth = Raylib.MeasureText(subtitle, OutcomeSubtitleFontSize);
+        int panelWidth = Math.Max(titleWidth, subtitleWidth) + OutcomePanelPadding;
+        int panelX = (screenWidth - panelWidth) / 2;
+        int panelY = (screenHeight - OutcomePanelHeight) / 2;
+
+        Raylib.DrawRectangle(panelX, panelY, panelWidth, OutcomePanelHeight, OutcomePanelBackground);
+        Raylib.DrawRectangleLines(panelX, panelY, panelWidth, OutcomePanelHeight, accent);
+        Raylib.DrawText(title, (screenWidth - titleWidth) / 2, panelY + 22, OutcomeTitleFontSize, accent);
+        Raylib.DrawText(subtitle, (screenWidth - subtitleWidth) / 2, panelY + 68, OutcomeSubtitleFontSize, Color.RayWhite);
+    }
+
+    private static bool TryProjectInFrontOfCamera(Vector3 worldPos, Camera3D camera, out Vector2 screenPos)
+    {
+        Vector3 forward = camera.Target - camera.Position;
+        if (Vector3.Dot(worldPos - camera.Position, forward) <= 0f)
+        {
+            screenPos = Vector2.Zero;
+            return false;
+        }
+
+        screenPos = Raylib.GetWorldToScreen(worldPos, camera);
+        return true;
     }
 }

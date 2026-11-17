@@ -41,8 +41,9 @@ public sealed class WorldLightingTests
         Assert.Equal(new Vector2(128f, 640f), context.PlayerPosition);
         Assert.Equal(new RectangleBounds(64f, 640f, 128f, 96f), mapData.GetawayZone);
         Assert.Equal(2, context.Walls.Count);
-        Assert.Single(mapData.Lasers);
-        Assert.Equal("laser_hall", mapData.Lasers[0].Id);
+        Assert.NotNull(mapData.Lasers);
+        Assert.Single(mapData.Lasers!);
+        Assert.Equal("laser_hall", mapData.Lasers![0].Id);
         Assert.Equal(new Vector2(336f, 386f), mapData.Lasers[0].Origin);
     }
 
@@ -116,6 +117,78 @@ public sealed class WorldLightingTests
 
         Assert.Equal(150f, resolvedPosition.X, FloatTolerance);
         Assert.Equal(85f, resolvedPosition.Y, FloatTolerance);
+    }
+
+    [Fact]
+    public void LoadFromJson_WithObstacles_PopulatesMapObstaclesAndCollisionWalls()
+    {
+        using var context = new GameContext();
+        const string json = """
+        {
+          "levelName": "Bank Obstacles",
+          "tileSize": 64,
+          "width": 20,
+          "height": 12,
+          "obstacles": [
+            { "kind": "sofa", "x": 74, "y": 388, "width": 44, "height": 104 }
+          ]
+        }
+        """;
+
+        LevelMapData mapData = MapLoader.LoadFromJson(json, context);
+
+        Assert.Single(mapData.Obstacles!);
+        Assert.Contains(new RectangleBounds(74f, 388f, 44f, 104f), context.Walls);
+    }
+
+    [Fact]
+    public void HasLineOfSight_ReturnsFalse_WhenWallIsBetweenPoints()
+    {
+        var walls = new[] { new RectangleBounds(150f, 50f, 32f, 200f) };
+
+        Assert.False(CollisionHelper.HasLineOfSight(new Vector2(100f, 150f), new Vector2(220f, 150f), walls));
+        Assert.True(CollisionHelper.HasLineOfSight(new Vector2(100f, 150f), new Vector2(130f, 150f), walls));
+    }
+
+    [Fact]
+    public void Level1CityBankJson_HasNoWallOverlapsWithObstaclesOrGuardWaypointsAndHasValidLasers()
+    {
+        using var context = new GameContext();
+        string mapPath = Path.Combine(AppContext.BaseDirectory, "assets", "maps", "level1_city_bank.json");
+        LevelMapData mapData = MapLoader.LoadFromFile(mapPath, context);
+
+        Assert.NotNull(mapData.Obstacles);
+        Assert.NotNull(mapData.Guards);
+        Assert.NotNull(mapData.Interactables);
+        Assert.NotNull(mapData.Lasers);
+        Assert.NotEmpty(mapData.Lasers!);
+
+        foreach (MapPropObstacle obstacle in mapData.Obstacles!)
+        {
+            RectangleBounds ob = obstacle.ToBounds();
+            foreach (RectangleBounds wall in mapData.Walls)
+            {
+                bool overlaps = ob.X < wall.X + wall.Width && ob.X + ob.Width > wall.X &&
+                                ob.Y < wall.Y + wall.Height && ob.Y + ob.Height > wall.Y;
+                Assert.False(overlaps, $"Obstacle {obstacle.Kind} at ({ob.X},{ob.Y}) overlaps wall ({wall.X},{wall.Y}).");
+            }
+        }
+
+        foreach (MapGuardDto guard in mapData.Guards!)
+        {
+            foreach (Vector2 wp in guard.Waypoints)
+            {
+                Vector2 resolved = CollisionHelper.ResolveWallCollision(wp, CollisionHelper.DefaultActorRadius, context.Walls);
+                Assert.Equal(wp, resolved);
+            }
+        }
+
+        foreach (LaserSpawnData spawn in mapData.Lasers!)
+        {
+            var laser = new LaserTripwire(spawn.Id, spawn.Origin, spawn.Direction);
+            laser.Update(context);
+            Assert.NotEqual(laser.Origin, laser.BeamEnd);
+        }
     }
 
     [Fact]

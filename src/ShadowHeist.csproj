@@ -8,6 +8,8 @@
     <Nullable>enable</Nullable>
     <!-- Treat any nullable warning as a hard compiler error -->
     <WarningsAsErrors>nullable</WarningsAsErrors>
+    <!-- Required by Viewport3D to assign shaders/textures on Raylib model materials -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

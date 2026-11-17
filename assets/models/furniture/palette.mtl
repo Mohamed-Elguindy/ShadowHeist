@@ -1,0 +1,6 @@
+# ShadowHeist Furniture Palette
+newmtl palette
+Ka 0.000 0.000 0.000
+Kd 1.000 1.000 1.000
+Ks 0.150 0.150 0.150
+map_Kd furniture_palette.png

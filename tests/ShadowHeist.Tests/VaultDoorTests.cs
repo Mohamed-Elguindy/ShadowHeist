@@ -58,4 +58,18 @@ public sealed class VaultDoorTests
 
         Assert.False(door.IsOpen);
     }
+
+    [Fact]
+    public void OnInteract_WhenUnlocked_RemovesDoorBoundsFromContextWalls()
+    {
+        using var context = new GameContext();
+        var door = new VaultDoor("door", DoorPosition);
+        context.Walls.Add(door.DoorBounds);
+        door.Unlock();
+
+        door.OnInteract(context, context.EventBus);
+
+        Assert.True(door.IsOpen);
+        Assert.DoesNotContain(door.DoorBounds, context.Walls);
+    }
 }

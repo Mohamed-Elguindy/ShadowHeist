@@ -14,10 +14,13 @@ public static class MapLoader
     private const float OuterWallThickness = 32f;
 
     private static readonly Vector2 DefaultPlayerSpawn = new(128f, 640f);
-    private static readonly RectangleBounds DefaultGetawayZone = new(64f, 640f, 128f, 96f);
+    private static readonly RectangleBounds DefaultGetawayZone = HeistConstants.DefaultGetawayZone;
     private static readonly RectangleBounds DefaultVaultTopWall = new(320f, 160f, 640f, 32f);
-    private static readonly RectangleBounds DefaultLobbyDividerWall = new(320f, 160f, 32f, 224f);
-    private static readonly Vector2 DefaultHallLaserOrigin = new(336f, 386f);
+    private static readonly RectangleBounds DefaultVaultBottomWall = new(320f, 384f, 640f, 32f);
+    private static readonly RectangleBounds DefaultLobbyDividerWall = new(320f, 160f, 32f, 256f);
+    private static readonly RectangleBounds DefaultVaultEastUpperWall = new(928f, 160f, 32f, 80f);
+    private static readonly RectangleBounds DefaultVaultEastLowerWall = new(928f, 336f, 32f, 80f);
+    private static readonly Vector2 DefaultHallLaserOrigin = new(336f, 417f);
     private static readonly Vector2 DefaultHallLaserDirection = Vector2.UnitY;
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
@@ -58,6 +61,9 @@ public static class MapLoader
         Vector2 playerSpawn = dto?.PlayerSpawn ?? DefaultPlayerSpawn;
         RectangleBounds getawayZone = ResolveGetawayZone(dto?.GetawayZone);
         List<RectangleBounds> walls = BuildWalls(dto?.Walls, gridWidth * tileSize, gridHeight * tileSize);
+        List<MapPropObstacle> obstacles = ParseObstacles(dto?.Obstacles);
+        List<MapInteractableDto> interactables = dto?.Interactables ?? new List<MapInteractableDto>();
+        List<MapGuardDto> guards = dto?.Guards?.FindAll(g => g.Waypoints is { Count: > 0 }) ?? new List<MapGuardDto>();
         List<LaserSpawnData> lasers = BuildLasers(dto?.Lasers);
 
         return new LevelMapData(
@@ -68,6 +74,9 @@ public static class MapLoader
             playerSpawn,
             getawayZone,
             walls,
+            obstacles,
+            interactables,
+            guards,
             lasers);
     }
 
@@ -111,9 +120,15 @@ public static class MapLoader
             new(0f, 0f, OuterWallThickness, mapPixelHeight),
             new(mapPixelWidth - OuterWallThickness, 0f, OuterWallThickness, mapPixelHeight),
             DefaultVaultTopWall,
-            DefaultLobbyDividerWall
+            DefaultVaultBottomWall,
+            DefaultLobbyDividerWall,
+            DefaultVaultEastUpperWall,
+            DefaultVaultEastLowerWall
         };
     }
+
+    private static List<MapPropObstacle> ParseObstacles(List<MapPropObstacle>? dtos) =>
+        dtos is null ? new List<MapPropObstacle>() : dtos.FindAll(o => o.Width > 0f && o.Height > 0f);
 
     private static List<LaserSpawnData> BuildLasers(List<LaserSpawnDto>? laserDtos)
     {
@@ -147,5 +162,12 @@ public static class MapLoader
         context.PlayerPosition = mapData.PlayerSpawn;
         context.Walls.Clear();
         context.Walls.AddRange(mapData.Walls);
+        if (mapData.Obstacles is not null)
+        {
+            foreach (MapPropObstacle obstacle in mapData.Obstacles)
+            {
+                context.Walls.Add(obstacle.ToBounds());
+            }
+        }
     }
 }

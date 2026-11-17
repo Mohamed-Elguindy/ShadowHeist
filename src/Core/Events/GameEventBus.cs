@@ -32,4 +32,6 @@ public sealed class GameEventBus
             ((Action<TEvent>)subscriber).Invoke(gameEvent);
         }
     }
+
+    public void ClearSubscribers() => _subscribers.Clear();
 }

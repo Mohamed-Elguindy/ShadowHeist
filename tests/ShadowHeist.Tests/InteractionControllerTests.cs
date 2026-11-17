@@ -91,4 +91,26 @@ public sealed class InteractionControllerTests
 
         Assert.Equal(0f, keypad.HoldProgress);
     }
+
+    [Fact]
+    public void Reset_ClearsActiveHoldReference_AfterMissionRestart()
+    {
+        using var context = new GameContext();
+        var staleKeypad = new KeypadTerminal("kp_stale", new Vector2(100f, 100f), targetId: "door_1");
+        context.Interactables.Add(staleKeypad);
+        context.PlayerPosition = new Vector2(100f, 100f);
+
+        var controller = new InteractionController();
+        context.CurrentInput = CreateInput(isHeld: true);
+        controller.HandlePlayerInteraction(deltaTime: 1.0f, context);
+
+        controller.Reset();
+        context.Interactables.Clear();
+        var freshKeypad = new KeypadTerminal("kp_fresh", new Vector2(100f, 100f), targetId: "door_1");
+        context.Interactables.Add(freshKeypad);
+
+        controller.HandlePlayerInteraction(deltaTime: 1.0f, context);
+
+        Assert.True(freshKeypad.HoldProgress > 0f);
+    }
 }

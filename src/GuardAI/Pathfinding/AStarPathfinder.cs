@@ -42,7 +42,10 @@ public static class AStarPathfinder
 
         if (start == goal)
         {
-            return new List<Vector2> { targetWorld };
+            Vector2 sameCellTarget = graph.IsWalkable(graph.WorldToGrid(targetWorld))
+                ? targetWorld
+                : graph.GridToWorld(goal);
+            return new List<Vector2> { sameCellTarget };
         }
 
         var openSet = new PriorityQueue<GridCoord, float>();
@@ -106,8 +109,8 @@ public static class AStarPathfinder
         }
     }
 
-    private static float ComputeHeuristic(GridCoord a, GridCoord b) =>
-        Math.Abs(a.Col - b.Col) + Math.Abs(a.Row - b.Row);
+    private static float ComputeHeuristic(GridCoord firstCoord, GridCoord secondCoord) =>
+        Math.Abs(firstCoord.Col - secondCoord.Col) + Math.Abs(firstCoord.Row - secondCoord.Row);
 
     private static List<Vector2> ReconstructWorldPath(
         GridGraph graph,
@@ -128,12 +131,15 @@ public static class AStarPathfinder
         gridNodes.Reverse();
 
         var worldWaypoints = new List<Vector2>(gridNodes.Count);
-        for (int i = 0; i < gridNodes.Count - 1; i++)
+        for (int nodeIndex = 0; nodeIndex < gridNodes.Count - 1; nodeIndex++)
         {
-            worldWaypoints.Add(graph.GridToWorld(gridNodes[i]));
+            worldWaypoints.Add(graph.GridToWorld(gridNodes[nodeIndex]));
         }
 
-        worldWaypoints.Add(exactTargetWorld);
+        Vector2 finalTarget = graph.IsWalkable(graph.WorldToGrid(exactTargetWorld))
+            ? exactTargetWorld
+            : graph.GridToWorld(goal);
+        worldWaypoints.Add(finalTarget);
         return worldWaypoints;
     }
 }
