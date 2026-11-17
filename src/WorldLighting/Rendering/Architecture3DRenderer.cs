@@ -16,7 +16,7 @@ public sealed class Architecture3DRenderer
     private const string WallTexturePath = "assets/sprites/wall_reinforced_concrete.png";
     private const float WallPanelLength = 64f;
     private const float OuterBorderMargin = 48f;
-    private const float MaxOcclusionPlayerDistance = 135f;
+    private const float MaxOcclusionPlayerDistance = 180f;
     private const byte OccludedWallAlpha = 60;
     private const byte OccludedOutlineAlpha = 90;
     private const float GetawayPulseMaxAlpha = 110f;
