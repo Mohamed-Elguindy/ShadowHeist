@@ -22,7 +22,9 @@ public sealed class GameContext : IDisposable
     public List<RectangleBounds> Walls { get; } = new();
     public TacticalCameraController Camera { get; } = new();
     public ToonModelLibrary Models { get; } = new();
+    public GameStateManager StateManager { get; } = new();
 
+    public string SelectedMapPath { get; set; } = HeistConstants.DefaultMapPath;
     public Vector2 PlayerPosition { get; set; } = DefaultPlayerPosition;
     public float PlayerRotationDegrees { get; set; }
     public bool IsPlayerSneaking { get; set; }
@@ -51,7 +53,11 @@ public sealed class GameContext : IDisposable
 
     public void UpdateAll(float deltaTime)
     {
-        ElapsedSeconds += deltaTime;
+        if (Outcome == HeistOutcome.Playing)
+        {
+            ElapsedSeconds += deltaTime;
+        }
+
         foreach (IGameSystem system in _systems)
         {
             system.Update(deltaTime, this);
