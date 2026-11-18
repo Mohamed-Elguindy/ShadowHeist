@@ -13,6 +13,7 @@ public sealed class GameContext : IDisposable
     private static readonly Vector2 DefaultPlayerPosition = new(160f, 360f);
 
     private readonly List<IGameSystem> _systems = new();
+    private bool _isAlarmSubscribed;
 
     public GameEventBus EventBus { get; } = new();
     public List<IInteractable> Interactables { get; } = new();
@@ -27,6 +28,7 @@ public sealed class GameContext : IDisposable
     public float ElapsedSeconds { get; private set; }
     public int StolenCash { get; set; }
     public bool IsAlarmTriggered { get; set; }
+    public int AlarmCount { get; private set; }
     public HeistOutcome Outcome { get; set; } = HeistOutcome.Playing;
     public PlayerInputCommand CurrentInput { get; set; }
 
@@ -38,6 +40,7 @@ public sealed class GameContext : IDisposable
 
     public void InitializeAll()
     {
+        SubscribeToAlarmEvents();
         foreach (IGameSystem system in _systems)
         {
             system.Init(this);
@@ -46,7 +49,11 @@ public sealed class GameContext : IDisposable
 
     public void UpdateAll(float deltaTime)
     {
-        ElapsedSeconds += deltaTime;
+        if (Outcome == HeistOutcome.Playing)
+        {
+            ElapsedSeconds += deltaTime;
+        }
+
         foreach (IGameSystem system in _systems)
         {
             system.Update(deltaTime, this);
@@ -74,9 +81,11 @@ public sealed class GameContext : IDisposable
         Interactables.Clear();
         Walls.Clear();
         EventBus.ClearSubscribers();
+        _isAlarmSubscribed = false;
         ElapsedSeconds = 0f;
         StolenCash = 0;
         IsAlarmTriggered = false;
+        AlarmCount = 0;
         Outcome = HeistOutcome.Playing;
         CurrentInput = default;
         AimWorldOverride = null;
@@ -99,4 +108,17 @@ public sealed class GameContext : IDisposable
 
         Models.Dispose();
     }
+
+    private void SubscribeToAlarmEvents()
+    {
+        if (_isAlarmSubscribed)
+        {
+            return;
+        }
+
+        EventBus.Subscribe<AlarmTriggeredEvent>(OnAlarmTriggered);
+        _isAlarmSubscribed = true;
+    }
+
+    private void OnAlarmTriggered(AlarmTriggeredEvent _) => AlarmCount++;
 }
