@@ -4,6 +4,7 @@ using ShadowHeist.Core;
 using ShadowHeist.Core.Rendering3D;
 using ShadowHeist.GuardAI;
 using ShadowHeist.HeistWorld;
+using ShadowHeist.HeistWorld.UI;
 using ShadowHeist.PlayerSystem;
 using ShadowHeist.WorldLighting;
 
@@ -22,6 +23,7 @@ public static class Program
     {
         Raylib.SetConfigFlags(ConfigFlags.Msaa4xHint | ConfigFlags.ResizableWindow);
         Raylib.InitWindow(ScreenWidth, ScreenHeight, "ShadowHeist 3D — Raylib C#");
+        Raylib.SetExitKey(KeyboardKey.Null);
         Raylib.SetTargetFPS(TargetFps);
 
         try
@@ -41,12 +43,15 @@ public static class Program
         context.InitializeAll();
         context.Camera.Reset(context.PlayerPosition);
 
-        while (!Raylib.WindowShouldClose())
+        while (!Raylib.WindowShouldClose() && !context.StateManager.ExitRequested)
         {
             float deltaTime = MathF.Min(Raylib.GetFrameTime(), 0.05f);
-            HandleGlobalHotkeys(context);
+            bool stateChanged = GameFlowInputRouter.ProcessInput(context);
             PrepareFrameViewport(context, deltaTime);
-            context.UpdateAll(deltaTime);
+            if (!stateChanged)
+            {
+                UpdateSimulationIfPlaying(context, deltaTime);
+            }
             DrawFrame(context);
         }
     }
@@ -63,24 +68,6 @@ public static class Program
         context.RegisterSystem(heistModule);
     }
 
-    private static void HandleGlobalHotkeys(GameContext context)
-    {
-        if (Raylib.IsKeyPressed(KeyboardKey.R))
-        {
-            context.RestartMission();
-        }
-
-        if (Raylib.IsKeyPressed(KeyboardKey.F6))
-        {
-            context.Camera.ToggleOverviewMode();
-        }
-
-        if (Raylib.IsKeyPressed(KeyboardKey.F11))
-        {
-            Raylib.ToggleBorderlessWindowed();
-        }
-    }
-
     private static void PrepareFrameViewport(GameContext context, float deltaTime)
     {
         Vector2 mousePosition = Raylib.GetMousePosition();
@@ -93,6 +80,17 @@ public static class Program
         context.Camera.Update(deltaTime, context.PlayerPosition);
         context.AimWorldOverride = context.Camera.ScreenToGroundPoint(mousePosition);
         context.Models.UpdateFrameLighting(context.Camera.Camera.Position, context);
+    }
+
+    private static void UpdateSimulationIfPlaying(GameContext context, float deltaTime)
+    {
+        if (!context.StateManager.ShouldUpdateSimulation)
+        {
+            return;
+        }
+
+        context.UpdateAll(deltaTime);
+        context.StateManager.SyncWithMissionOutcome(context.Outcome);
     }
 
     private static void DrawFrame(GameContext context)

@@ -10,17 +10,21 @@ namespace ShadowHeist.Core;
 /// </summary>
 public sealed class GameContext : IDisposable
 {
+    private const string LobbyLightsPowerGroupId = "lobby_lights";
+    private const string AllPowerGroupId = "all";
     private static readonly Vector2 DefaultPlayerPosition = new(160f, 360f);
 
     private readonly List<IGameSystem> _systems = new();
-    private bool _isCameraAlarmSubscribed;
+    private bool _isCoreEventsSubscribed;
 
     public GameEventBus EventBus { get; } = new();
     public List<IInteractable> Interactables { get; } = new();
     public List<RectangleBounds> Walls { get; } = new();
     public TacticalCameraController Camera { get; } = new();
     public ToonModelLibrary Models { get; } = new();
+    public GameStateManager StateManager { get; } = new();
 
+    public string SelectedMapPath { get; set; } = HeistConstants.DefaultMapPath;
     public Vector2 PlayerPosition { get; set; } = DefaultPlayerPosition;
     public float PlayerRotationDegrees { get; set; }
     public bool IsPlayerSneaking { get; set; }
@@ -28,6 +32,7 @@ public sealed class GameContext : IDisposable
     public float ElapsedSeconds { get; private set; }
     public int StolenCash { get; set; }
     public bool IsAlarmTriggered { get; set; }
+    public bool AreLobbyLightsPowered { get; set; } = true;
     public HeistOutcome Outcome { get; set; } = HeistOutcome.Playing;
     public PlayerInputCommand CurrentInput { get; set; }
 
@@ -39,7 +44,7 @@ public sealed class GameContext : IDisposable
 
     public void InitializeAll()
     {
-        SubscribeCameraToAlarms();
+        SubscribeToCoreEvents();
         foreach (IGameSystem system in _systems)
         {
             system.Init(this);
@@ -48,7 +53,11 @@ public sealed class GameContext : IDisposable
 
     public void UpdateAll(float deltaTime)
     {
-        ElapsedSeconds += deltaTime;
+        if (Outcome == HeistOutcome.Playing)
+        {
+            ElapsedSeconds += deltaTime;
+        }
+
         foreach (IGameSystem system in _systems)
         {
             system.Update(deltaTime, this);
@@ -76,10 +85,11 @@ public sealed class GameContext : IDisposable
         Interactables.Clear();
         Walls.Clear();
         EventBus.ClearSubscribers();
-        _isCameraAlarmSubscribed = false;
+        _isCoreEventsSubscribed = false;
         ElapsedSeconds = 0f;
         StolenCash = 0;
         IsAlarmTriggered = false;
+        AreLobbyLightsPowered = true;
         Outcome = HeistOutcome.Playing;
         CurrentInput = default;
         AimWorldOverride = null;
@@ -103,14 +113,27 @@ public sealed class GameContext : IDisposable
         Models.Dispose();
     }
 
-    private void SubscribeCameraToAlarms()
+    private void SubscribeToCoreEvents()
     {
-        if (_isCameraAlarmSubscribed)
+        if (_isCoreEventsSubscribed)
         {
             return;
         }
 
         EventBus.Subscribe<AlarmTriggeredEvent>(_ => Camera.TriggerAlarmShake());
-        _isCameraAlarmSubscribed = true;
+        EventBus.Subscribe<PowerStateChangedEvent>(OnPowerStateChanged);
+        _isCoreEventsSubscribed = true;
     }
+
+    private void OnPowerStateChanged(PowerStateChangedEvent evt)
+    {
+        if (MatchesLobbyLightsGroup(evt.TargetGroupId))
+        {
+            AreLobbyLightsPowered = evt.IsPowered;
+        }
+    }
+
+    private static bool MatchesLobbyLightsGroup(string targetGroupId) =>
+        string.Equals(targetGroupId, LobbyLightsPowerGroupId, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(targetGroupId, AllPowerGroupId, StringComparison.OrdinalIgnoreCase);
 }

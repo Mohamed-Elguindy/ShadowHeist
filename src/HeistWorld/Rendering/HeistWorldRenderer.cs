@@ -47,22 +47,33 @@ public sealed class HeistWorldRenderer
     {
         foreach (IInteractable item in context.Interactables)
         {
-            switch (item)
-            {
-                case LootCrate crate:
-                    DrawLootCrate(crate, context.ElapsedSeconds);
-                    break;
-                case VaultDoor door:
-                    _vaultDoorRenderer.Draw(door, context.ElapsedSeconds);
-                    break;
-                case KeypadTerminal keypad:
-                    KeypadTerminal3DRenderer.Draw(keypad, context.PlayerPosition, context.ElapsedSeconds);
-                    break;
-            }
+            DrawInteractable(item, context);
         }
     }
 
     public void ClearCachedReferences() => _crateUnitBox = null;
+
+    private void DrawInteractable(IInteractable item, GameContext context)
+    {
+        switch (item)
+        {
+            case LootCrate crate:
+                DrawLootCrate(crate, context.ElapsedSeconds);
+                break;
+            case VaultDoor door:
+                _vaultDoorRenderer.Draw(door, context.ElapsedSeconds);
+                break;
+            case KeypadTerminal keypad:
+                KeypadTerminal3DRenderer.Draw(keypad, context.PlayerPosition, context.ElapsedSeconds);
+                break;
+            case FuseBox fuseBox:
+                PowerDevice3DRenderer.DrawFuseBox(fuseBox, context.ElapsedSeconds);
+                break;
+            case LaserSwitch laserSwitch:
+                PowerDevice3DRenderer.DrawLaserSwitch(laserSwitch, context.ElapsedSeconds);
+                break;
+        }
+    }
 
     private void DrawLootCrate(LootCrate crate, float timeSeconds)
     {
