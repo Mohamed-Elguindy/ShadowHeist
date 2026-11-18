@@ -71,5 +71,6 @@ public sealed class VaultDoorTests
 
         Assert.True(door.IsOpen);
         Assert.DoesNotContain(door.DoorBounds, context.Walls);
+        Assert.Contains(door.OpenDoorBounds, context.Walls);
     }
 }

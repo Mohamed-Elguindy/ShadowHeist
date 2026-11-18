@@ -284,9 +284,9 @@ Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where ev
 | **#18** | 🔜 | 👤 Guindy | Extend `TacticalCameraController` with alarm camera shake & Right-Click directional tactical peek | Clean 3D Camera Effects |
 | **#19** | 🔜 | 🎮 Mahmoud | Build `PlayerInventory.cs` using `List<LootItem>`, `Dictionary`, and **LINQ** (`Sum` for loot weight slowdown) | C# Collections & LINQ |
 | **#20** | 🔜 | 🎮 Mahmoud | Implement `IGadget` Strategy Pattern: `CoinGadget.cs` (`NoiseCategory.Distraction`) & `EmpGadget.cs` in 3D | Strategy Pattern (`IGadget`) |
-| **#22** | 🔜 | 🧠 Hatem | Add progressive Guard Detection Meter (`0% -> 100%` fill scaling with distance/sneak) driving 3D `?`/`!` gauges | Clean state timers |
+| **#22** | 🔜 | 🧠 Hatem | Add progressive Guard Detection Meter (`0% -> 100%` fill scaling with distance/sneak) driving 3D `?`/`!` gauges, slightly increase guard speed, expand guard vision when the alarm is triggered, and add a close-proximity awareness circle around guards so players standing right next to them are detected even outside their forward cone | Clean state timers & sensors |
 | **#23** | 🔜 | 🔦 Ali | Enhance `WorldLighting/Rendering` dynamic 3D lighting & darkness/shadow mood pass | Custom 3D Lighting Pipeline |
-| **#24** | 🔜 | 🔦 Ali | Add `BrokenGlassTile` 3D floor hazard (spikes footstep noise) + emissive keypad glow accents | World Hazard Integration |
+| **#24** | 🔜 | 🔦 Ali | Ensure `LaserTripwire` triggers reliably whenever the player passes through the beam, plus add `BrokenGlassTile` 3D floor hazard (spikes footstep noise) & emissive keypad glow accents | World Hazard Integration |
 
 > [!NOTE]
 > **Week 3 Architecture Contracts (#17 & #18):**

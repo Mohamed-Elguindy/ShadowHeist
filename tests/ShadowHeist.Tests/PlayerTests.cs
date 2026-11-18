@@ -23,12 +23,12 @@ public sealed class PlayerTests
             IsUseGadgetPressed: false
         );
 
-        // Act (delta time = 1.0s, base speed = 160f)
+        // Act (delta time = 1.0s, base speed = 190f)
         player.Update(input, 1f, Array.Empty<RectangleBounds>(), new GameEventBus());
 
         // Assert
-        Assert.Equal(260f, player.Position.X);
-        Assert.Equal(100f, player.Position.Y);
+        Assert.Equal(290f, player.Position.X, 0.01f);
+        Assert.Equal(100f, player.Position.Y, 0.01f);
     }
 
     [Fact]
@@ -51,6 +51,24 @@ public sealed class PlayerTests
 
         // Assert
         Assert.Equal(initialPos, player.Position);
+    }
+
+    [Fact]
+    public void Player_CannotTunnelThroughVaultWall_OnLargeStep()
+    {
+        var player = new Player(new Vector2(300f, 250f));
+        var vaultWall = new[] { new RectangleBounds(320f, 160f, 32f, 256f) };
+        var input = new PlayerInputCommand(
+            MoveDirection: new Vector2(1f, 0f),
+            AimWorldPosition: new Vector2(400f, 250f),
+            IsSneakToggled: false,
+            IsSprintHeld: true,
+            IsInteractPressed: false,
+            IsUseGadgetPressed: false);
+
+        player.Update(input, 0.4f, vaultWall, new GameEventBus());
+
+        Assert.True(player.Position.X <= 320f - player.Radius + 0.01f);
     }
 }
 

@@ -19,7 +19,7 @@ public static class Program
 
     public static void Main()
     {
-        Raylib.SetConfigFlags(ConfigFlags.Msaa4xHint);
+        Raylib.SetConfigFlags(ConfigFlags.Msaa4xHint | ConfigFlags.ResizableWindow);
         Raylib.InitWindow(ScreenWidth, ScreenHeight, "ShadowHeist 3D — Raylib C#");
         Raylib.SetTargetFPS(TargetFps);
 
@@ -42,7 +42,7 @@ public static class Program
 
         while (!Raylib.WindowShouldClose())
         {
-            float deltaTime = Raylib.GetFrameTime();
+            float deltaTime = MathF.Min(Raylib.GetFrameTime(), 0.05f);
             HandleGlobalHotkeys(context);
             PrepareFrameViewport(context, deltaTime);
             context.UpdateAll(deltaTime);
@@ -73,6 +73,11 @@ public static class Program
         {
             context.Camera.ToggleOverviewMode();
         }
+
+        if (Raylib.IsKeyPressed(KeyboardKey.F11))
+        {
+            Raylib.ToggleBorderlessWindowed();
+        }
     }
 
     private static void PrepareFrameViewport(GameContext context, float deltaTime)
@@ -90,10 +95,17 @@ public static class Program
         Raylib.ClearBackground(sky);
 
         Raylib.BeginMode3D(context.Camera.Camera);
+        ApplyWideClipPlanes(context.Camera.Camera.FovY);
         context.DrawAll();
         Raylib.EndMode3D();
 
         context.DrawHudAll();
         Raylib.EndDrawing();
+    }
+
+    private static void ApplyWideClipPlanes(float fovYDegrees)
+    {
+        double aspect = (double)Raylib.GetScreenWidth() / Math.Max(1, Raylib.GetScreenHeight());
+        Rlgl.SetMatrixProjection(Raymath.MatrixPerspective(fovYDegrees * HeistConstants.DegToRad, aspect, 15.0, 5000.0));
     }
 }

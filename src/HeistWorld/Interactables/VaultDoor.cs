@@ -9,10 +9,14 @@ public sealed class VaultDoor : WorldObject, IInteractable
 {
     private const float DoorThickness = 32f;
     private const float DoorSpan = 96f;
+    private const float OpenLeafLength = 80f;
+    private const float OpenLeafThickness = 16f;
+    private const float HingeOffsetZ = 40f;
 
     public bool IsLocked { get; private set; } = true;
     public bool IsOpen { get; private set; }
     public RectangleBounds DoorBounds { get; }
+    public RectangleBounds OpenDoorBounds { get; }
     public string PromptText => "[E] Open Vault";
 
     public VaultDoor(string id, Vector2 position, float interactRadius = 75f)
@@ -23,6 +27,11 @@ public sealed class VaultDoor : WorldObject, IInteractable
             position.Y - DoorSpan * 0.5f,
             DoorThickness,
             DoorSpan);
+        OpenDoorBounds = new RectangleBounds(
+            position.X - OpenLeafThickness * 0.5f,
+            position.Y - HingeOffsetZ - OpenLeafThickness * 0.5f,
+            OpenLeafLength + OpenLeafThickness * 0.5f,
+            OpenLeafThickness);
     }
 
     public bool CanInteract(Vector2 playerPosition) =>
@@ -34,6 +43,10 @@ public sealed class VaultDoor : WorldObject, IInteractable
 
         IsOpen = true;
         context.Walls.Remove(DoorBounds);
+        if (!context.Walls.Contains(OpenDoorBounds))
+        {
+            context.Walls.Add(OpenDoorBounds);
+        }
     }
 
     public void Unlock() => IsLocked = false;
