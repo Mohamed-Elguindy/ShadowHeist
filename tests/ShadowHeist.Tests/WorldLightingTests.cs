@@ -189,6 +189,19 @@ public sealed class WorldLightingTests
             laser.Update(context);
             Assert.NotEqual(laser.Origin, laser.BeamEnd);
         }
+
+        Assert.NotNull(mapData.GlassHazards);
+        Assert.NotEmpty(mapData.GlassHazards!);
+        foreach (GlassHazardSpawnData glass in mapData.GlassHazards!)
+        {
+            RectangleBounds gb = glass.Bounds;
+            foreach (RectangleBounds wall in mapData.Walls)
+            {
+                bool overlaps = gb.X < wall.X + wall.Width && gb.X + gb.Width > wall.X &&
+                                gb.Y < wall.Y + wall.Height && gb.Y + gb.Height > wall.Y;
+                Assert.False(overlaps, $"Glass hazard {glass.Id} at ({gb.X},{gb.Y}) overlaps wall ({wall.X},{wall.Y}).");
+            }
+        }
     }
 
     [Fact]
@@ -307,5 +320,101 @@ public sealed class WorldLightingTests
 
         Assert.False(laser.HasTriggeredAlarm);
         Assert.False(context.IsAlarmTriggered);
+    }
+
+    [Fact]
+    public void LaserTripwire_WhenPlayerPassesThroughBeamBetweenFrames_TriggersAlarm()
+    {
+        using var context = new GameContext();
+        context.Walls.Add(new RectangleBounds(0f, 500f, 600f, 32f));
+        var laser = new LaserTripwire("laser_vault", new Vector2(200f, 100f), Vector2.UnitY);
+
+        context.PlayerPosition = new Vector2(170f, 300f);
+        laser.Update(context, actorRadius: 12f);
+        Assert.False(laser.HasTriggeredAlarm);
+
+        context.PlayerPosition = new Vector2(230f, 300f);
+        laser.Update(context, actorRadius: 12f);
+
+        Assert.True(laser.HasTriggeredAlarm);
+        Assert.True(context.IsAlarmTriggered);
+    }
+
+    [Fact]
+    public void BrokenGlassTile_WhenPlayerStepsOntoAndWalksAcrossGlass_EmitsFootstepNoiseSpikes()
+    {
+        using var context = new GameContext();
+        var glassTile = new BrokenGlassTile(
+            "glass_corridor",
+            new RectangleBounds(100f, 100f, 80f, 60f),
+            noiseRadius: 220f,
+            stepTriggerDistance: 20f);
+
+        var emittedEvents = new List<NoiseEmittedEvent>();
+        context.EventBus.Subscribe<NoiseEmittedEvent>(evt => emittedEvents.Add(evt));
+
+        context.PlayerPosition = new Vector2(50f, 50f);
+        Assert.False(glassTile.Update(context));
+        Assert.Empty(emittedEvents);
+
+        context.PlayerPosition = new Vector2(110f, 120f);
+        Assert.True(glassTile.Update(context));
+        Assert.Single(emittedEvents);
+        Assert.Equal("BrokenGlass:glass_corridor", emittedEvents[0].SourceName);
+        Assert.Equal(NoiseCategory.Player, emittedEvents[0].Category);
+        Assert.Equal(220f, emittedEvents[0].Radius, FloatTolerance);
+
+        context.PlayerPosition = new Vector2(118f, 120f);
+        Assert.False(glassTile.Update(context));
+        Assert.Single(emittedEvents);
+
+        context.PlayerPosition = new Vector2(140f, 120f);
+        Assert.True(glassTile.Update(context));
+        Assert.Equal(2, emittedEvents.Count);
+    }
+
+    [Fact]
+    public void ShadowLightingController_WhenPowerCutAndInsideVault_IncreasesAmbientAndZoneDarkness()
+    {
+        using var context = new GameContext();
+        var controller = new ShadowLightingController();
+        var lampPosition = new Vector2(84f, 344f);
+        var vaultPosition = new Vector2(500f, 280f);
+
+        float litLobbyDarkness = controller.GetZoneDarkness(lampPosition);
+        float poweredVaultDarkness = controller.GetZoneDarkness(vaultPosition);
+
+        Assert.True(poweredVaultDarkness > litLobbyDarkness);
+
+        controller.SetPowerState(isPowered: false);
+        controller.Update(deltaTime: 1.0f, context);
+
+        Assert.False(controller.IsMainPowerOnline);
+        Assert.True(controller.AmbientDarknessIntensity > ShadowLightingController.DefaultPoweredDarkness);
+        Assert.True(controller.GetZoneDarkness(lampPosition) > litLobbyDarkness);
+    }
+
+    [Fact]
+    public void LoadFromJson_WithGlassHazards_PopulatesGlassHazardSpawns()
+    {
+        using var context = new GameContext();
+        const string json = """
+        {
+          "levelName": "Bank Glass Hazards",
+          "tileSize": 64,
+          "width": 20,
+          "height": 12,
+          "glassHazards": [
+            { "id": "glass_hall", "x": 420, "y": 580, "width": 60, "height": 44 }
+          ]
+        }
+        """;
+
+        LevelMapData mapData = MapLoader.LoadFromJson(json, context);
+
+        Assert.NotNull(mapData.GlassHazards);
+        Assert.Single(mapData.GlassHazards!);
+        Assert.Equal("glass_hall", mapData.GlassHazards![0].Id);
+        Assert.Equal(new RectangleBounds(420f, 580f, 60f, 44f), mapData.GlassHazards[0].Bounds);
     }
 }

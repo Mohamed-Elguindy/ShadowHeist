@@ -14,7 +14,8 @@ public sealed record LevelMapData(
     IReadOnlyList<MapPropObstacle>? Obstacles = null,
     IReadOnlyList<MapInteractableDto>? Interactables = null,
     IReadOnlyList<MapGuardDto>? Guards = null,
-    IReadOnlyList<LaserSpawnData>? Lasers = null);
+    IReadOnlyList<LaserSpawnData>? Lasers = null,
+    IReadOnlyList<GlassHazardSpawnData>? GlassHazards = null);
 
 public readonly record struct MapPropObstacle(
     string Kind,
@@ -44,6 +45,10 @@ public sealed record LaserSpawnData(
     Vector2 Origin,
     Vector2 Direction);
 
+public sealed record GlassHazardSpawnData(
+    string Id,
+    RectangleBounds Bounds);
+
 public sealed class LevelMapDto
 {
     public string? LevelName { get; set; }
@@ -57,6 +62,7 @@ public sealed class LevelMapDto
     public List<MapInteractableDto>? Interactables { get; set; }
     public List<MapGuardDto>? Guards { get; set; }
     public List<LaserSpawnDto>? Lasers { get; set; }
+    public List<GlassHazardDto>? GlassHazards { get; set; }
 }
 
 public sealed class LaserSpawnDto
@@ -65,4 +71,13 @@ public sealed class LaserSpawnDto
     public float X { get; set; }
     public float Y { get; set; }
     public Vector2? Direction { get; set; }
+}
+
+public sealed class GlassHazardDto
+{
+    public string? Id { get; set; }
+    public float X { get; set; }
+    public float Y { get; set; }
+    public float Width { get; set; }
+    public float Height { get; set; }
 }

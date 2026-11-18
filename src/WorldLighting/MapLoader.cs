@@ -8,6 +8,8 @@ public static class MapLoader
 {
     private const string DefaultLevelName = "Level 1: City Central Bank";
     private const string DefaultHallLaserId = "laser_hall";
+    private const string DefaultCorridorGlassId = "glass_corridor_east";
+    private const string DefaultLobbyGlassId = "glass_lobby_south";
     private const int DefaultTileSize = 64;
     private const int DefaultGridWidth = 20;
     private const int DefaultGridHeight = 12;
@@ -22,6 +24,8 @@ public static class MapLoader
     private static readonly RectangleBounds DefaultVaultEastLowerWall = new(928f, 336f, 32f, 80f);
     private static readonly Vector2 DefaultHallLaserOrigin = new(336f, 417f);
     private static readonly Vector2 DefaultHallLaserDirection = Vector2.UnitY;
+    private static readonly RectangleBounds DefaultCorridorGlassBounds = new(992f, 224f, 56f, 44f);
+    private static readonly RectangleBounds DefaultLobbyGlassBounds = new(420f, 580f, 60f, 44f);
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
@@ -65,6 +69,7 @@ public static class MapLoader
         List<MapInteractableDto> interactables = dto?.Interactables ?? new List<MapInteractableDto>();
         List<MapGuardDto> guards = dto?.Guards?.FindAll(g => g.Waypoints is { Count: > 0 }) ?? new List<MapGuardDto>();
         List<LaserSpawnData> lasers = BuildLasers(dto?.Lasers);
+        List<GlassHazardSpawnData> glassHazards = BuildGlassHazards(dto?.GlassHazards);
 
         return new LevelMapData(
             levelName,
@@ -77,43 +82,27 @@ public static class MapLoader
             obstacles,
             interactables,
             guards,
-            lasers);
+            lasers,
+            glassHazards);
     }
 
-    private static RectangleBounds ResolveGetawayZone(RectangleBounds? zone)
-    {
-        return zone is { Width: > 0f, Height: > 0f } validZone
-            ? validZone
-            : DefaultGetawayZone;
-    }
+    private static RectangleBounds ResolveGetawayZone(RectangleBounds? zone) =>
+        zone is { Width: > 0f, Height: > 0f } validZone ? validZone : DefaultGetawayZone;
 
     private static List<RectangleBounds> BuildWalls(
         List<RectangleBounds>? wallDtos,
         float mapPixelWidth,
         float mapPixelHeight)
     {
-        var customWalls = ParseCustomWalls(wallDtos);
-        if (customWalls.Count > 0)
-        {
-            return customWalls;
-        }
-
-        return BuildDefaultBankWalls(mapPixelWidth, mapPixelHeight);
+        List<RectangleBounds> customWalls = ParseCustomWalls(wallDtos);
+        return customWalls.Count > 0 ? customWalls : BuildDefaultBankWalls(mapPixelWidth, mapPixelHeight);
     }
 
-    private static List<RectangleBounds> ParseCustomWalls(List<RectangleBounds>? wallDtos)
-    {
-        if (wallDtos is null)
-        {
-            return new List<RectangleBounds>();
-        }
+    private static List<RectangleBounds> ParseCustomWalls(List<RectangleBounds>? wallDtos) =>
+        wallDtos is null ? new List<RectangleBounds>() : wallDtos.FindAll(wall => wall.Width > 0f && wall.Height > 0f);
 
-        return wallDtos.FindAll(wall => wall.Width > 0f && wall.Height > 0f);
-    }
-
-    private static List<RectangleBounds> BuildDefaultBankWalls(float mapPixelWidth, float mapPixelHeight)
-    {
-        return new List<RectangleBounds>
+    private static List<RectangleBounds> BuildDefaultBankWalls(float mapPixelWidth, float mapPixelHeight) =>
+        new()
         {
             new(0f, 0f, mapPixelWidth, OuterWallThickness),
             new(0f, mapPixelHeight - OuterWallThickness, mapPixelWidth, OuterWallThickness),
@@ -125,7 +114,6 @@ public static class MapLoader
             DefaultVaultEastUpperWall,
             DefaultVaultEastLowerWall
         };
-    }
 
     private static List<MapPropObstacle> ParseObstacles(List<MapPropObstacle>? dtos) =>
         dtos is null ? new List<MapPropObstacle>() : dtos.FindAll(o => o.Width > 0f && o.Height > 0f);
@@ -136,7 +124,7 @@ public static class MapLoader
 
         if (laserDtos is not null)
         {
-            foreach (var dto in laserDtos)
+            foreach (LaserSpawnDto dto in laserDtos)
             {
                 if (!string.IsNullOrWhiteSpace(dto.Id))
                 {
@@ -146,15 +134,33 @@ public static class MapLoader
             }
         }
 
-        if (lasers.Count > 0)
+        return lasers.Count > 0
+            ? lasers
+            : new List<LaserSpawnData> { new(DefaultHallLaserId, DefaultHallLaserOrigin, DefaultHallLaserDirection) };
+    }
+
+    private static List<GlassHazardSpawnData> BuildGlassHazards(List<GlassHazardDto>? glassDtos)
+    {
+        var hazards = new List<GlassHazardSpawnData>();
+
+        if (glassDtos is not null)
         {
-            return lasers;
+            foreach (GlassHazardDto dto in glassDtos)
+            {
+                if (!string.IsNullOrWhiteSpace(dto.Id) && dto.Width > 0f && dto.Height > 0f)
+                {
+                    hazards.Add(new GlassHazardSpawnData(dto.Id, new RectangleBounds(dto.X, dto.Y, dto.Width, dto.Height)));
+                }
+            }
         }
 
-        return new List<LaserSpawnData>
-        {
-            new(DefaultHallLaserId, DefaultHallLaserOrigin, DefaultHallLaserDirection)
-        };
+        return hazards.Count > 0
+            ? hazards
+            : new List<GlassHazardSpawnData>
+            {
+                new(DefaultCorridorGlassId, DefaultCorridorGlassBounds),
+                new(DefaultLobbyGlassId, DefaultLobbyGlassBounds)
+            };
     }
 
     private static void ApplyToContext(LevelMapData mapData, GameContext context)

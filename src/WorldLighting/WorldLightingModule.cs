@@ -8,7 +8,7 @@ namespace ShadowHeist.WorldLighting;
 
 /// <summary>
 /// Owned by: Ali (ShadowHeist.WorldLighting)
-/// Loads level geometry, obstacles, and laser tripwires into GameContext and renders the 3D bank environment, furniture, lasers, and player FOV.
+/// Loads level geometry, obstacles, broken glass hazards, and laser tripwires into GameContext and renders the 3D bank environment, shadow mood lighting, furniture, lasers, glass hazards, and player FOV.
 /// </summary>
 public sealed class WorldLightingModule : IGameSystem, IDisposable
 {
@@ -19,7 +19,11 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
     private readonly Furniture3DRenderer _furniture = new();
     private readonly BankDecorRenderer _decor = new();
     private readonly LaserTripwire3DRenderer _laserRenderer = new();
+    private readonly BrokenGlass3DRenderer _glassRenderer = new();
+    private readonly ShadowMood3DRenderer _shadowMoodRenderer = new();
+    private readonly ShadowLightingController _shadowLighting = new();
     private readonly List<LaserTripwire> _lasers = new();
+    private readonly List<BrokenGlassTile> _glassHazards = new();
     private IReadOnlyList<Vector2> _visionConeVertices = Array.Empty<Vector2>();
     private IReadOnlyList<RectangleBounds>? _visionBlockingWalls;
     private LevelMapData? _currentMap;
@@ -28,6 +32,8 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
 
     public LevelMapData? CurrentMap => _currentMap;
     public IReadOnlyList<LaserTripwire> Lasers => _lasers;
+    public IReadOnlyList<BrokenGlassTile> GlassHazards => _glassHazards;
+    public ShadowLightingController ShadowLighting => _shadowLighting;
     public IReadOnlyList<Vector2> PlayerVisionCone => _visionConeVertices;
 
     public IReadOnlyList<RectangleBounds> GetVisionBlockingWalls(GameContext context) =>
@@ -37,8 +43,10 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
     {
         _currentMap = MapLoader.LoadFromFile(Level1MapPath, context);
         _visionBlockingWalls = BuildWallsExcludingWaistHighObstacles(context);
+        _shadowLighting.Reset();
         EnsureModelsLoaded(context);
         SpawnInitialLasers();
+        SpawnInitialGlassHazards();
 
         _currentAimDegrees = context.PlayerRotationDegrees;
         _visionConeVertices = VisionRaycaster.ComputeVisionCone(
@@ -55,6 +63,8 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
             return;
         }
 
+        _shadowLighting.Update(deltaTime, context);
+
         Vector2 aimTarget = context.AimWorldOverride ?? context.CurrentInput.AimWorldPosition;
         UpdateAimAngle(context.PlayerPosition, aimTarget, context.PlayerRotationDegrees);
 
@@ -65,14 +75,27 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
             visionWalls);
 
         UpdateLasers(context, visionWalls);
+        UpdateGlassHazards(context);
     }
 
     public void Draw(GameContext context)
     {
-        _architecture.Draw(_currentMap?.Walls ?? context.Walls, _currentMap?.GetawayZone, context.ElapsedSeconds, context.PlayerPosition, context.Camera.Camera.Position);
+        IReadOnlyList<RectangleBounds> architecturalWalls = _currentMap?.Walls ?? context.Walls;
+        _architecture.Draw(
+            architecturalWalls,
+            _currentMap?.GetawayZone,
+            context.ElapsedSeconds,
+            context.PlayerPosition,
+            context.Camera.Camera.Position);
+        _shadowMoodRenderer.Draw(_shadowLighting, architecturalWalls, context.ElapsedSeconds);
         _furniture.Draw();
         _decor.Draw(context.ElapsedSeconds);
-        VisionCone3DRenderer.DrawWarmLampGlows();
+        _glassRenderer.Draw(_glassHazards, context.ElapsedSeconds);
+        if (_shadowLighting.IsMainPowerOnline)
+        {
+            VisionCone3DRenderer.DrawWarmLampGlows();
+        }
+
         VisionCone3DRenderer.DrawPlayerVisionCone(_visionConeVertices);
         _laserRenderer.Draw(_lasers, context.ElapsedSeconds);
     }
@@ -107,6 +130,20 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
         }
     }
 
+    private void SpawnInitialGlassHazards()
+    {
+        _glassHazards.Clear();
+        if (_currentMap?.GlassHazards is null)
+        {
+            return;
+        }
+
+        foreach (GlassHazardSpawnData spawn in _currentMap.GlassHazards)
+        {
+            _glassHazards.Add(new BrokenGlassTile(spawn.Id, spawn.Bounds));
+        }
+    }
+
     private void UpdateAimAngle(Vector2 playerPosition, Vector2 aimWorldPosition, float fallbackDegrees)
     {
         Vector2 toTarget = aimWorldPosition - playerPosition;
@@ -121,10 +158,18 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
 
     private void UpdateLasers(GameContext context, IReadOnlyList<RectangleBounds>? visionWalls = null)
     {
-        IReadOnlyList<RectangleBounds> walls = visionWalls ?? BuildWallsExcludingWaistHighObstacles(context);
+        IReadOnlyList<RectangleBounds> walls = visionWalls ?? GetVisionBlockingWalls(context);
         foreach (LaserTripwire laser in _lasers)
         {
             laser.Update(context, walls: walls);
+        }
+    }
+
+    private void UpdateGlassHazards(GameContext context)
+    {
+        foreach (BrokenGlassTile glassTile in _glassHazards)
+        {
+            glassTile.Update(context);
         }
     }
 
