@@ -141,7 +141,7 @@ public static class SummaryScreen
 
     private static void DrawFooterPrompts(Rectangle cardBounds)
     {
-        const string footer = "Press [R] to Retry Mission";
+        const string footer = "[R] RETRY   |   [L] LEVEL SELECT   |   [M] MAIN MENU";
         int x = CenterTextX(footer, FooterFontSize, (int)cardBounds.X, (int)cardBounds.Width);
         Raylib.DrawText(footer, x, (int)(cardBounds.Y + cardBounds.Height) - FooterBottomMargin, FooterFontSize, Color.RayWhite);
     }

@@ -10,17 +10,21 @@ namespace ShadowHeist.Core;
 /// </summary>
 public sealed class GameContext : IDisposable
 {
+    private const string LobbyLightsPowerGroupId = "lobby_lights";
+    private const string AllPowerGroupId = "all";
     private static readonly Vector2 DefaultPlayerPosition = new(160f, 360f);
 
     private readonly List<IGameSystem> _systems = new();
-    private bool _isAlarmSubscribed;
+    private bool _isCoreEventsSubscribed;
 
     public GameEventBus EventBus { get; } = new();
     public List<IInteractable> Interactables { get; } = new();
     public List<RectangleBounds> Walls { get; } = new();
     public TacticalCameraController Camera { get; } = new();
     public ToonModelLibrary Models { get; } = new();
+    public GameStateManager StateManager { get; } = new();
 
+    public string SelectedMapPath { get; set; } = HeistConstants.DefaultMapPath;
     public Vector2 PlayerPosition { get; set; } = DefaultPlayerPosition;
     public float PlayerRotationDegrees { get; set; }
     public bool IsPlayerSneaking { get; set; }
@@ -29,6 +33,7 @@ public sealed class GameContext : IDisposable
     public int StolenCash { get; set; }
     public bool IsAlarmTriggered { get; set; }
     public int AlarmCount { get; private set; }
+    public bool AreLobbyLightsPowered { get; set; } = true;
     public HeistOutcome Outcome { get; set; } = HeistOutcome.Playing;
     public PlayerInputCommand CurrentInput { get; set; }
 
@@ -40,7 +45,7 @@ public sealed class GameContext : IDisposable
 
     public void InitializeAll()
     {
-        SubscribeToAlarmEvents();
+        SubscribeToCoreEvents();
         foreach (IGameSystem system in _systems)
         {
             system.Init(this);
@@ -81,11 +86,12 @@ public sealed class GameContext : IDisposable
         Interactables.Clear();
         Walls.Clear();
         EventBus.ClearSubscribers();
-        _isAlarmSubscribed = false;
+        _isCoreEventsSubscribed = false;
         ElapsedSeconds = 0f;
         StolenCash = 0;
         IsAlarmTriggered = false;
         AlarmCount = 0;
+        AreLobbyLightsPowered = true;
         Outcome = HeistOutcome.Playing;
         CurrentInput = default;
         AimWorldOverride = null;
@@ -109,16 +115,29 @@ public sealed class GameContext : IDisposable
         Models.Dispose();
     }
 
-    private void SubscribeToAlarmEvents()
+    private void SubscribeToCoreEvents()
     {
-        if (_isAlarmSubscribed)
+        if (_isCoreEventsSubscribed)
         {
             return;
         }
 
         EventBus.Subscribe<AlarmTriggeredEvent>(OnAlarmTriggered);
-        _isAlarmSubscribed = true;
+        EventBus.Subscribe<PowerStateChangedEvent>(OnPowerStateChanged);
+        _isCoreEventsSubscribed = true;
     }
 
     private void OnAlarmTriggered(AlarmTriggeredEvent _) => AlarmCount++;
+
+    private void OnPowerStateChanged(PowerStateChangedEvent evt)
+    {
+        if (MatchesLobbyLightsGroup(evt.TargetGroupId))
+        {
+            AreLobbyLightsPowered = evt.IsPowered;
+        }
+    }
+
+    private static bool MatchesLobbyLightsGroup(string targetGroupId) =>
+        string.Equals(targetGroupId, LobbyLightsPowerGroupId, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(targetGroupId, AllPowerGroupId, StringComparison.OrdinalIgnoreCase);
 }

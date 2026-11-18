@@ -17,7 +17,6 @@ public sealed class BankDecorRenderer
 
     private static readonly Vector2 VanPosition = new(134f, 828f);
     private static readonly Vector2 TellerPosition = new(560f, 536f);
-    private static readonly Vector3 FuseboxPosition = new(410f, 52f, 196f);
     private static readonly Vector3 PlaquePosition = new(640f, 60f, 35f);
 
     private static readonly Color AsphaltColor = new(22, 26, 34, 255);
@@ -27,7 +26,6 @@ public sealed class BankDecorRenderer
     private static readonly Color BulletGlassOutlineColor = new(140, 232, 255, 190);
     private static readonly Color SteelDarkColor = new(44, 52, 66, 255);
     private static readonly Color MonitorHousingColor = new(30, 36, 48, 255);
-    private static readonly Color GoldTrimColor = new(248, 196, 44, 255);
     private static readonly Color PlaqueBorderColor = new(212, 162, 68, 255);
 
     private ToonModelLibrary? _library;
@@ -45,7 +43,6 @@ public sealed class BankDecorRenderer
         DrawGetawayVanModel(elapsedSeconds);
         DrawTellerStation(elapsedSeconds);
         DrawSecurityCameras(elapsedSeconds);
-        DrawVaultFusebox(elapsedSeconds);
         DrawBankPlaque();
     }
 
@@ -135,15 +132,6 @@ public sealed class BankDecorRenderer
             lensTip,
             new Vector3(mountPosition.X + (lookDirection.X * 145f), 2f, mountPosition.Z + (lookDirection.Z * 145f)),
             new Color(255, 70, 90, 42));
-    }
-
-    private static void DrawVaultFusebox(float timeSeconds)
-    {
-        Raylib3DPrimitives.DrawOutlinedCube(FuseboxPosition, new Vector3(24f, 30f, 8f), new Color(46, 56, 72, 255), Viewport3DConfig.OutlineColor);
-        Raylib.DrawCube(FuseboxPosition + new Vector3(0f, 0f, 4.5f), 16f, 4f, 1f, GoldTrimColor);
-
-        byte ledAlpha = (byte)(140f + 115f * MathF.Sin(timeSeconds * 6f));
-        Raylib.DrawSphere(FuseboxPosition + new Vector3(6f, 9f, 5f), 2.3f, new Color((byte)74, (byte)222, (byte)128, ledAlpha));
     }
 
     private static void DrawBankPlaque()

@@ -7,7 +7,7 @@ using ShadowHeist.HeistWorld.Interactables;
 namespace ShadowHeist.HeistWorld.UI;
 
 /// <summary>
-/// Renders tactical screen-space HUD banners, sound meter, 3D-projected hold rings &amp; prompts, and outcome overlays.
+/// Renders tactical screen-space HUD banners, sound meter, extraction cues, menus, and mission summary.
 /// </summary>
 public sealed class HudRenderer
 {
@@ -31,22 +31,44 @@ public sealed class HudRenderer
     private static readonly Color CashBoxBorder = new(56, 189, 248, 180);
 
     private readonly SoundMeter _soundMeter;
+    private readonly RectangleBounds _getawayZone;
 
-    public HudRenderer(SoundMeter soundMeter)
+    public HudRenderer(SoundMeter soundMeter, RectangleBounds? getawayZone = null)
     {
         _soundMeter = soundMeter;
+        _getawayZone = getawayZone ?? HeistConstants.DefaultGetawayZone;
     }
 
     public void DrawHudOverlay(GameContext context)
     {
         DrawVignette();
+
+        GameFlowState flowState = context.StateManager.CurrentState;
+        if (flowState is GameFlowState.MainMenu or GameFlowState.LevelSelect)
+        {
+            MenuOverlayRenderer.Draw(context);
+            return;
+        }
+
+        DrawGameplayHud(context);
+        if (flowState == GameFlowState.Paused)
+        {
+            MenuOverlayRenderer.Draw(context);
+            return;
+        }
+
+        SummaryScreen.Draw(context);
+    }
+
+    private void DrawGameplayHud(GameContext context)
+    {
         SoundMeterBarRenderer.Draw(_soundMeter.Level);
         DrawAlarmBanner(context.IsAlarmTriggered, context.Outcome);
         DrawStolenCashBanner(context.StolenCash);
+        ExtractionHudRenderer.Draw(context, _getawayZone);
         DrawHintBar(context.Camera.IsOverviewMode);
         DrawHoldProgressRing(context);
         DrawContextualPrompt(context);
-        SummaryScreen.Draw(context);
     }
 
     private static void DrawVignette()
@@ -95,7 +117,7 @@ public sealed class HudRenderer
     private static void DrawHintBar(bool isOverviewCamera)
     {
         string cameraLabel = isOverviewCamera ? "FOLLOW" : "OVERVIEW";
-        string text = $"[F6] {cameraLabel}   |   [SCROLL] ZOOM   |   [R] RESTART";
+        string text = $"[F6] {cameraLabel}   |   [ESC] PAUSE   |   [SCROLL] ZOOM   |   [R] RESTART";
         Raylib.DrawText(text, HudMargin, Raylib.GetScreenHeight() - 30, HintFontSize, HintTextColor);
     }
 
@@ -108,7 +130,7 @@ public sealed class HudRenderer
         }
 
         var worldPos = new Vector3(activeHold.Position.X, HoldRingHeightOverGround, activeHold.Position.Y);
-        if (TryProjectInFrontOfCamera(worldPos, context.Camera.Camera, out Vector2 screenPosition))
+        if (HudPromptRenderer.TryProjectInFrontOfCamera(worldPos, context.Camera.Camera, out Vector2 screenPosition))
         {
             HoldProgressRingRenderer.Draw(screenPosition, activeHold.HoldProgress);
         }
@@ -123,22 +145,9 @@ public sealed class HudRenderer
         }
 
         var worldPos = new Vector3(activeItem.Position.X, PromptHeightOverGround, activeItem.Position.Y);
-        if (TryProjectInFrontOfCamera(worldPos, context.Camera.Camera, out Vector2 screenPosition))
+        if (HudPromptRenderer.TryProjectInFrontOfCamera(worldPos, context.Camera.Camera, out Vector2 screenPosition))
         {
             HudPromptRenderer.DrawPromptBox(activeItem.PromptText, screenPosition);
         }
-    }
-
-    private static bool TryProjectInFrontOfCamera(Vector3 worldPos, Camera3D camera, out Vector2 screenPos)
-    {
-        Vector3 forward = camera.Target - camera.Position;
-        if (Vector3.Dot(worldPos - camera.Position, forward) <= 0f)
-        {
-            screenPos = Vector2.Zero;
-            return false;
-        }
-
-        screenPos = Raylib.GetWorldToScreen(worldPos, camera);
-        return true;
     }
 }
