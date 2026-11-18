@@ -13,6 +13,7 @@ public sealed class GameContext : IDisposable
     private static readonly Vector2 DefaultPlayerPosition = new(160f, 360f);
 
     private readonly List<IGameSystem> _systems = new();
+    private bool _isCameraAlarmSubscribed;
 
     public GameEventBus EventBus { get; } = new();
     public List<IInteractable> Interactables { get; } = new();
@@ -38,6 +39,7 @@ public sealed class GameContext : IDisposable
 
     public void InitializeAll()
     {
+        SubscribeCameraToAlarms();
         foreach (IGameSystem system in _systems)
         {
             system.Init(this);
@@ -74,6 +76,7 @@ public sealed class GameContext : IDisposable
         Interactables.Clear();
         Walls.Clear();
         EventBus.ClearSubscribers();
+        _isCameraAlarmSubscribed = false;
         ElapsedSeconds = 0f;
         StolenCash = 0;
         IsAlarmTriggered = false;
@@ -98,5 +101,16 @@ public sealed class GameContext : IDisposable
         }
 
         Models.Dispose();
+    }
+
+    private void SubscribeCameraToAlarms()
+    {
+        if (_isCameraAlarmSubscribed)
+        {
+            return;
+        }
+
+        EventBus.Subscribe<AlarmTriggeredEvent>(_ => Camera.TriggerAlarmShake());
+        _isCameraAlarmSubscribed = true;
     }
 }

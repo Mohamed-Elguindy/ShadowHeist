@@ -1,3 +1,4 @@
+using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Rendering3D;
@@ -82,9 +83,15 @@ public static class Program
 
     private static void PrepareFrameViewport(GameContext context, float deltaTime)
     {
+        Vector2 mousePosition = Raylib.GetMousePosition();
         context.Camera.ApplyZoomWheel(Raylib.GetMouseWheelMove());
+        context.Camera.UpdatePeekFromScreen(
+            Raylib.IsMouseButtonDown(MouseButton.Right),
+            mousePosition,
+            context.PlayerPosition);
+        context.Camera.NotifyAlarmState(context.IsAlarmTriggered);
         context.Camera.Update(deltaTime, context.PlayerPosition);
-        context.AimWorldOverride = context.Camera.ScreenToGroundPoint(Raylib.GetMousePosition());
+        context.AimWorldOverride = context.Camera.ScreenToGroundPoint(mousePosition);
         context.Models.UpdateFrameLighting(context.Camera.Camera.Position, context);
     }
 
