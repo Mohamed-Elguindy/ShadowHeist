@@ -10,9 +10,12 @@ namespace ShadowHeist.Core;
 /// </summary>
 public sealed class GameContext : IDisposable
 {
+    private const string LobbyLightsPowerGroupId = "lobby_lights";
+    private const string AllPowerGroupId = "all";
     private static readonly Vector2 DefaultPlayerPosition = new(160f, 360f);
 
     private readonly List<IGameSystem> _systems = new();
+    private bool _isPowerSubscribed;
 
     public GameEventBus EventBus { get; } = new();
     public List<IInteractable> Interactables { get; } = new();
@@ -27,6 +30,7 @@ public sealed class GameContext : IDisposable
     public float ElapsedSeconds { get; private set; }
     public int StolenCash { get; set; }
     public bool IsAlarmTriggered { get; set; }
+    public bool AreLobbyLightsPowered { get; set; } = true;
     public HeistOutcome Outcome { get; set; } = HeistOutcome.Playing;
     public PlayerInputCommand CurrentInput { get; set; }
 
@@ -38,6 +42,7 @@ public sealed class GameContext : IDisposable
 
     public void InitializeAll()
     {
+        SubscribeToPowerEvents();
         foreach (IGameSystem system in _systems)
         {
             system.Init(this);
@@ -74,9 +79,11 @@ public sealed class GameContext : IDisposable
         Interactables.Clear();
         Walls.Clear();
         EventBus.ClearSubscribers();
+        _isPowerSubscribed = false;
         ElapsedSeconds = 0f;
         StolenCash = 0;
         IsAlarmTriggered = false;
+        AreLobbyLightsPowered = true;
         Outcome = HeistOutcome.Playing;
         CurrentInput = default;
         AimWorldOverride = null;
@@ -99,4 +106,27 @@ public sealed class GameContext : IDisposable
 
         Models.Dispose();
     }
+
+    private void SubscribeToPowerEvents()
+    {
+        if (_isPowerSubscribed)
+        {
+            return;
+        }
+
+        EventBus.Subscribe<PowerStateChangedEvent>(OnPowerStateChanged);
+        _isPowerSubscribed = true;
+    }
+
+    private void OnPowerStateChanged(PowerStateChangedEvent evt)
+    {
+        if (MatchesLobbyLightsGroup(evt.TargetGroupId))
+        {
+            AreLobbyLightsPowered = evt.IsPowered;
+        }
+    }
+
+    private static bool MatchesLobbyLightsGroup(string targetGroupId) =>
+        string.Equals(targetGroupId, LobbyLightsPowerGroupId, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(targetGroupId, AllPowerGroupId, StringComparison.OrdinalIgnoreCase);
 }
