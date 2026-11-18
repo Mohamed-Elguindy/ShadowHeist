@@ -45,9 +45,12 @@ public static class Program
         while (!Raylib.WindowShouldClose() && !context.StateManager.ExitRequested)
         {
             float deltaTime = MathF.Min(Raylib.GetFrameTime(), 0.05f);
-            GameFlowInputRouter.ProcessInput(context);
+            bool stateChanged = GameFlowInputRouter.ProcessInput(context);
             PrepareFrameViewport(context, deltaTime);
-            UpdateSimulationIfPlaying(context, deltaTime);
+            if (!stateChanged)
+            {
+                UpdateSimulationIfPlaying(context, deltaTime);
+            }
             DrawFrame(context);
         }
     }

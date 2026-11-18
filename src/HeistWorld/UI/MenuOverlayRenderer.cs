@@ -8,68 +8,103 @@ namespace ShadowHeist.HeistWorld.UI;
 /// </summary>
 public static class MenuOverlayRenderer
 {
-    private const int PanelWidth = 620;
-    private const int TitleFontSize = 38;
-    private const int SubtitleFontSize = 18;
-    private const int ItemFontSize = 20;
-    private const int HintFontSize = 17;
-
-    private static readonly Color BackdropColor = new(6, 10, 18, 178);
-    private static readonly Color PanelBackground = new(12, 18, 32, 240);
-    private static readonly Color PanelBorder = new(56, 189, 248, 220);
-    private static readonly Color TitleAccent = new(56, 225, 255, 255);
-    private static readonly Color SelectedRowBg = new(24, 48, 76, 245);
-    private static readonly Color SelectedRowBorder = new(74, 222, 128, 240);
-    private static readonly Color RowBg = new(18, 26, 44, 220);
-    private static readonly Color RowBorder = new(70, 90, 124, 180);
-    private static readonly Color MutedText = new(162, 178, 204, 255);
-    private static readonly Color ReadyTagColor = new(74, 222, 128, 255);
-    private static readonly Color FallbackTagColor = new(248, 196, 44, 255);
+    private const string NavigationHintText = "[UP/DOWN or W/S] NAVIGATE   |   [ENTER] SELECT";
+    private const string LevelSelectHintText = "[UP/DOWN] CHOOSE   |   [ENTER] DEPLOY   |   [ESC] BACK";
 
     public static void Draw(GameContext context)
     {
         switch (context.StateManager.CurrentState)
         {
             case GameFlowState.MainMenu:
-                DrawMainMenu(context.StateManager.MenuOptionIndex);
+                DrawMainMenu(context.StateManager.SelectedMainMenuOption);
                 break;
             case GameFlowState.LevelSelect:
                 DrawLevelSelect(context.StateManager);
                 break;
             case GameFlowState.Paused:
-                DrawPauseMenu(context.Camera.IsOverviewMode, context.StateManager.MenuOptionIndex);
+                DrawPauseMenu(context.Camera.IsOverviewMode, context.StateManager.SelectedPauseMenuOption);
                 break;
         }
     }
 
-    private static void DrawMainMenu(int selectedIndex)
+    private static void DrawMainMenu(MainMenuOption selectedOption)
     {
         DrawBackdrop();
-        int panelX = CenterPanelX(PanelWidth);
-        int panelY = CenterPanelY(360);
-        DrawPanelFrame(panelX, panelY, PanelWidth, 360);
+        int panelX = CenterPanelX(MenuLayoutConfig.PanelWidth);
+        int panelY = CenterPanelY(MenuLayoutConfig.MainMenuPanelHeight);
+        DrawPanelFrame(panelX, panelY, MenuLayoutConfig.PanelWidth, MenuLayoutConfig.MainMenuPanelHeight);
 
-        DrawCenteredText("SHADOW HEIST", panelY + 34, TitleFontSize, TitleAccent);
-        DrawCenteredText("3D TACTICAL STEALTH INFILTRATION", panelY + 84, SubtitleFontSize, MutedText);
+        DrawCenteredText("SHADOW HEIST", panelY + MenuLayoutConfig.MainTitleOffsetY, MenuLayoutConfig.TitleFontSize, MenuLayoutConfig.TitleAccent);
+        DrawCenteredText("3D TACTICAL STEALTH INFILTRATION", panelY + MenuLayoutConfig.MainSubtitleOffsetY, MenuLayoutConfig.SubtitleFontSize, MenuLayoutConfig.MutedText);
 
-        DrawActionOption(panelX + 48, panelY + 132, PanelWidth - 96, "START MISSION", selectedIndex == 0);
-        DrawActionOption(panelX + 48, panelY + 186, PanelWidth - 96, "[L] SELECT LEVEL", selectedIndex == 1);
-        DrawActionOption(panelX + 48, panelY + 240, PanelWidth - 96, "[Q / ESC] QUIT GAME", selectedIndex == 2);
-        DrawCenteredText("[UP/DOWN or W/S] NAVIGATE   |   [ENTER] SELECT", panelY + 314, HintFontSize, MutedText);
+        DrawOptionRows(panelX, panelY + MenuLayoutConfig.MainOptionsStartOffsetY, selectedOption, ResolveMainMenuLabel);
+        DrawCenteredText(NavigationHintText, panelY + MenuLayoutConfig.MainMenuPanelHeight - MenuLayoutConfig.FooterHintBottomMargin, MenuLayoutConfig.HintFontSize, MenuLayoutConfig.MutedText);
     }
 
     private static void DrawLevelSelect(GameStateManager stateManager)
     {
         DrawBackdrop();
-        int panelHeight = 200 + (stateManager.Levels.Count * 82);
-        int panelX = CenterPanelX(PanelWidth);
+        int panelHeight = MenuLayoutConfig.LevelSelectBaseHeight + (stateManager.Levels.Count * MenuLayoutConfig.LevelCardSpacing);
+        int panelX = CenterPanelX(MenuLayoutConfig.PanelWidth);
         int panelY = CenterPanelY(panelHeight);
-        DrawPanelFrame(panelX, panelY, PanelWidth, panelHeight);
+        DrawPanelFrame(panelX, panelY, MenuLayoutConfig.PanelWidth, panelHeight);
 
-        DrawCenteredText("SELECT CONTRACT", panelY + 28, 32, TitleAccent);
-        DrawLevelEntries(stateManager, panelX + 36, panelY + 84, PanelWidth - 72);
-        DrawCenteredText("[UP/DOWN] CHOOSE   |   [ENTER] DEPLOY   |   [ESC] BACK", panelY + panelHeight - 40, HintFontSize, MutedText);
+        DrawCenteredText("SELECT CONTRACT", panelY + MenuLayoutConfig.LevelSelectTitleOffsetY, MenuLayoutConfig.SubPanelTitleFontSize, MenuLayoutConfig.TitleAccent);
+        DrawLevelEntries(
+            stateManager,
+            panelX + MenuLayoutConfig.LevelListHorizontalMargin,
+            panelY + MenuLayoutConfig.LevelSelectListStartOffsetY,
+            MenuLayoutConfig.PanelWidth - (MenuLayoutConfig.LevelListHorizontalMargin * 2));
+        DrawCenteredText(LevelSelectHintText, panelY + panelHeight - MenuLayoutConfig.LevelSelectFooterBottomMargin, MenuLayoutConfig.HintFontSize, MenuLayoutConfig.MutedText);
     }
+
+    private static void DrawPauseMenu(bool isOverviewCamera, PauseMenuOption selectedOption)
+    {
+        DrawBackdrop();
+        int panelX = CenterPanelX(MenuLayoutConfig.PanelWidth);
+        int panelY = CenterPanelY(MenuLayoutConfig.PauseMenuPanelHeight);
+        DrawPanelFrame(panelX, panelY, MenuLayoutConfig.PanelWidth, MenuLayoutConfig.PauseMenuPanelHeight);
+
+        DrawCenteredText("MISSION PAUSED", panelY + MenuLayoutConfig.PauseTitleOffsetY, MenuLayoutConfig.PauseTitleFontSize, MenuLayoutConfig.TitleAccent);
+        DrawOptionRows(panelX, panelY + MenuLayoutConfig.PauseOptionsStartOffsetY, selectedOption, option => ResolvePauseMenuLabel(option, isOverviewCamera));
+        DrawCenteredText(NavigationHintText, panelY + MenuLayoutConfig.PauseMenuPanelHeight - MenuLayoutConfig.FooterHintBottomMargin, MenuLayoutConfig.HintFontSize, MenuLayoutConfig.MutedText);
+    }
+
+    private static void DrawOptionRows<TOption>(
+        int panelX,
+        int startY,
+        TOption selectedOption,
+        Func<TOption, string> labelResolver)
+        where TOption : struct, Enum
+    {
+        TOption[] options = Enum.GetValues<TOption>();
+        int rowX = panelX + MenuLayoutConfig.MenuHorizontalMargin;
+        int rowWidth = MenuLayoutConfig.PanelWidth - (MenuLayoutConfig.MenuHorizontalMargin * 2);
+
+        for (int i = 0; i < options.Length; i++)
+        {
+            TOption option = options[i];
+            int rowY = startY + (i * MenuLayoutConfig.MenuRowSpacing);
+            DrawActionOption(rowX, rowY, rowWidth, labelResolver(option), EqualityComparer<TOption>.Default.Equals(option, selectedOption));
+        }
+    }
+
+    private static string ResolveMainMenuLabel(MainMenuOption option) => option switch
+    {
+        MainMenuOption.StartMission => "START MISSION",
+        MainMenuOption.SelectLevel => "[L] SELECT LEVEL",
+        MainMenuOption.QuitGame => "[Q / ESC] QUIT GAME",
+        _ => string.Empty
+    };
+
+    private static string ResolvePauseMenuLabel(PauseMenuOption option, bool isOverviewCamera) => option switch
+    {
+        PauseMenuOption.Resume => "[ESC] RESUME",
+        PauseMenuOption.ToggleOverviewCam => isOverviewCamera ? "[F6] SWITCH TO FOLLOW CAM" : "[F6] TACTICAL OVERVIEW",
+        PauseMenuOption.RestartMission => "[R] RESTART MISSION",
+        PauseMenuOption.MainMenu => "[M] MAIN MENU",
+        _ => string.Empty
+    };
 
     private static void DrawLevelEntries(GameStateManager stateManager, int x, int startY, int width)
     {
@@ -77,60 +112,42 @@ public static class MenuOverlayRenderer
         {
             LevelDescriptor level = stateManager.Levels[i];
             bool isSelected = i == stateManager.SelectedLevelIndex;
-            int rowY = startY + (i * 82);
-            DrawLevelCard(level, x, rowY, width, isSelected);
+            DrawLevelCard(level, x, startY + (i * MenuLayoutConfig.LevelCardSpacing), width, isSelected);
         }
     }
 
     private static void DrawLevelCard(LevelDescriptor level, int x, int y, int width, bool isSelected)
     {
-        Color bg = isSelected ? SelectedRowBg : RowBg;
-        Color border = isSelected ? SelectedRowBorder : RowBorder;
-        Raylib.DrawRectangle(x, y, width, 68, bg);
-        Raylib.DrawRectangleLines(x, y, width, 68, border);
+        Color bg = isSelected ? MenuLayoutConfig.SelectedRowBg : MenuLayoutConfig.RowBg;
+        Color border = isSelected ? MenuLayoutConfig.SelectedRowBorder : MenuLayoutConfig.RowBorder;
+        Raylib.DrawRectangle(x, y, width, MenuLayoutConfig.LevelCardHeight, bg);
+        Raylib.DrawRectangleLines(x, y, width, MenuLayoutConfig.LevelCardHeight, border);
 
-        Raylib.DrawText(level.Title, x + 16, y + 12, ItemFontSize, isSelected ? Color.White : MutedText);
-        Raylib.DrawText(level.Subtitle, x + 16, y + 40, 15, MutedText);
+        Raylib.DrawText(level.Title, x + MenuLayoutConfig.CardPaddingX, y + MenuLayoutConfig.CardTitleOffsetY, MenuLayoutConfig.ItemFontSize, isSelected ? Color.White : MenuLayoutConfig.MutedText);
+        Raylib.DrawText(level.Subtitle, x + MenuLayoutConfig.CardPaddingX, y + MenuLayoutConfig.CardSubtitleOffsetY, MenuLayoutConfig.CardDetailFontSize, MenuLayoutConfig.MutedText);
 
         string statusText = level.IsMapFilePresent ? "READY" : "FALLBACK";
-        Color statusColor = level.IsMapFilePresent ? ReadyTagColor : FallbackTagColor;
-        int statusWidth = Raylib.MeasureText(statusText, 15);
-        Raylib.DrawText(statusText, x + width - statusWidth - 16, y + 14, 15, statusColor);
-    }
-
-    private static void DrawPauseMenu(bool isOverviewCamera, int selectedIndex)
-    {
-        DrawBackdrop();
-        int panelX = CenterPanelX(PanelWidth);
-        int panelY = CenterPanelY(370);
-        DrawPanelFrame(panelX, panelY, PanelWidth, 370);
-
-        DrawCenteredText("MISSION PAUSED", panelY + 30, 34, TitleAccent);
-        string cameraText = isOverviewCamera ? "[F6] SWITCH TO FOLLOW CAM" : "[F6] TACTICAL OVERVIEW";
-
-        DrawActionOption(panelX + 48, panelY + 90, PanelWidth - 96, "[ESC] RESUME", selectedIndex == 0);
-        DrawActionOption(panelX + 48, panelY + 144, PanelWidth - 96, cameraText, selectedIndex == 1);
-        DrawActionOption(panelX + 48, panelY + 198, PanelWidth - 96, "[R] RESTART MISSION", selectedIndex == 2);
-        DrawActionOption(panelX + 48, panelY + 252, PanelWidth - 96, "[M] MAIN MENU", selectedIndex == 3);
-        DrawCenteredText("[UP/DOWN or W/S] NAVIGATE   |   [ENTER] SELECT", panelY + 324, HintFontSize, MutedText);
+        Color statusColor = level.IsMapFilePresent ? MenuLayoutConfig.ReadyTagColor : MenuLayoutConfig.FallbackTagColor;
+        int statusWidth = Raylib.MeasureText(statusText, MenuLayoutConfig.CardDetailFontSize);
+        Raylib.DrawText(statusText, x + width - statusWidth - MenuLayoutConfig.CardPaddingX, y + MenuLayoutConfig.CardStatusOffsetY, MenuLayoutConfig.CardDetailFontSize, statusColor);
     }
 
     private static void DrawBackdrop() =>
-        Raylib.DrawRectangle(0, 0, Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), BackdropColor);
+        Raylib.DrawRectangle(0, 0, Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), MenuLayoutConfig.BackdropColor);
 
     private static void DrawPanelFrame(int x, int y, int width, int height)
     {
-        Raylib.DrawRectangle(x, y, width, height, PanelBackground);
-        Raylib.DrawRectangleLines(x, y, width, height, PanelBorder);
+        Raylib.DrawRectangle(x, y, width, height, MenuLayoutConfig.PanelBackground);
+        Raylib.DrawRectangleLines(x, y, width, height, MenuLayoutConfig.PanelBorder);
     }
 
     private static void DrawActionOption(int x, int y, int width, string label, bool isHighlighted)
     {
-        Color bg = isHighlighted ? SelectedRowBg : RowBg;
-        Color border = isHighlighted ? SelectedRowBorder : RowBorder;
-        Raylib.DrawRectangle(x, y, width, 42, bg);
-        Raylib.DrawRectangleLines(x, y, width, 42, border);
-        DrawCenteredTextInBox(label, x, y + 11, width, ItemFontSize, Color.RayWhite);
+        Color bg = isHighlighted ? MenuLayoutConfig.SelectedRowBg : MenuLayoutConfig.RowBg;
+        Color border = isHighlighted ? MenuLayoutConfig.SelectedRowBorder : MenuLayoutConfig.RowBorder;
+        Raylib.DrawRectangle(x, y, width, MenuLayoutConfig.MenuRowHeight, bg);
+        Raylib.DrawRectangleLines(x, y, width, MenuLayoutConfig.MenuRowHeight, border);
+        DrawCenteredTextInBox(label, x, y + MenuLayoutConfig.MenuRowLabelOffsetY, width, MenuLayoutConfig.ItemFontSize, Color.RayWhite);
     }
 
     private static void DrawCenteredText(string text, int y, int fontSize, Color color) =>

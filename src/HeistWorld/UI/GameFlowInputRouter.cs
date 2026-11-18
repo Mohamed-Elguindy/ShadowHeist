@@ -8,10 +8,12 @@ namespace ShadowHeist.HeistWorld.UI;
 /// </summary>
 public static class GameFlowInputRouter
 {
-    public static void ProcessInput(GameContext context)
+    public static bool ProcessInput(GameContext context)
     {
+        GameFlowState previousState = context.StateManager.CurrentState;
         HandleGlobalDisplayToggle();
         RouteByFlowState(context);
+        return context.StateManager.CurrentState != previousState;
     }
 
     private static void HandleGlobalDisplayToggle()

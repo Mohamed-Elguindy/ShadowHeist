@@ -5,14 +5,16 @@ namespace ShadowHeist.Core;
 /// </summary>
 public sealed class GameStateManager
 {
-    public const int MainMenuOptionCount = 3;
-    public const int PauseMenuOptionCount = 4;
+    public static readonly int MainMenuOptionCount = Enum.GetValues<MainMenuOption>().Length;
+    public static readonly int PauseMenuOptionCount = Enum.GetValues<PauseMenuOption>().Length;
 
     private readonly IReadOnlyList<LevelDescriptor> _levels;
 
     public GameFlowState CurrentState { get; private set; } = GameFlowState.MainMenu;
     public int SelectedLevelIndex { get; private set; }
     public int MenuOptionIndex { get; private set; }
+    public MainMenuOption SelectedMainMenuOption => (MainMenuOption)MenuOptionIndex;
+    public PauseMenuOption SelectedPauseMenuOption => (PauseMenuOption)MenuOptionIndex;
     public bool ExitRequested { get; private set; }
     public LevelDescriptor SelectedLevel => _levels[SelectedLevelIndex];
     public IReadOnlyList<LevelDescriptor> Levels => _levels;
@@ -54,15 +56,15 @@ public sealed class GameStateManager
     public void ActivateMainMenuOption(GameContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        switch (MenuOptionIndex)
+        switch (SelectedMainMenuOption)
         {
-            case 0:
+            case MainMenuOption.StartMission:
                 StartQuickPlay(context);
                 break;
-            case 1:
+            case MainMenuOption.SelectLevel:
                 OpenLevelSelect();
                 break;
-            case 2:
+            case MainMenuOption.QuitGame:
                 RequestExit();
                 break;
         }
@@ -71,18 +73,18 @@ public sealed class GameStateManager
     public void ActivatePauseMenuOption(GameContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        switch (MenuOptionIndex)
+        switch (SelectedPauseMenuOption)
         {
-            case 0:
+            case PauseMenuOption.Resume:
                 ResumePlaying();
                 break;
-            case 1:
+            case PauseMenuOption.ToggleOverviewCam:
                 context.Camera.ToggleOverviewMode();
                 break;
-            case 2:
+            case PauseMenuOption.RestartMission:
                 RestartMission(context);
                 break;
-            case 3:
+            case PauseMenuOption.MainMenu:
                 ReturnToMainMenu(context);
                 break;
         }
