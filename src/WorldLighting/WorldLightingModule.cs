@@ -35,7 +35,8 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
 
     public void Init(GameContext context)
     {
-        _currentMap = MapLoader.LoadFromFile(Level1MapPath, context);
+        string mapPath = File.Exists(context.SelectedMapPath) ? context.SelectedMapPath : Level1MapPath;
+        _currentMap = MapLoader.LoadFromFile(mapPath, context);
         _visionBlockingWalls = BuildWallsExcludingWaistHighObstacles(context);
         EnsureModelsLoaded(context);
         SpawnInitialLasers();

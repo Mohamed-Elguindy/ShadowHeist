@@ -29,15 +29,19 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
     }
 
     public float SoundMeterLevel => _soundMeter?.Level ?? 0f;
+    public RectangleBounds GetawayZone => _getawayZone;
+
+    public bool IsExtractionReady(GameContext context) =>
+        context.StolenCash >= HeistConstants.TargetCashGoal;
 
     public void Init(GameContext context)
     {
         _interaction.Reset();
         _lootSparks.Reset();
         _soundMeter = new SoundMeter(context.EventBus);
-        _hud = new HudRenderer(_soundMeter);
 
         BuildWorldObjects(context);
+        _hud = new HudRenderer(_soundMeter, _getawayZone);
         _renderer ??= new HeistWorldRenderer();
         _renderer.Reset();
         _renderer.Load(context.Models);
@@ -65,6 +69,7 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
     {
         _renderer?.Draw(context);
         _lootSparks.Draw();
+        GetawayExtraction3DRenderer.Draw(_getawayZone, context);
     }
 
     public void DrawHud(GameContext context) => _hud?.DrawHudOverlay(context);
