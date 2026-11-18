@@ -4,6 +4,7 @@ using ShadowHeist.Core.Events;
 using ShadowHeist.Core.Interfaces;
 using ShadowHeist.HeistWorld;
 using ShadowHeist.HeistWorld.Interactables;
+using ShadowHeist.WorldLighting;
 using Xunit;
 
 namespace ShadowHeist.Tests;
@@ -119,6 +120,31 @@ public sealed class FuseBoxTests
     public void Constructor_WithBlankIdentifiers_ThrowsArgumentException(string id, string targetGroupId)
     {
         Assert.ThrowsAny<ArgumentException>(() => new FuseBox(id, FuseBoxPosition, targetGroupId));
+    }
+
+    [Fact]
+    public void FuseBox_WhenActivatedThroughModules_TurnsOffLobbyLightsAndResetsOnRestart()
+    {
+        using var context = new GameContext();
+        var world = new WorldLightingModule();
+        var heist = new HeistWorldModule(world);
+        context.RegisterSystem(world);
+        context.RegisterSystem(heist);
+        context.InitializeAll();
+
+        Assert.True(context.AreLobbyLightsPowered);
+
+        FuseBox fuseBox = Assert.Single(context.Interactables.OfType<FuseBox>());
+        context.PlayerPosition = fuseBox.Position;
+        context.CurrentInput = CreateInteractInput(isPressed: true);
+        context.UpdateAll(0.016f);
+
+        Assert.False(fuseBox.IsPowered);
+        Assert.False(context.AreLobbyLightsPowered);
+
+        context.RestartMission();
+
+        Assert.True(context.AreLobbyLightsPowered);
     }
 
     private static PlayerInputCommand CreateInteractInput(bool isPressed) =>

@@ -1,6 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Events;
 using ShadowHeist.Core.Interfaces;
 using ShadowHeist.WorldLighting.Rendering;
 
@@ -13,6 +14,7 @@ namespace ShadowHeist.WorldLighting;
 public sealed class WorldLightingModule : IGameSystem, IDisposable
 {
     private const string Level1MapPath = "assets/maps/level1_city_bank.json";
+    private const string AllPowerGroupId = "all";
     private const float AimDistanceEpsilonSquared = 0.001f;
 
     private readonly Architecture3DRenderer _architecture = new();
@@ -39,6 +41,7 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
         _visionBlockingWalls = BuildWallsExcludingWaistHighObstacles(context);
         EnsureModelsLoaded(context);
         SpawnInitialLasers();
+        context.EventBus.Subscribe<PowerStateChangedEvent>(OnPowerStateChanged);
 
         _currentAimDegrees = context.PlayerRotationDegrees;
         _visionConeVertices = VisionRaycaster.ComputeVisionCone(
@@ -72,12 +75,30 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
         _architecture.Draw(_currentMap?.Walls ?? context.Walls, _currentMap?.GetawayZone, context.ElapsedSeconds, context.PlayerPosition, context.Camera.Camera.Position);
         _furniture.Draw();
         _decor.Draw(context.ElapsedSeconds);
-        VisionCone3DRenderer.DrawWarmLampGlows();
+        if (context.AreLobbyLightsPowered)
+        {
+            VisionCone3DRenderer.DrawWarmLampGlows();
+        }
         VisionCone3DRenderer.DrawPlayerVisionCone(_visionConeVertices);
         _laserRenderer.Draw(_lasers, context.ElapsedSeconds);
     }
 
     public void Dispose() => _modelsLoaded = false;
+
+    private void OnPowerStateChanged(PowerStateChangedEvent evt)
+    {
+        foreach (LaserTripwire laser in _lasers)
+        {
+            if (MatchesPowerGroup(evt.TargetGroupId, laser.Id))
+            {
+                laser.IsActive = evt.IsPowered;
+            }
+        }
+    }
+
+    private static bool MatchesPowerGroup(string targetGroupId, string deviceId) =>
+        string.Equals(targetGroupId, deviceId, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(targetGroupId, AllPowerGroupId, StringComparison.OrdinalIgnoreCase);
 
     private void EnsureModelsLoaded(GameContext context)
     {

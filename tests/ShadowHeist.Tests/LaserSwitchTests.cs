@@ -130,6 +130,43 @@ public sealed class LaserSwitchTests
         Assert.ThrowsAny<ArgumentException>(() => new LaserSwitch(id, SwitchPosition, targetGroupId));
     }
 
+    [Fact]
+    public void LaserSwitch_WhenToggledThroughModules_DisablesAndReEnablesHallLaser()
+    {
+        using var context = new GameContext();
+        var world = new WorldLightingModule();
+        var heist = new HeistWorldModule(world);
+        context.RegisterSystem(world);
+        context.RegisterSystem(heist);
+        context.InitializeAll();
+
+        LaserTripwire hallLaser = Assert.Single(world.Lasers, l => l.Id == TargetGroupId);
+        LaserSwitch laserSwitch = Assert.Single(context.Interactables.OfType<LaserSwitch>());
+        Assert.True(hallLaser.IsActive);
+
+        context.PlayerPosition = laserSwitch.Position;
+        context.CurrentInput = CreateInteractInput(isPressed: true);
+        context.UpdateAll(0.016f);
+
+        Assert.False(hallLaser.IsActive);
+
+        context.CurrentInput = CreateInteractInput(isPressed: false);
+        context.PlayerPosition = new Vector2(336f, 520f);
+        world.Update(0.016f, context);
+        Assert.False(context.IsAlarmTriggered);
+
+        context.PlayerPosition = laserSwitch.Position;
+        context.CurrentInput = CreateInteractInput(isPressed: true);
+        context.UpdateAll(0.016f);
+
+        Assert.True(hallLaser.IsActive);
+
+        context.CurrentInput = CreateInteractInput(isPressed: false);
+        context.PlayerPosition = new Vector2(336f, 520f);
+        world.Update(0.016f, context);
+        Assert.True(context.IsAlarmTriggered);
+    }
+
     private static PlayerInputCommand CreateInteractInput(bool isPressed) =>
         new(
             MoveDirection: Vector2.Zero,
