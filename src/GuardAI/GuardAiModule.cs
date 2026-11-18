@@ -14,8 +14,9 @@ namespace ShadowHeist.GuardAI;
 /// </summary>
 public sealed class GuardAiModule : IGameSystem, IDisposable
 {
-    private const float AlphaGuardSpeed = 75f;
-    private const float BetaGuardSpeed = 65f;
+    private const float AlphaGuardSpeed = 90f;
+    private const float BetaGuardSpeed = 78f;
+    private const float MapGuardSpeedMultiplier = 1.15f;
     private const float DebugClickNoiseRadius = 400f;
 
     private static readonly Vector2[] PatrolRouteAlpha =
@@ -131,7 +132,8 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
         {
             foreach (MapGuardDto guardDto in mapGuards)
             {
-                _guards.Add(new Guard(guardDto.Name, guardDto.Waypoints[0], guardDto.Waypoints, guardDto.MoveSpeed));
+                float tunedSpeed = guardDto.MoveSpeed * MapGuardSpeedMultiplier;
+                _guards.Add(new Guard(guardDto.Name, guardDto.Waypoints[0], guardDto.Waypoints, tunedSpeed));
             }
 
             return;
