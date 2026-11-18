@@ -30,8 +30,8 @@ A **Native 3D Isometric Tactical Stealth Heist** game built in C# (`.NET 8` + `R
 ## 🏆 Mission Summary & Stealth Rank (`S / A / B / C`)
 
 At mission end (`Escaped` or `Caught`), `SummaryScreen` displays elapsed time, stolen loot progress, total alarms triggered, and your Stealth Rank:
-* **Rank `S` (`SHADOW MASTER`):** Escaped with full `$500,000` loot, `0` alarms, and time $\le$ `01:30.0`
-* **Rank `A` (`SILENT PROFESSIONAL`):** Escaped with full loot and `0` alarms (over `01:30.0`), or `1` alarm in $\le$ `01:30.0`
+* **Rank `S` (`SHADOW MASTER`):** Escaped with full `$500,000` loot, `0` alarms, and time ≤ `01:30.0`
+* **Rank `A` (`SILENT PROFESSIONAL`):** Escaped with full loot and `0` alarms (over `01:30.0`), or `1` alarm in ≤ `01:30.0`
 * **Rank `B` (`LOUD GETAWAY`):** Escaped with full loot despite multiple or slow alarms
 * **Rank `C` (`COMPROMISED`):** Caught by security or escaped under target loot
 

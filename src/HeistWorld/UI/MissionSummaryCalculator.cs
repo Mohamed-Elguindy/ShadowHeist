@@ -22,7 +22,9 @@ public static class MissionSummaryCalculator
     public const float FastClearSecondsThreshold = 90f;
     public const int ZeroAlarms = 0;
     public const int SingleAlarm = 1;
+    private const int TenthsPerSecond = 10;
     private const int SecondsPerMinute = 60;
+    private const int TenthsPerMinute = SecondsPerMinute * TenthsPerSecond;
 
     public static MissionSummaryReport BuildReport(GameContext context)
     {
@@ -78,9 +80,12 @@ public static class MissionSummaryCalculator
     public static string FormatElapsedTime(float elapsedSeconds)
     {
         float clampedSeconds = MathF.Max(0f, elapsedSeconds);
-        int minutes = (int)(clampedSeconds / SecondsPerMinute);
-        float remainingSeconds = clampedSeconds - (minutes * SecondsPerMinute);
-        return string.Create(CultureInfo.InvariantCulture, $"{minutes:00}:{remainingSeconds:00.0}");
+        int totalTenths = (int)MathF.Round(clampedSeconds * TenthsPerSecond, MidpointRounding.AwayFromZero);
+        int minutes = totalTenths / TenthsPerMinute;
+        int remainingTenths = totalTenths % TenthsPerMinute;
+        int wholeSeconds = remainingTenths / TenthsPerSecond;
+        int tenths = remainingTenths % TenthsPerSecond;
+        return string.Create(CultureInfo.InvariantCulture, $"{minutes:00}:{wholeSeconds:00}.{tenths}");
     }
 
     public static string FormatLootProgress(int stolenCash, int targetCash) =>

@@ -75,7 +75,9 @@ public sealed class MissionSummaryTests
     [Theory]
     [InlineData(-5f, "00:00.0")]
     [InlineData(0f, "00:00.0")]
+    [InlineData(59.96f, "01:00.0")]
     [InlineData(65.4f, "01:05.4")]
+    [InlineData(119.97f, "02:00.0")]
     [InlineData(125.0f, "02:05.0")]
     public void FormatElapsedTime_FormatsMinutesSecondsAndTenths(float seconds, string expected)
     {

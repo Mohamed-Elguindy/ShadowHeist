@@ -10,13 +10,28 @@ public static class SummaryScreen
 {
     private const int CardWidth = 640;
     private const int CardHeight = 356;
+    private const float CardBorderThickness = 2f;
     private const int TitleFontSize = 30;
     private const int LabelFontSize = 20;
     private const int ValueFontSize = 22;
     private const int RankLetterFontSize = 68;
     private const int RankTitleFontSize = 18;
     private const int FooterFontSize = 18;
+    private const int HeaderTitleOffsetY = 26;
+    private const int DividerMarginX = 28;
+    private const int DividerOffsetY = 72;
+    private const int StatLabelOffsetX = 36;
+    private const int StatValueOffsetX = 210;
+    private const int StatStartOffsetY = 104;
+    private const int StatValueVerticalAdjust = -1;
     private const int RowSpacing = 44;
+    private const int RankBadgeSize = 148;
+    private const int RankBadgeRightMargin = 188;
+    private const int RankBadgeOffsetY = 96;
+    private const int RankLetterOffsetY = 22;
+    private const int RankTitleHorizontalPad = 18;
+    private const int RankTitleOffsetY = 12;
+    private const int FooterBottomMargin = 42;
 
     private static readonly Color BackdropColor = new(6, 10, 18, 190);
     private static readonly Color CardBackground = new(10, 15, 28, 244);
@@ -61,7 +76,7 @@ public static class SummaryScreen
     private static void DrawSummaryCard(Rectangle cardBounds, Color accentColor)
     {
         Raylib.DrawRectangleRec(cardBounds, CardBackground);
-        Raylib.DrawRectangleLinesEx(cardBounds, 2f, accentColor);
+        Raylib.DrawRectangleLinesEx(cardBounds, CardBorderThickness, accentColor);
     }
 
     private static void DrawHeaderTitle(Rectangle cardBounds, HeistOutcome outcome, Color accentColor)
@@ -71,20 +86,20 @@ public static class SummaryScreen
             : "BUSTED — CAUGHT BY SECURITY!";
 
         int x = CenterTextX(title, TitleFontSize, (int)cardBounds.X, (int)cardBounds.Width);
-        Raylib.DrawText(title, x, (int)cardBounds.Y + 26, TitleFontSize, accentColor);
+        Raylib.DrawText(title, x, (int)cardBounds.Y + HeaderTitleOffsetY, TitleFontSize, accentColor);
         Raylib.DrawLine(
-            (int)cardBounds.X + 28,
-            (int)cardBounds.Y + 72,
-            (int)(cardBounds.X + cardBounds.Width) - 28,
-            (int)cardBounds.Y + 72,
+            (int)cardBounds.X + DividerMarginX,
+            (int)cardBounds.Y + DividerOffsetY,
+            (int)(cardBounds.X + cardBounds.Width) - DividerMarginX,
+            (int)cardBounds.Y + DividerOffsetY,
             MutedLabelColor);
     }
 
     private static void DrawStatRows(Rectangle cardBounds, MissionSummaryReport report)
     {
-        int leftX = (int)cardBounds.X + 36;
-        int valueX = (int)cardBounds.X + 210;
-        int startY = (int)cardBounds.Y + 104;
+        int leftX = (int)cardBounds.X + StatLabelOffsetX;
+        int valueX = (int)cardBounds.X + StatValueOffsetX;
+        int startY = (int)cardBounds.Y + StatStartOffsetY;
 
         DrawStatRow("TIME", report.FormattedTime, leftX, valueX, startY, Color.RayWhite);
         DrawStatRow("LOOT", report.FormattedLoot, leftX, valueX, startY + RowSpacing, EscapedAccent);
@@ -96,25 +111,24 @@ public static class SummaryScreen
     private static void DrawStatRow(string label, string value, int labelX, int valueX, int y, Color valueColor)
     {
         Raylib.DrawText(label, labelX, y, LabelFontSize, MutedLabelColor);
-        Raylib.DrawText(value, valueX, y - 1, ValueFontSize, valueColor);
+        Raylib.DrawText(value, valueX, y + StatValueVerticalAdjust, ValueFontSize, valueColor);
     }
 
     private static void DrawRankBadge(Rectangle cardBounds, StealthRank rank, string rankTitle)
     {
         Color rankColor = ResolveRankColor(rank);
-        int badgeX = (int)(cardBounds.X + cardBounds.Width) - 188;
-        int badgeY = (int)cardBounds.Y + 96;
-        const int badgeSize = 148;
+        int badgeX = (int)(cardBounds.X + cardBounds.Width) - RankBadgeRightMargin;
+        int badgeY = (int)cardBounds.Y + RankBadgeOffsetY;
 
-        Raylib.DrawRectangle(badgeX, badgeY, badgeSize, badgeSize, RankBoxBackground);
-        Raylib.DrawRectangleLines(badgeX, badgeY, badgeSize, badgeSize, rankColor);
+        Raylib.DrawRectangle(badgeX, badgeY, RankBadgeSize, RankBadgeSize, RankBoxBackground);
+        Raylib.DrawRectangleLines(badgeX, badgeY, RankBadgeSize, RankBadgeSize, rankColor);
 
         string letter = rank.ToString();
-        int letterX = CenterTextX(letter, RankLetterFontSize, badgeX, badgeSize);
-        Raylib.DrawText(letter, letterX, badgeY + 22, RankLetterFontSize, rankColor);
+        int letterX = CenterTextX(letter, RankLetterFontSize, badgeX, RankBadgeSize);
+        Raylib.DrawText(letter, letterX, badgeY + RankLetterOffsetY, RankLetterFontSize, rankColor);
 
-        int titleX = CenterTextX(rankTitle, RankTitleFontSize, badgeX - 18, badgeSize + 36);
-        Raylib.DrawText(rankTitle, titleX, badgeY + badgeSize + 12, RankTitleFontSize, rankColor);
+        int titleX = CenterTextX(rankTitle, RankTitleFontSize, badgeX - RankTitleHorizontalPad, RankBadgeSize + (RankTitleHorizontalPad * 2));
+        Raylib.DrawText(rankTitle, titleX, badgeY + RankBadgeSize + RankTitleOffsetY, RankTitleFontSize, rankColor);
     }
 
     private static Color ResolveRankColor(StealthRank rank) => rank switch
@@ -129,7 +143,7 @@ public static class SummaryScreen
     {
         const string footer = "Press [R] to Retry Mission";
         int x = CenterTextX(footer, FooterFontSize, (int)cardBounds.X, (int)cardBounds.Width);
-        Raylib.DrawText(footer, x, (int)(cardBounds.Y + cardBounds.Height) - 42, FooterFontSize, Color.RayWhite);
+        Raylib.DrawText(footer, x, (int)(cardBounds.Y + cardBounds.Height) - FooterBottomMargin, FooterFontSize, Color.RayWhite);
     }
 
     private static int CenterTextX(string text, int fontSize, int containerX, int containerWidth)
