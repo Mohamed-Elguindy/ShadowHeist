@@ -183,4 +183,51 @@ public sealed class GameStateManagerTests
 
         Assert.True(manager.ExitRequested);
     }
+
+    [Fact]
+    public void MainMenuNavigation_WrapsOptionsAndActivatesSelectedAction()
+    {
+        using var context = new GameContext();
+        GameStateManager manager = context.StateManager;
+
+        manager.SelectNextMenuOption();
+        Assert.Equal(1, manager.MenuOptionIndex);
+
+        manager.ActivateMainMenuOption(context);
+        Assert.Equal(GameFlowState.LevelSelect, manager.CurrentState);
+
+        manager.ReturnToMainMenu();
+        manager.SelectPreviousMenuOption();
+        Assert.Equal(GameStateManager.MainMenuOptionCount - 1, manager.MenuOptionIndex);
+
+        manager.ActivateMainMenuOption(context);
+        Assert.True(manager.ExitRequested);
+    }
+
+    [Fact]
+    public void PauseMenuNavigation_CyclesAllFourOptionsAndExecutesSelectedAction()
+    {
+        using var context = new GameContext();
+        GameStateManager manager = context.StateManager;
+        manager.StartQuickPlay(context);
+        manager.TogglePause();
+
+        Assert.Equal(0, manager.MenuOptionIndex);
+
+        manager.SelectNextMenuOption();
+        Assert.Equal(1, manager.MenuOptionIndex);
+        manager.ActivatePauseMenuOption(context);
+        Assert.True(context.Camera.IsOverviewMode);
+
+        manager.SelectNextMenuOption();
+        Assert.Equal(2, manager.MenuOptionIndex);
+        manager.ActivatePauseMenuOption(context);
+        Assert.Equal(GameFlowState.Playing, manager.CurrentState);
+
+        manager.TogglePause();
+        manager.SelectPreviousMenuOption();
+        Assert.Equal(GameStateManager.PauseMenuOptionCount - 1, manager.MenuOptionIndex);
+        manager.ActivatePauseMenuOption(context);
+        Assert.Equal(GameFlowState.MainMenu, manager.CurrentState);
+    }
 }

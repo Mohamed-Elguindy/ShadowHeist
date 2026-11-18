@@ -31,30 +31,31 @@ public static class MenuOverlayRenderer
         switch (context.StateManager.CurrentState)
         {
             case GameFlowState.MainMenu:
-                DrawMainMenu();
+                DrawMainMenu(context.StateManager.MenuOptionIndex);
                 break;
             case GameFlowState.LevelSelect:
                 DrawLevelSelect(context.StateManager);
                 break;
             case GameFlowState.Paused:
-                DrawPauseMenu(context.Camera.IsOverviewMode);
+                DrawPauseMenu(context.Camera.IsOverviewMode, context.StateManager.MenuOptionIndex);
                 break;
         }
     }
 
-    private static void DrawMainMenu()
+    private static void DrawMainMenu(int selectedIndex)
     {
         DrawBackdrop();
         int panelX = CenterPanelX(PanelWidth);
-        int panelY = CenterPanelY(330);
-        DrawPanelFrame(panelX, panelY, PanelWidth, 330);
+        int panelY = CenterPanelY(360);
+        DrawPanelFrame(panelX, panelY, PanelWidth, 360);
 
         DrawCenteredText("SHADOW HEIST", panelY + 34, TitleFontSize, TitleAccent);
         DrawCenteredText("3D TACTICAL STEALTH INFILTRATION", panelY + 84, SubtitleFontSize, MutedText);
 
-        DrawActionOption(panelX + 48, panelY + 136, PanelWidth - 96, "[ENTER] START MISSION", isHighlighted: true);
-        DrawActionOption(panelX + 48, panelY + 190, PanelWidth - 96, "[L] SELECT LEVEL", isHighlighted: false);
-        DrawActionOption(panelX + 48, panelY + 244, PanelWidth - 96, "[Q / ESC] QUIT GAME", isHighlighted: false);
+        DrawActionOption(panelX + 48, panelY + 132, PanelWidth - 96, "START MISSION", selectedIndex == 0);
+        DrawActionOption(panelX + 48, panelY + 186, PanelWidth - 96, "[L] SELECT LEVEL", selectedIndex == 1);
+        DrawActionOption(panelX + 48, panelY + 240, PanelWidth - 96, "[Q / ESC] QUIT GAME", selectedIndex == 2);
+        DrawCenteredText("[UP/DOWN or W/S] NAVIGATE   |   [ENTER] SELECT", panelY + 314, HintFontSize, MutedText);
     }
 
     private static void DrawLevelSelect(GameStateManager stateManager)
@@ -97,20 +98,21 @@ public static class MenuOverlayRenderer
         Raylib.DrawText(statusText, x + width - statusWidth - 16, y + 14, 15, statusColor);
     }
 
-    private static void DrawPauseMenu(bool isOverviewCamera)
+    private static void DrawPauseMenu(bool isOverviewCamera, int selectedIndex)
     {
         DrawBackdrop();
         int panelX = CenterPanelX(PanelWidth);
-        int panelY = CenterPanelY(340);
-        DrawPanelFrame(panelX, panelY, PanelWidth, 340);
+        int panelY = CenterPanelY(370);
+        DrawPanelFrame(panelX, panelY, PanelWidth, 370);
 
         DrawCenteredText("MISSION PAUSED", panelY + 30, 34, TitleAccent);
         string cameraText = isOverviewCamera ? "[F6] SWITCH TO FOLLOW CAM" : "[F6] TACTICAL OVERVIEW";
 
-        DrawActionOption(panelX + 48, panelY + 94, PanelWidth - 96, "[ESC / ENTER] RESUME", isHighlighted: true);
-        DrawActionOption(panelX + 48, panelY + 148, PanelWidth - 96, cameraText, isHighlighted: false);
-        DrawActionOption(panelX + 48, panelY + 202, PanelWidth - 96, "[R] RESTART MISSION", isHighlighted: false);
-        DrawActionOption(panelX + 48, panelY + 256, PanelWidth - 96, "[M] MAIN MENU", isHighlighted: false);
+        DrawActionOption(panelX + 48, panelY + 90, PanelWidth - 96, "[ESC] RESUME", selectedIndex == 0);
+        DrawActionOption(panelX + 48, panelY + 144, PanelWidth - 96, cameraText, selectedIndex == 1);
+        DrawActionOption(panelX + 48, panelY + 198, PanelWidth - 96, "[R] RESTART MISSION", selectedIndex == 2);
+        DrawActionOption(panelX + 48, panelY + 252, PanelWidth - 96, "[M] MAIN MENU", selectedIndex == 3);
+        DrawCenteredText("[UP/DOWN or W/S] NAVIGATE   |   [ENTER] SELECT", panelY + 324, HintFontSize, MutedText);
     }
 
     private static void DrawBackdrop() =>

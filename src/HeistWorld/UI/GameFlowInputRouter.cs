@@ -4,7 +4,7 @@ using ShadowHeist.Core;
 namespace ShadowHeist.HeistWorld.UI;
 
 /// <summary>
-/// Routes keyboard shortcuts per active GameFlowState to GameStateManager and camera/window toggles.
+/// Routes keyboard navigation and shortcuts per active GameFlowState to GameStateManager.
 /// </summary>
 public static class GameFlowInputRouter
 {
@@ -46,9 +46,17 @@ public static class GameFlowInputRouter
 
     private static void HandleMainMenuInput(GameContext context)
     {
-        if (IsConfirmPressed())
+        if (IsMoveUpPressed())
         {
-            context.StateManager.StartQuickPlay(context);
+            context.StateManager.SelectPreviousMenuOption();
+        }
+        else if (IsMoveDownPressed())
+        {
+            context.StateManager.SelectNextMenuOption();
+        }
+        else if (IsConfirmPressed())
+        {
+            context.StateManager.ActivateMainMenuOption(context);
         }
         else if (Raylib.IsKeyPressed(KeyboardKey.L))
         {
@@ -62,11 +70,11 @@ public static class GameFlowInputRouter
 
     private static void HandleLevelSelectInput(GameContext context)
     {
-        if (Raylib.IsKeyPressed(KeyboardKey.Up) || Raylib.IsKeyPressed(KeyboardKey.W))
+        if (IsMoveUpPressed())
         {
             context.StateManager.SelectPreviousLevel();
         }
-        else if (Raylib.IsKeyPressed(KeyboardKey.Down) || Raylib.IsKeyPressed(KeyboardKey.S))
+        else if (IsMoveDownPressed())
         {
             context.StateManager.SelectNextLevel();
         }
@@ -101,7 +109,19 @@ public static class GameFlowInputRouter
 
     private static void HandlePausedInput(GameContext context)
     {
-        if (Raylib.IsKeyPressed(KeyboardKey.Escape) || Raylib.IsKeyPressed(KeyboardKey.Enter))
+        if (IsMoveUpPressed())
+        {
+            context.StateManager.SelectPreviousMenuOption();
+        }
+        else if (IsMoveDownPressed())
+        {
+            context.StateManager.SelectNextMenuOption();
+        }
+        else if (IsConfirmPressed())
+        {
+            context.StateManager.ActivatePauseMenuOption(context);
+        }
+        else if (Raylib.IsKeyPressed(KeyboardKey.Escape))
         {
             context.StateManager.ResumePlaying();
         }
@@ -134,6 +154,12 @@ public static class GameFlowInputRouter
             context.StateManager.ReturnToMainMenu(context);
         }
     }
+
+    private static bool IsMoveUpPressed() =>
+        Raylib.IsKeyPressed(KeyboardKey.Up) || Raylib.IsKeyPressed(KeyboardKey.W);
+
+    private static bool IsMoveDownPressed() =>
+        Raylib.IsKeyPressed(KeyboardKey.Down) || Raylib.IsKeyPressed(KeyboardKey.S);
 
     private static bool IsConfirmPressed() =>
         Raylib.IsKeyPressed(KeyboardKey.Enter) || Raylib.IsKeyPressed(KeyboardKey.Space);

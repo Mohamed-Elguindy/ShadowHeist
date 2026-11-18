@@ -5,10 +5,14 @@ namespace ShadowHeist.Core;
 /// </summary>
 public sealed class GameStateManager
 {
+    public const int MainMenuOptionCount = 3;
+    public const int PauseMenuOptionCount = 4;
+
     private readonly IReadOnlyList<LevelDescriptor> _levels;
 
     public GameFlowState CurrentState { get; private set; } = GameFlowState.MainMenu;
     public int SelectedLevelIndex { get; private set; }
+    public int MenuOptionIndex { get; private set; }
     public bool ExitRequested { get; private set; }
     public LevelDescriptor SelectedLevel => _levels[SelectedLevelIndex];
     public IReadOnlyList<LevelDescriptor> Levels => _levels;
@@ -22,24 +26,73 @@ public sealed class GameStateManager
     public void StartQuickPlay(GameContext context) =>
         StartLevelAtIndex(0, context);
 
-    public void OpenLevelSelect() =>
+    public void OpenLevelSelect()
+    {
+        MenuOptionIndex = 0;
         CurrentState = GameFlowState.LevelSelect;
+    }
 
-    public void ReturnToMainMenu() =>
+    public void ReturnToMainMenu()
+    {
+        MenuOptionIndex = 0;
         CurrentState = GameFlowState.MainMenu;
+    }
 
     public void ReturnToMainMenu(GameContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
         context.RestartMission();
-        CurrentState = GameFlowState.MainMenu;
+        ReturnToMainMenu();
+    }
+
+    public void SelectNextMenuOption() =>
+        MenuOptionIndex = WrapIndex(MenuOptionIndex, 1, ResolveMenuOptionCount());
+
+    public void SelectPreviousMenuOption() =>
+        MenuOptionIndex = WrapIndex(MenuOptionIndex, -1, ResolveMenuOptionCount());
+
+    public void ActivateMainMenuOption(GameContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        switch (MenuOptionIndex)
+        {
+            case 0:
+                StartQuickPlay(context);
+                break;
+            case 1:
+                OpenLevelSelect();
+                break;
+            case 2:
+                RequestExit();
+                break;
+        }
+    }
+
+    public void ActivatePauseMenuOption(GameContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        switch (MenuOptionIndex)
+        {
+            case 0:
+                ResumePlaying();
+                break;
+            case 1:
+                context.Camera.ToggleOverviewMode();
+                break;
+            case 2:
+                RestartMission(context);
+                break;
+            case 3:
+                ReturnToMainMenu(context);
+                break;
+        }
     }
 
     public void SelectNextLevel() =>
-        SelectedLevelIndex = (SelectedLevelIndex + 1) % _levels.Count;
+        SelectedLevelIndex = WrapIndex(SelectedLevelIndex, 1, _levels.Count);
 
     public void SelectPreviousLevel() =>
-        SelectedLevelIndex = (SelectedLevelIndex - 1 + _levels.Count) % _levels.Count;
+        SelectedLevelIndex = WrapIndex(SelectedLevelIndex, -1, _levels.Count);
 
     public void SelectLevel(int index) =>
         SelectedLevelIndex = Math.Clamp(index, 0, _levels.Count - 1);
@@ -85,8 +138,17 @@ public sealed class GameStateManager
     public void RequestExit() =>
         ExitRequested = true;
 
-    private void Pause() =>
+    private int ResolveMenuOptionCount() =>
+        CurrentState == GameFlowState.Paused ? PauseMenuOptionCount : MainMenuOptionCount;
+
+    private static int WrapIndex(int currentIndex, int delta, int optionCount) =>
+        (currentIndex + delta + optionCount) % optionCount;
+
+    private void Pause()
+    {
+        MenuOptionIndex = 0;
         CurrentState = GameFlowState.Paused;
+    }
 
     private void StartLevelAtIndex(int index, GameContext context)
     {
