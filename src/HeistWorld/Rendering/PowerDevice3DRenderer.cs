@@ -17,6 +17,9 @@ public static class PowerDevice3DRenderer
     private const float CutPulseFrequency = 0f;
     private const float LeverPoweredAngleDegrees = -28f;
     private const float LeverDisabledAngleDegrees = 28f;
+    private const byte OfflineBeaconAlpha = 140;
+    private const float PulseBaseAlpha = 155f;
+    private const float PulseAmplitudeAlpha = 100f;
 
     private static readonly Vector3 FuseBoxSize = new(20f, 44f, 16f);
     private static readonly Vector3 FusePanelSize = new(12f, 16f, 2f);
@@ -113,9 +116,9 @@ public static class PowerDevice3DRenderer
     {
         if (pulseFrequency <= 0f)
         {
-            return 140;
+            return OfflineBeaconAlpha;
         }
 
-        return (byte)(155f + (100f * MathF.Sin(timeSeconds * pulseFrequency)));
+        return (byte)(PulseBaseAlpha + (PulseAmplitudeAlpha * MathF.Sin(timeSeconds * pulseFrequency)));
     }
 }
