@@ -32,6 +32,7 @@ public sealed class GameContext : IDisposable
     public float ElapsedSeconds { get; private set; }
     public int StolenCash { get; set; }
     public bool IsAlarmTriggered { get; set; }
+    public int AlarmCount { get; private set; }
     public bool AreLobbyLightsPowered { get; set; } = true;
     public HeistOutcome Outcome { get; set; } = HeistOutcome.Playing;
     public PlayerInputCommand CurrentInput { get; set; }
@@ -89,6 +90,7 @@ public sealed class GameContext : IDisposable
         ElapsedSeconds = 0f;
         StolenCash = 0;
         IsAlarmTriggered = false;
+        AlarmCount = 0;
         AreLobbyLightsPowered = true;
         Outcome = HeistOutcome.Playing;
         CurrentInput = default;
@@ -120,9 +122,15 @@ public sealed class GameContext : IDisposable
             return;
         }
 
-        EventBus.Subscribe<AlarmTriggeredEvent>(_ => Camera.TriggerAlarmShake());
+        EventBus.Subscribe<AlarmTriggeredEvent>(OnAlarmTriggered);
         EventBus.Subscribe<PowerStateChangedEvent>(OnPowerStateChanged);
         _isCoreEventsSubscribed = true;
+    }
+
+    private void OnAlarmTriggered(AlarmTriggeredEvent _)
+    {
+        AlarmCount++;
+        Camera.TriggerAlarmShake();
     }
 
     private void OnPowerStateChanged(PowerStateChangedEvent evt)

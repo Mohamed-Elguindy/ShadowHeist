@@ -7,7 +7,7 @@ using ShadowHeist.HeistWorld.Interactables;
 namespace ShadowHeist.HeistWorld.UI;
 
 /// <summary>
-/// Renders tactical screen-space HUD banners, sound meter, extraction cues, menus, and outcome overlays.
+/// Renders tactical screen-space HUD banners, sound meter, extraction cues, menus, and mission summary.
 /// </summary>
 public sealed class HudRenderer
 {
@@ -19,10 +19,6 @@ public sealed class HudRenderer
     private const int HintFontSize = 18;
     private const int HudMargin = 20;
     private const int VignetteBandSize = 64;
-    private const int OutcomeTitleFontSize = 34;
-    private const int OutcomeSubtitleFontSize = 20;
-    private const int OutcomePanelHeight = 110;
-    private const int OutcomePanelPadding = 64;
     private const float HoldRingHeightOverGround = 42f;
     private const float PromptHeightOverGround = 88f;
 
@@ -33,9 +29,6 @@ public sealed class HudRenderer
     private static readonly Color AlarmTextColor = new(255, 110, 130, 255);
     private static readonly Color CashBoxBackground = new(15, 23, 42, 220);
     private static readonly Color CashBoxBorder = new(56, 189, 248, 180);
-    private static readonly Color OutcomePanelBackground = new(10, 14, 24, 235);
-    private static readonly Color EscapedAccentColor = new(74, 222, 128, 255);
-    private static readonly Color CaughtAccentColor = new(244, 63, 94, 255);
 
     private readonly SoundMeter _soundMeter;
     private readonly RectangleBounds _getawayZone;
@@ -64,7 +57,7 @@ public sealed class HudRenderer
             return;
         }
 
-        DrawOutcomeOverlay(context.Outcome);
+        SummaryScreen.Draw(context);
     }
 
     private void DrawGameplayHud(GameContext context)
@@ -156,31 +149,5 @@ public sealed class HudRenderer
         {
             HudPromptRenderer.DrawPromptBox(activeItem.PromptText, screenPosition);
         }
-    }
-
-    private static void DrawOutcomeOverlay(HeistOutcome outcome)
-    {
-        if (outcome == HeistOutcome.Playing)
-        {
-            return;
-        }
-
-        bool won = outcome == HeistOutcome.Escaped;
-        string title = won ? "HEIST COMPLETE — ESCAPED!" : "BUSTED — CAUGHT BY SECURITY!";
-        const string subtitle = "[R] Retry   |   [L] Level Select   |   [M] Main Menu";
-        Color accent = won ? EscapedAccentColor : CaughtAccentColor;
-
-        int screenWidth = Raylib.GetScreenWidth();
-        int screenHeight = Raylib.GetScreenHeight();
-        int titleWidth = Raylib.MeasureText(title, OutcomeTitleFontSize);
-        int subtitleWidth = Raylib.MeasureText(subtitle, OutcomeSubtitleFontSize);
-        int panelWidth = Math.Max(titleWidth, subtitleWidth) + OutcomePanelPadding;
-        int panelX = (screenWidth - panelWidth) / 2;
-        int panelY = (screenHeight - OutcomePanelHeight) / 2;
-
-        Raylib.DrawRectangle(panelX, panelY, panelWidth, OutcomePanelHeight, OutcomePanelBackground);
-        Raylib.DrawRectangleLines(panelX, panelY, panelWidth, OutcomePanelHeight, accent);
-        Raylib.DrawText(title, (screenWidth - titleWidth) / 2, panelY + 22, OutcomeTitleFontSize, accent);
-        Raylib.DrawText(subtitle, (screenWidth - subtitleWidth) / 2, panelY + 68, OutcomeSubtitleFontSize, Color.RayWhite);
     }
 }
