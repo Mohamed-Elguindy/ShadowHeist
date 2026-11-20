@@ -1,6 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Events;
 using ShadowHeist.Core.Interfaces;
 using ShadowHeist.WorldLighting.Rendering;
 
@@ -13,6 +14,7 @@ namespace ShadowHeist.WorldLighting;
 public sealed class WorldLightingModule : IGameSystem, IDisposable
 {
     private const string Level1MapPath = "assets/maps/level1_city_bank.json";
+    private const string AllPowerGroupId = "all";
     private const float AimDistanceEpsilonSquared = 0.001f;
 
     private readonly Architecture3DRenderer _architecture = new();
@@ -41,12 +43,14 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
 
     public void Init(GameContext context)
     {
-        _currentMap = MapLoader.LoadFromFile(Level1MapPath, context);
+        string mapPath = File.Exists(context.SelectedMapPath) ? context.SelectedMapPath : Level1MapPath;
+        _currentMap = MapLoader.LoadFromFile(mapPath, context);
         _visionBlockingWalls = BuildWallsExcludingWaistHighObstacles(context);
         _shadowLighting.Reset();
         EnsureModelsLoaded(context);
         SpawnInitialLasers();
         SpawnInitialGlassHazards();
+        context.EventBus.Subscribe<PowerStateChangedEvent>(OnPowerStateChanged);
 
         _currentAimDegrees = context.PlayerRotationDegrees;
         _visionConeVertices = VisionRaycaster.ComputeVisionCone(
@@ -63,6 +67,7 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
             return;
         }
 
+        _shadowLighting.SetPowerState(context.AreLobbyLightsPowered);
         _shadowLighting.Update(deltaTime, context);
 
         Vector2 aimTarget = context.AimWorldOverride ?? context.CurrentInput.AimWorldPosition;
@@ -91,7 +96,7 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
         _furniture.Draw();
         _decor.Draw(context.ElapsedSeconds);
         _glassRenderer.Draw(_glassHazards, context.ElapsedSeconds);
-        if (_shadowLighting.IsMainPowerOnline)
+        if (context.AreLobbyLightsPowered && _shadowLighting.IsMainPowerOnline)
         {
             VisionCone3DRenderer.DrawWarmLampGlows();
         }
@@ -101,6 +106,26 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
     }
 
     public void Dispose() => _modelsLoaded = false;
+
+    private void OnPowerStateChanged(PowerStateChangedEvent evt)
+    {
+        if (string.Equals(evt.TargetGroupId, AllPowerGroupId, StringComparison.OrdinalIgnoreCase))
+        {
+            _shadowLighting.SetPowerState(evt.IsPowered);
+        }
+
+        foreach (LaserTripwire laser in _lasers)
+        {
+            if (MatchesPowerGroup(evt.TargetGroupId, laser.Id))
+            {
+                laser.IsActive = evt.IsPowered;
+            }
+        }
+    }
+
+    private static bool MatchesPowerGroup(string targetGroupId, string deviceId) =>
+        string.Equals(targetGroupId, deviceId, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(targetGroupId, AllPowerGroupId, StringComparison.OrdinalIgnoreCase);
 
     private void EnsureModelsLoaded(GameContext context)
     {
@@ -119,11 +144,7 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
     private void SpawnInitialLasers()
     {
         _lasers.Clear();
-        if (_currentMap?.Lasers is null)
-        {
-            return;
-        }
-
+        if (_currentMap?.Lasers is null) return;
         foreach (LaserSpawnData spawn in _currentMap.Lasers)
         {
             _lasers.Add(new LaserTripwire(spawn.Id, spawn.Origin, spawn.Direction));
@@ -133,11 +154,7 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
     private void SpawnInitialGlassHazards()
     {
         _glassHazards.Clear();
-        if (_currentMap?.GlassHazards is null)
-        {
-            return;
-        }
-
+        if (_currentMap?.GlassHazards is null) return;
         foreach (GlassHazardSpawnData spawn in _currentMap.GlassHazards)
         {
             _glassHazards.Add(new BrokenGlassTile(spawn.Id, spawn.Bounds));
@@ -181,15 +198,6 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
         }
 
         var obstacleSet = obstacles.Select(obstacle => obstacle.ToBounds()).ToHashSet();
-        var filteredWalls = new List<RectangleBounds>(context.Walls.Count);
-        foreach (RectangleBounds wall in context.Walls)
-        {
-            if (!obstacleSet.Contains(wall))
-            {
-                filteredWalls.Add(wall);
-            }
-        }
-
-        return filteredWalls;
+        return context.Walls.Where(wall => !obstacleSet.Contains(wall)).ToList();
     }
 }
