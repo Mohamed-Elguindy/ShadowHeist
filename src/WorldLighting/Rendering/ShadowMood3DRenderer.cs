@@ -35,18 +35,27 @@ public sealed class ShadowMood3DRenderer
     private const float KeypadBeaconBaseAlpha = 175f;
     private const float KeypadBeaconPulseAlpha = 70f;
 
-    private static readonly Vector2 DefaultKeypadPosition = new(988f, 368f);
+    private static readonly Color FloorVeilBaseColor = new(6, 10, 20, 255);
+    private static readonly Color VaultVeilBaseColor = new(8, 12, 24, 255);
+    private static readonly Color EmergencyVeilBaseColor = new(220, 38, 68, 255);
     private static readonly Color WallSkirtShadowColor = new(6, 9, 16, 64);
+    private static readonly Color KeypadNormalOuterBaseColor = new(56, 225, 255, 255);
+    private static readonly Color KeypadNormalInnerBaseColor = new(74, 222, 128, 255);
+    private static readonly Color KeypadNormalBeaconBaseColor = new(110, 242, 185, 255);
+    private static readonly Color KeypadAlarmOuterBaseColor = new(244, 63, 94, 255);
+    private static readonly Color KeypadAlarmInnerBaseColor = new(255, 96, 116, 255);
+    private static readonly Color KeypadAlarmBeaconBaseColor = new(255, 80, 100, 255);
 
     public void Draw(
         ShadowLightingController lightingController,
         IReadOnlyList<RectangleBounds> architecturalWalls,
+        IReadOnlyList<Vector2> keypadPositions,
         float elapsedSeconds)
     {
         Rlgl.DisableDepthMask();
         DrawZoneDarknessVeils(lightingController);
         DrawWallAmbientShadowSkirts(architecturalWalls);
-        DrawEmissiveKeypadAccents(lightingController, elapsedSeconds);
+        DrawEmissiveKeypadAccents(lightingController, keypadPositions, elapsedSeconds);
         Rlgl.EnableDepthMask();
     }
 
@@ -63,7 +72,7 @@ public sealed class ShadowMood3DRenderer
             Viewport3DConfig.MapWidth,
             FloorShadowVeilHeight,
             Viewport3DConfig.MapHeight,
-            new Color((byte)6, (byte)10, (byte)20, floorAlpha));
+            WithAlpha(FloorVeilBaseColor, floorAlpha));
 
         Vector2 vaultCenter2D = (Viewport3DConfig.VaultZoneMin + Viewport3DConfig.VaultZoneMax) * HalfScale;
         Vector2 vaultSize2D = Viewport3DConfig.VaultZoneMax - Viewport3DConfig.VaultZoneMin;
@@ -75,7 +84,7 @@ public sealed class ShadowMood3DRenderer
             vaultSize2D.X,
             FloorShadowVeilHeight,
             vaultSize2D.Y,
-            new Color((byte)8, (byte)12, (byte)24, vaultAlpha));
+            WithAlpha(VaultVeilBaseColor, vaultAlpha));
 
         if (controller.EmergencyPulseIntensity > 0f)
         {
@@ -85,7 +94,7 @@ public sealed class ShadowMood3DRenderer
                 Viewport3DConfig.MapWidth,
                 FloorShadowVeilHeight,
                 Viewport3DConfig.MapHeight,
-                new Color((byte)220, (byte)38, (byte)68, emergencyAlpha));
+                WithAlpha(EmergencyVeilBaseColor, emergencyAlpha));
         }
     }
 
@@ -107,28 +116,37 @@ public sealed class ShadowMood3DRenderer
         }
     }
 
-    private static void DrawEmissiveKeypadAccents(ShadowLightingController controller, float elapsedSeconds)
+    private static void DrawEmissiveKeypadAccents(
+        ShadowLightingController controller,
+        IReadOnlyList<Vector2> keypadPositions,
+        float elapsedSeconds)
     {
+        if (keypadPositions.Count == 0)
+        {
+            return;
+        }
+
         float pulse = KeypadPulseBase + (KeypadPulseAmplitude * MathF.Sin(elapsedSeconds * KeypadPulseSpeed));
         bool alarmActive = controller.EmergencyPulseIntensity > 0f;
 
-        byte outerAlpha = (byte)(KeypadOuterBaseAlpha * pulse);
-        byte innerAlpha = (byte)(KeypadInnerBaseAlpha * pulse);
-        byte beaconAlpha = (byte)(KeypadBeaconBaseAlpha + (KeypadBeaconPulseAlpha * pulse));
+        Color outerColor = WithAlpha(
+            alarmActive ? KeypadAlarmOuterBaseColor : KeypadNormalOuterBaseColor,
+            (byte)(KeypadOuterBaseAlpha * pulse));
+        Color innerColor = WithAlpha(
+            alarmActive ? KeypadAlarmInnerBaseColor : KeypadNormalInnerBaseColor,
+            (byte)(KeypadInnerBaseAlpha * pulse));
+        Color beaconColor = WithAlpha(
+            alarmActive ? KeypadAlarmBeaconBaseColor : KeypadNormalBeaconBaseColor,
+            (byte)(KeypadBeaconBaseAlpha + (KeypadBeaconPulseAlpha * pulse)));
 
-        Color outerColor = alarmActive
-            ? new Color((byte)244, (byte)63, (byte)94, outerAlpha)
-            : new Color((byte)56, (byte)225, (byte)255, outerAlpha);
-        Color innerColor = alarmActive
-            ? new Color((byte)255, (byte)96, (byte)116, innerAlpha)
-            : new Color((byte)74, (byte)222, (byte)128, innerAlpha);
-        Color beaconColor = alarmActive
-            ? new Color((byte)255, (byte)80, (byte)100, beaconAlpha)
-            : new Color((byte)110, (byte)242, (byte)185, beaconAlpha);
-
-        var floorPoolCenter = new Vector3(DefaultKeypadPosition.X, KeypadGlowElevationY, DefaultKeypadPosition.Y);
-        Raylib.DrawCylinder(floorPoolCenter, KeypadPoolOuterRadius, KeypadPoolOuterRadius, KeypadPoolHeight, KeypadPoolSlices, outerColor);
-        Raylib.DrawCylinder(floorPoolCenter, KeypadPoolInnerRadius, KeypadPoolInnerRadius, KeypadPoolHeight, KeypadPoolSlices, innerColor);
-        Raylib.DrawSphere(new Vector3(DefaultKeypadPosition.X, KeypadWallBeaconY, DefaultKeypadPosition.Y), KeypadBeaconRadius, beaconColor);
+        foreach (Vector2 keypadPosition in keypadPositions)
+        {
+            var floorPoolCenter = new Vector3(keypadPosition.X, KeypadGlowElevationY, keypadPosition.Y);
+            Raylib.DrawCylinder(floorPoolCenter, KeypadPoolOuterRadius, KeypadPoolOuterRadius, KeypadPoolHeight, KeypadPoolSlices, outerColor);
+            Raylib.DrawCylinder(floorPoolCenter, KeypadPoolInnerRadius, KeypadPoolInnerRadius, KeypadPoolHeight, KeypadPoolSlices, innerColor);
+            Raylib.DrawSphere(new Vector3(keypadPosition.X, KeypadWallBeaconY, keypadPosition.Y), KeypadBeaconRadius, beaconColor);
+        }
     }
+
+    private static Color WithAlpha(Color color, byte alpha) => new(color.R, color.G, color.B, alpha);
 }

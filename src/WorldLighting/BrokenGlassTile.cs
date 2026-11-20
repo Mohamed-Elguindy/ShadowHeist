@@ -11,6 +11,7 @@ public sealed class BrokenGlassTile
 {
     public const float DefaultGlassNoiseRadius = 220f;
     public const float DefaultStepTriggerDistance = 24f;
+    private const float MinStepTriggerDistance = 1f;
     private const string NoiseSourcePrefix = "BrokenGlass:";
 
     private Vector2? _lastCrunchPosition;
@@ -37,7 +38,7 @@ public sealed class BrokenGlassTile
         Id = id;
         Bounds = bounds;
         NoiseRadius = MathF.Max(0f, noiseRadius);
-        StepTriggerDistance = MathF.Max(1f, stepTriggerDistance);
+        StepTriggerDistance = MathF.Max(MinStepTriggerDistance, stepTriggerDistance);
     }
 
     public bool Update(GameContext context)

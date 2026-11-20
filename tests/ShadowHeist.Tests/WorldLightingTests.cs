@@ -417,4 +417,24 @@ public sealed class WorldLightingTests
         Assert.Equal("glass_hall", mapData.GlassHazards![0].Id);
         Assert.Equal(new RectangleBounds(420f, 580f, 60f, 44f), mapData.GlassHazards[0].Bounds);
     }
+
+    [Fact]
+    public void LoadFromJson_WithEmptyGlassHazardsArray_ReturnsEmptyList()
+    {
+        using var context = new GameContext();
+        const string json = """
+        {
+          "levelName": "Level 2: Penthouse",
+          "tileSize": 64,
+          "width": 20,
+          "height": 12,
+          "glassHazards": []
+        }
+        """;
+
+        LevelMapData mapData = MapLoader.LoadFromJson(json, context);
+
+        Assert.NotNull(mapData.GlassHazards);
+        Assert.Empty(mapData.GlassHazards!);
+    }
 }

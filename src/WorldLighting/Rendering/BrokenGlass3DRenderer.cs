@@ -48,6 +48,8 @@ public sealed class BrokenGlass3DRenderer
     private static readonly Color FrostedPatchFillColor = new(148, 226, 255, 28);
     private static readonly Color FrostedPatchBorderColor = new(186, 240, 255, 85);
     private static readonly Color ShardBodyColor = new(195, 242, 255, 135);
+    private static readonly Color ShardGlintBaseColor = new(230, 252, 255, 255);
+    private static readonly Color CrunchRingBaseColor = new(110, 235, 255, 255);
 
     public void Draw(IReadOnlyList<BrokenGlassTile> glassTiles, float elapsedSeconds)
     {
@@ -102,7 +104,7 @@ public sealed class BrokenGlass3DRenderer
 
         float shimmer = GlintShimmerBase + (GlintShimmerAmplitude * MathF.Sin((elapsedSeconds * GlintPulseSpeed) + (shardIndex * GlintPhaseStep)));
         byte glintAlpha = (byte)(GlintMinAlpha + (GlintAlphaRange * shimmer));
-        var glintColor = new Color((byte)230, (byte)252, (byte)255, glintAlpha);
+        Color glintColor = WithAlpha(ShardGlintBaseColor, glintAlpha);
 
         Raylib.DrawLine3D(tipA, apex, glintColor);
         Raylib.DrawLine3D(tipB, apex, glintColor);
@@ -116,7 +118,7 @@ public sealed class BrokenGlass3DRenderer
         }
 
         float timeSinceTrigger = elapsedSeconds - tile.LastTriggerTimeSeconds;
-        if (!tile.IsPlayerOnGlass && (timeSinceTrigger < 0f || timeSinceTrigger > CrunchRingDurationSeconds))
+        if (timeSinceTrigger < 0f || timeSinceTrigger > CrunchRingDurationSeconds)
         {
             return;
         }
@@ -131,6 +133,8 @@ public sealed class BrokenGlass3DRenderer
             CrunchRingElevationY,
             tile.Bounds.Y + (tile.Bounds.Height * HalfScale));
 
-        Raylib.DrawCylinderWires(center, radius, radius, CrunchRingHeight, CrunchRingSegments, new Color((byte)110, (byte)235, (byte)255, alpha));
+        Raylib.DrawCylinderWires(center, radius, radius, CrunchRingHeight, CrunchRingSegments, WithAlpha(CrunchRingBaseColor, alpha));
     }
+
+    private static Color WithAlpha(Color color, byte alpha) => new(color.R, color.G, color.B, alpha);
 }

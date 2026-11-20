@@ -141,26 +141,25 @@ public static class MapLoader
 
     private static List<GlassHazardSpawnData> BuildGlassHazards(List<GlassHazardDto>? glassDtos)
     {
-        var hazards = new List<GlassHazardSpawnData>();
-
-        if (glassDtos is not null)
+        if (glassDtos is null)
         {
-            foreach (GlassHazardDto dto in glassDtos)
-            {
-                if (!string.IsNullOrWhiteSpace(dto.Id) && dto.Width > 0f && dto.Height > 0f)
-                {
-                    hazards.Add(new GlassHazardSpawnData(dto.Id, new RectangleBounds(dto.X, dto.Y, dto.Width, dto.Height)));
-                }
-            }
-        }
-
-        return hazards.Count > 0
-            ? hazards
-            : new List<GlassHazardSpawnData>
+            return new List<GlassHazardSpawnData>
             {
                 new(DefaultCorridorGlassId, DefaultCorridorGlassBounds),
                 new(DefaultLobbyGlassId, DefaultLobbyGlassBounds)
             };
+        }
+
+        var hazards = new List<GlassHazardSpawnData>(glassDtos.Count);
+        foreach (GlassHazardDto dto in glassDtos)
+        {
+            if (!string.IsNullOrWhiteSpace(dto.Id) && dto.Width > 0f && dto.Height > 0f)
+            {
+                hazards.Add(new GlassHazardSpawnData(dto.Id, new RectangleBounds(dto.X, dto.Y, dto.Width, dto.Height)));
+            }
+        }
+
+        return hazards;
     }
 
     private static void ApplyToContext(LevelMapData mapData, GameContext context)
