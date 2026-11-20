@@ -307,6 +307,7 @@ Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where ev
 | **#30** | 🔜 | 🧠 Hatem | Expand `xUnit` tests covering `DetectionMeter`, `SecurityCamera`, and `AlertChaseState` A* edge cases | Automated Unit Testing |
 | **#31** | 🔜 | 🔦 Ali | Design **Level 2 (`level2_penthouse.json`)** multi-room bank/penthouse layout + furniture & laser placements | Content Pipeline |
 | **#32** | 🔜 | 🔦 Ali | Add GLSL Bloom post-processing (`bloom.fs`) + `AudioManager : IDisposable` with safe teardown order before `CloseWindow()` | Resource Lifecycle (`IDisposable`) |
+| **#37** | 🔜 | 👤 Guindy | Add a bottom-left HUD gadget icon (`assets/sprites/gadget_coin.png` / `assets/sprites/gadget_emp_grenade.png`) showing whether `Coin` or `EMP` is currently active so the player can easily identify the equipped gadget | HUD Asset Integration & Texture Lifecycle |
 
 ---
 
