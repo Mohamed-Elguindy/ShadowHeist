@@ -11,7 +11,7 @@ namespace ShadowHeist.GuardAI.States;
 /// </summary>
 public sealed class AlertChaseState : IGuardPathState
 {
-    private const float ChaseSpeed = 115f;
+    private const float ChaseSpeed = 132f;
     private const float CatchRadius = 28f;
     private const float SearchTimeoutSeconds = 5f;
     private const float AlertVisionMultiplier = 1.25f;
@@ -44,6 +44,7 @@ public sealed class AlertChaseState : IGuardPathState
 
     public void Enter()
     {
+        _guard.Detection.FillInstantly();
         _lostSightTimer = SearchTimeoutSeconds;
         _currentPathIndex = 0;
         _pathComputedWithWalls = false;
@@ -68,7 +69,13 @@ public sealed class AlertChaseState : IGuardPathState
         float speedMultiplier = ChaseSpeed / MathF.Max(1f, _guard.MoveSpeed);
         _guard.StepAlongPath(_pathWaypoints, ref _currentPathIndex, deltaTime, speedMultiplier);
 
-        return _lostSightTimer <= 0f ? new PatrolState(_guard, _patrolWaypoints) : this;
+        if (_lostSightTimer <= 0f)
+        {
+            _guard.Detection.Reset();
+            return new PatrolState(_guard, _patrolWaypoints);
+        }
+
+        return this;
     }
 
     private void EnsureAlarmActive(GameContext context)
