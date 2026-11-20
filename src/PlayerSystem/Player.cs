@@ -15,19 +15,29 @@ public sealed class Player
     private const float BaseSpeed = 190f;
     private const float MinAimDistance = 16f;
     private const float WalkStepIntervalSeconds = 0.40f;
+    private const float MinCarrySpeedMultiplier = 0.1f;
+    private const float MaxCarrySpeedMultiplier = 1f;
 
     private float _stepTimer;
+    private float _carrySpeedMultiplier = MaxCarrySpeedMultiplier;
 
     public Vector2 Position { get; set; }
     public float RotationDegrees { get; private set; }
     public IPlayerStance CurrentStance { get; private set; } = new WalkStance();
     public float Radius => CollisionHelper.DefaultActorRadius;
-    public float MoveSpeed => BaseSpeed * CurrentStance.SpeedMultiplier;
+    public float CarrySpeedMultiplier => _carrySpeedMultiplier;
+    public float MoveSpeed => BaseSpeed * CurrentStance.SpeedMultiplier * _carrySpeedMultiplier;
 
     public Player(Vector2 startPosition) => Position = startPosition;
 
-    public void Update(PlayerInputCommand input, float deltaTime, IEnumerable<RectangleBounds> walls, GameEventBus eventBus)
+    public void Update(
+        PlayerInputCommand input,
+        float deltaTime,
+        IEnumerable<RectangleBounds> walls,
+        GameEventBus eventBus,
+        float carrySpeedMultiplier = MaxCarrySpeedMultiplier)
     {
+        _carrySpeedMultiplier = Math.Clamp(carrySpeedMultiplier, MinCarrySpeedMultiplier, MaxCarrySpeedMultiplier);
         CurrentStance = CurrentStance.HandleInput(input);
         MoveWithCollision(input.MoveDirection, deltaTime, walls);
         FaceAimPosition(input.AimWorldPosition);
