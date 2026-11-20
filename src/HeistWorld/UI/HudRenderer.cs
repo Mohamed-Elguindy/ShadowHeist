@@ -124,7 +124,7 @@ public sealed class HudRenderer
     private static void DrawHintBar(bool isOverviewCamera)
     {
         string cameraLabel = isOverviewCamera ? "FOLLOW" : "OVERVIEW";
-        string text = $"[F6] {cameraLabel}   |   [ESC] PAUSE   |   [SCROLL] ZOOM   |   [R] RESTART";
+        string text = $"[F6] {cameraLabel}   |   [RMB] PEEK   |   [ESC] PAUSE   |   [SCROLL] ZOOM   |   [R] RESTART";
         Raylib.DrawText(text, HudMargin, Raylib.GetScreenHeight() - 30, HintFontSize, HintTextColor);
     }
 

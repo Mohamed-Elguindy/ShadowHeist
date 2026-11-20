@@ -15,7 +15,7 @@ public sealed class GameContext : IDisposable
     private static readonly Vector2 DefaultPlayerPosition = new(160f, 360f);
 
     private readonly List<IGameSystem> _systems = new();
-    private bool _isPowerSubscribed;
+    private bool _isCoreEventsSubscribed;
 
     public GameEventBus EventBus { get; } = new();
     public List<IInteractable> Interactables { get; } = new();
@@ -44,7 +44,7 @@ public sealed class GameContext : IDisposable
 
     public void InitializeAll()
     {
-        SubscribeToPowerEvents();
+        SubscribeToCoreEvents();
         foreach (IGameSystem system in _systems)
         {
             system.Init(this);
@@ -85,7 +85,7 @@ public sealed class GameContext : IDisposable
         Interactables.Clear();
         Walls.Clear();
         EventBus.ClearSubscribers();
-        _isPowerSubscribed = false;
+        _isCoreEventsSubscribed = false;
         ElapsedSeconds = 0f;
         StolenCash = 0;
         IsAlarmTriggered = false;
@@ -113,15 +113,16 @@ public sealed class GameContext : IDisposable
         Models.Dispose();
     }
 
-    private void SubscribeToPowerEvents()
+    private void SubscribeToCoreEvents()
     {
-        if (_isPowerSubscribed)
+        if (_isCoreEventsSubscribed)
         {
             return;
         }
 
+        EventBus.Subscribe<AlarmTriggeredEvent>(_ => Camera.TriggerAlarmShake());
         EventBus.Subscribe<PowerStateChangedEvent>(OnPowerStateChanged);
-        _isPowerSubscribed = true;
+        _isCoreEventsSubscribed = true;
     }
 
     private void OnPowerStateChanged(PowerStateChangedEvent evt)

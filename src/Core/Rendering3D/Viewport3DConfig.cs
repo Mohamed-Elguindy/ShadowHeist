@@ -35,6 +35,12 @@ public static class Viewport3DConfig
     public const float MinZoom = 0.7f;
     public const float MaxZoom = 2.6f;
     public const float ZoomStep = 0.1f;
+    public const float MaxPeekDistance = 155f;
+    public const float PeekDistanceScale = 0.45f;
+    public const float PeekActivationDeadzone = 8f;
+    public const float MaxAlarmShakeOffset = 14f;
+    public const float AlarmShakeDecayRate = 1.25f;
+    public const float AlarmShakeFrequency = 34f;
 
     public static readonly Vector3 FollowCameraOffset = new(-65f, 560f, 460f);
     public static readonly Vector3 OverviewTarget = new(630f, 0f, 385f);
