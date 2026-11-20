@@ -127,7 +127,11 @@ public sealed class GameContext : IDisposable
         _isCoreEventsSubscribed = true;
     }
 
-    private void OnAlarmTriggered(AlarmTriggeredEvent _) => AlarmCount++;
+    private void OnAlarmTriggered(AlarmTriggeredEvent _)
+    {
+        AlarmCount++;
+        Camera.TriggerAlarmShake();
+    }
 
     private void OnPowerStateChanged(PowerStateChangedEvent evt)
     {
