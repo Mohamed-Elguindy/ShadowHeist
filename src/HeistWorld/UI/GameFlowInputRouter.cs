@@ -48,6 +48,15 @@ public static class GameFlowInputRouter
 
     private static void HandleMainMenuInput(GameContext context)
     {
+        if (MenuLayoutConfig.TryHandleMenuMouse(
+            GameStateManager.MainMenuOptionCount,
+            i => MenuLayoutConfig.GetMainMenuOptionBounds(Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), i),
+            context.StateManager.SelectMenuOption,
+            () => context.StateManager.ActivateMainMenuOption(context)))
+        {
+            return;
+        }
+
         if (IsMoveUpPressed())
         {
             context.StateManager.SelectPreviousMenuOption();
@@ -72,6 +81,16 @@ public static class GameFlowInputRouter
 
     private static void HandleLevelSelectInput(GameContext context)
     {
+        int levelCount = context.StateManager.Levels.Count;
+        if (MenuLayoutConfig.TryHandleMenuMouse(
+            levelCount,
+            i => MenuLayoutConfig.GetLevelCardBounds(Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), levelCount, i),
+            context.StateManager.SelectLevel,
+            () => context.StateManager.LaunchSelectedLevel(context)))
+        {
+            return;
+        }
+
         if (IsMoveUpPressed())
         {
             context.StateManager.SelectPreviousLevel();
@@ -111,6 +130,15 @@ public static class GameFlowInputRouter
 
     private static void HandlePausedInput(GameContext context)
     {
+        if (MenuLayoutConfig.TryHandleMenuMouse(
+            GameStateManager.PauseMenuOptionCount,
+            i => MenuLayoutConfig.GetPauseMenuOptionBounds(Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), i),
+            context.StateManager.SelectMenuOption,
+            () => context.StateManager.ActivatePauseMenuOption(context)))
+        {
+            return;
+        }
+
         if (IsMoveUpPressed())
         {
             context.StateManager.SelectPreviousMenuOption();

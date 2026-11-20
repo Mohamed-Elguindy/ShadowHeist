@@ -82,8 +82,8 @@ public static class SummaryScreen
     private static void DrawHeaderTitle(Rectangle cardBounds, HeistOutcome outcome, Color accentColor)
     {
         string title = outcome == HeistOutcome.Escaped
-            ? "HEIST COMPLETE — ESCAPED!"
-            : "BUSTED — CAUGHT BY SECURITY!";
+            ? "HEIST COMPLETE, ESCAPED!"
+            : "BUSTED, CAUGHT BY SECURITY!";
 
         int x = CenterTextX(title, TitleFontSize, (int)cardBounds.X, (int)cardBounds.Width);
         Raylib.DrawText(title, x, (int)cardBounds.Y + HeaderTitleOffsetY, TitleFontSize, accentColor);
