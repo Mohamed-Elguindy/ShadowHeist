@@ -53,7 +53,7 @@ public sealed class PatrolState : IGuardState
 
     public IGuardState Update(float deltaTime, GameContext context)
     {
-        if (GuardSensorHelper.TrySpotIntruder(_guard, _waypoints, context, out IGuardState alertState))
+        if (GuardSensorHelper.TrySpotIntruder(_guard, _waypoints, context, deltaTime, out IGuardState alertState))
         {
             return alertState;
         }

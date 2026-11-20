@@ -13,7 +13,7 @@ namespace ShadowHeist.GuardAI;
 /// </summary>
 public sealed class Guard
 {
-    private const float DefaultMoveSpeed = 80f;
+    private const float DefaultMoveSpeed = 92f;
     private const float DefaultTurnRate = 360f;
     private const float WaypointReachThreshold = 6f;
     private const float DirectionEpsilonSquared = 0.0001f;
@@ -26,6 +26,8 @@ public sealed class Guard
     public float MoveSpeed { get; set; }
     public IReadOnlyList<Vector2> Waypoints { get; }
     public IGuardState CurrentState { get; private set; }
+    public DetectionMeter Detection { get; } = new();
+    public float DetectionProgress => Detection.Progress;
 
     public Guard(string id, Vector2 initialPosition, IReadOnlyList<Vector2> waypoints, float moveSpeed = DefaultMoveSpeed)
     {

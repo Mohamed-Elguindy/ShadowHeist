@@ -10,13 +10,19 @@ namespace ShadowHeist.GuardAI;
 
 /// <summary>
 /// Owned by: Hatem (ShadowHeist.GuardAI)
-/// Spawns guards, handles acoustic/alarm investigation via A* pathfinding, updates guard FSMs, and renders 3D guards.
+/// Spawns guards and security cameras, handles acoustic/alarm investigation via A* pathfinding, and renders 3D guards/cameras.
 /// </summary>
 public sealed class GuardAiModule : IGameSystem, IDisposable
 {
-    private const float AlphaGuardSpeed = 75f;
-    private const float BetaGuardSpeed = 65f;
+    private const float AlphaGuardSpeed = 90f;
+    private const float BetaGuardSpeed = 78f;
+    private const float MapGuardSpeedMultiplier = 1.15f;
     private const float DebugClickNoiseRadius = 400f;
+    private const float LobbyWestCameraAngleDegrees = 180f;
+    private const float CorridorSouthCameraAngleDegrees = 90f;
+
+    private static readonly Vector2 LobbyWestCameraPos = new(314f, 224f);
+    private static readonly Vector2 CorridorSouthCameraPos = new(640f, 422f);
 
     private static readonly Vector2[] PatrolRouteAlpha =
     {
@@ -33,10 +39,12 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
     };
 
     private readonly List<Guard> _guards = new();
+    private readonly List<SecurityCamera> _cameras = new();
     private readonly WorldLightingModule? _world;
     private GuardRenderer? _renderer;
 
     public IReadOnlyList<Guard> Guards => _guards;
+    public IReadOnlyList<SecurityCamera> Cameras => _cameras;
 
     public GuardAiModule(WorldLightingModule? world = null)
     {
@@ -48,12 +56,15 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
         ArgumentNullException.ThrowIfNull(context);
 
         _guards.Clear();
+        _cameras.Clear();
         _renderer ??= new GuardRenderer();
         _renderer.Load(context.Models);
         SpawnInitialGuards();
+        SpawnInitialCameras();
 
         context.EventBus.Subscribe<NoiseEmittedEvent>(evt => HandleNoiseEmitted(evt, context.Walls));
         context.EventBus.Subscribe<AlarmTriggeredEvent>(evt => HandleAlarmTriggered(evt, context.Walls));
+        context.EventBus.Subscribe<PowerStateChangedEvent>(HandlePowerStateChanged);
     }
 
     public void Update(float deltaTime, GameContext context)
@@ -64,6 +75,12 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
         }
 
         PublishDebugClickNoiseIfTriggered(context);
+        IReadOnlyList<RectangleBounds> visionBlockers = _world?.GetVisionBlockingWalls(context) ?? context.Walls;
+
+        foreach (SecurityCamera camera in _cameras)
+        {
+            camera.Update(deltaTime, context, visionBlockers);
+        }
 
         foreach (Guard guard in _guards)
         {
@@ -76,6 +93,7 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
     public void Draw(GameContext context)
     {
         IReadOnlyList<RectangleBounds> visionBlockers = _world?.GetVisionBlockingWalls(context) ?? context.Walls;
+        SecurityCamera3DRenderer.Draw(_cameras, visionBlockers, context.IsAlarmTriggered, context.ElapsedSeconds);
         _renderer?.Draw(_guards, visionBlockers, context);
     }
 
@@ -84,6 +102,7 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
         _renderer?.Dispose();
         _renderer = null;
         _guards.Clear();
+        _cameras.Clear();
     }
 
     // TODO (Hatem - Week 3 / Before Final Release): Remove debug left-click noise once CoinGadget (Ticket #20) is integrated.
@@ -113,7 +132,9 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
 
     private void HandleAlarmTriggered(AlarmTriggeredEvent alarmEvent, IReadOnlyList<RectangleBounds> walls)
     {
-        if (!alarmEvent.Reason.StartsWith("LaserTripwire:", StringComparison.Ordinal))
+        bool isSensorAlarm = alarmEvent.Reason.StartsWith("LaserTripwire:", StringComparison.Ordinal) ||
+                             alarmEvent.Reason.StartsWith("SecurityCamera:", StringComparison.Ordinal);
+        if (!isSensorAlarm)
         {
             return;
         }
@@ -124,6 +145,14 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
         }
     }
 
+    private void HandlePowerStateChanged(PowerStateChangedEvent powerEvent)
+    {
+        foreach (SecurityCamera camera in _cameras)
+        {
+            camera.ApplyPowerState(powerEvent);
+        }
+    }
+
     private void SpawnInitialGuards()
     {
         IReadOnlyList<MapGuardDto>? mapGuards = _world?.CurrentMap?.Guards;
@@ -131,7 +160,8 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
         {
             foreach (MapGuardDto guardDto in mapGuards)
             {
-                _guards.Add(new Guard(guardDto.Name, guardDto.Waypoints[0], guardDto.Waypoints, guardDto.MoveSpeed));
+                float tunedSpeed = guardDto.MoveSpeed * MapGuardSpeedMultiplier;
+                _guards.Add(new Guard(guardDto.Name, guardDto.Waypoints[0], guardDto.Waypoints, tunedSpeed));
             }
 
             return;
@@ -139,5 +169,11 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
 
         _guards.Add(new Guard("guard_vault_patrol_alpha", PatrolRouteAlpha[0], PatrolRouteAlpha, moveSpeed: AlphaGuardSpeed));
         _guards.Add(new Guard("guard_corridor_patrol_beta", PatrolRouteBeta[0], PatrolRouteBeta, moveSpeed: BetaGuardSpeed));
+    }
+
+    private void SpawnInitialCameras()
+    {
+        _cameras.Add(new SecurityCamera("cam_lobby_west", LobbyWestCameraPos, LobbyWestCameraAngleDegrees));
+        _cameras.Add(new SecurityCamera("cam_corridor_south", CorridorSouthCameraPos, CorridorSouthCameraAngleDegrees));
     }
 }
