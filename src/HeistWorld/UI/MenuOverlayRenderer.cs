@@ -8,8 +8,8 @@ namespace ShadowHeist.HeistWorld.UI;
 /// </summary>
 public static class MenuOverlayRenderer
 {
-    private const string NavigationHintText = "[UP/DOWN or W/S] NAVIGATE   |   [ENTER] SELECT";
-    private const string LevelSelectHintText = "[UP/DOWN] CHOOSE   |   [ENTER] DEPLOY   |   [ESC] BACK";
+    private const string NavigationHintText = "[UP/DOWN or W/S] NAVIGATE   |   [ENTER / CLICK] SELECT";
+    private const string LevelSelectHintText = "[UP/DOWN] CHOOSE   |   [ENTER / CLICK] DEPLOY   |   [ESC] BACK";
 
     public static void Draw(GameContext context)
     {

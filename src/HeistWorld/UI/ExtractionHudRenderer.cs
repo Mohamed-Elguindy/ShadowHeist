@@ -15,7 +15,7 @@ public static class ExtractionHudRenderer
     private const int BannerTopDefaultY = 20;
     private const int BannerTopBelowAlarmY = 64;
     private const float MarkerWorldHeightY = 96f;
-    private const string ExtractMarkerText = "GETAWAY VAN — EXTRACT HERE";
+    private const string ExtractMarkerText = "GETAWAY VAN, EXTRACT HERE";
 
     private static readonly Color ObjectiveBgColor = new(15, 23, 42, 215);
     private static readonly Color ObjectiveBorderColor = new(56, 189, 248, 190);
@@ -44,7 +44,7 @@ public static class ExtractionHudRenderer
     private static void DrawObjectiveBanner(bool isExtractionReady, int boxY)
     {
         string text = isExtractionReady
-            ? "EXTRACTION READY — REACH THE GETAWAY VAN!"
+            ? "EXTRACTION READY, REACH THE GETAWAY VAN!"
             : $"OBJECTIVE: STEAL ${HeistConstants.TargetCashGoal:N0} FROM THE VAULT";
 
         Color background = isExtractionReady ? ReadyBgColor : ObjectiveBgColor;
