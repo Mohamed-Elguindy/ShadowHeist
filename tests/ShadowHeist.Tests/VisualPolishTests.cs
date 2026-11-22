@@ -3,6 +3,7 @@ using ShadowHeist.Core;
 using ShadowHeist.Core.Rendering3D;
 using ShadowHeist.HeistWorld.Interactables;
 using ShadowHeist.HeistWorld.Rendering;
+using ShadowHeist.HeistWorld.UI;
 using ShadowHeist.PlayerSystem.Rendering;
 using Xunit;
 
@@ -97,5 +98,33 @@ public sealed class VisualPolishTests
         context.Outcome = HeistOutcome.Playing;
         context.AimWorldOverride = null;
         PlayerAim3DRenderer.Draw(context);
+    }
+
+    [Fact]
+    public void MissionIntroOverlay_EvaluatesCurtainBannerAndExpiryPhasesCorrectly()
+    {
+        MissionIntroFrame start = MissionIntroOverlay.EvaluateFrame(0f);
+        Assert.True(start.IsActive);
+        Assert.Equal(1f, start.CurtainAlpha, 0.01f);
+        Assert.Equal(0f, start.BannerAlpha, 0.01f);
+
+        MissionIntroFrame mid = MissionIntroOverlay.EvaluateFrame(1.0f);
+        Assert.True(mid.IsActive);
+        Assert.Equal(0f, mid.CurtainAlpha, 0.01f);
+        Assert.Equal(1f, mid.BannerAlpha, 0.01f);
+        Assert.Equal(1f, mid.DividerProgress, 0.01f);
+        Assert.True(mid.LetterboxHeight > 0f);
+
+        MissionIntroFrame fadeOut = MissionIntroOverlay.EvaluateFrame(2.5f);
+        Assert.True(fadeOut.IsActive);
+        Assert.True(fadeOut.BannerAlpha > 0f && fadeOut.BannerAlpha < 1f);
+
+        MissionIntroFrame done = MissionIntroOverlay.EvaluateFrame(MissionIntroOverlay.TotalDurationSeconds);
+        Assert.False(done.IsActive);
+
+        using var context = new GameContext();
+        context.StateManager.StartQuickPlay(context);
+        MissionIntroOverlay.Draw(context);
+        Assert.Throws<ArgumentNullException>(() => MissionIntroOverlay.Draw(null!));
     }
 }

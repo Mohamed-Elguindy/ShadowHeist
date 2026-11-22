@@ -68,6 +68,7 @@ public sealed class HudRenderer
             return;
         }
 
+        MissionIntroOverlay.Draw(context);
         SummaryScreen.Draw(context);
     }
 
