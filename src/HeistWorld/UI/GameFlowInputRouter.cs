@@ -172,6 +172,11 @@ public static class GameFlowInputRouter
 
     private static void HandleSummaryInput(GameContext context)
     {
+        if (SummaryLayoutConfig.TryHandleFooterMouse(context, Raylib.GetScreenWidth(), Raylib.GetScreenHeight()))
+        {
+            return;
+        }
+
         if (Raylib.IsKeyPressed(KeyboardKey.R))
         {
             context.StateManager.RestartMission(context);
