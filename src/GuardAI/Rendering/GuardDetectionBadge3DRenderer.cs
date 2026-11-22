@@ -27,7 +27,13 @@ public static class GuardDetectionBadge3DRenderer
     private const float GaugeFullWidth = 22f;
     private const float GaugeHeight = 3.2f;
     private const float GaugeDepth = 3.2f;
+    private const float GaugeFillPadding = 0.4f;
     private const float MinGaugeDisplayThreshold = 0.02f;
+    private const float DetectingStartGreen = 204f;
+    private const float DetectingGreenRange = 141f;
+    private const byte DetectingRedByte = 250;
+    private const byte DetectingBlueByte = 45;
+    private const byte DetectingAlphaByte = 245;
 
     private static readonly Color ProximityIdleColor = new(255, 214, 78, 85);
     private static readonly Color ProximityDetectingColor = new(251, 146, 60, 165);
@@ -90,21 +96,21 @@ public static class GuardDetectionBadge3DRenderer
 
         if (progress > MinGaugeDisplayThreshold)
         {
-            byte green = (byte)(204f - (141f * progress));
-            return new Color((byte)250, green, (byte)45, (byte)245);
+            byte green = (byte)(DetectingStartGreen - (DetectingGreenRange * progress));
+            return new Color(DetectingRedByte, green, DetectingBlueByte, DetectingAlphaByte);
         }
 
         return isSuspicious ? SuspiciousBadgeColor : PatrolBadgeColor;
     }
 
-    private static void DrawDetectionMeterBar(Vector3 barCenter, float progress, Color fillColor)
+    public static void DrawDetectionMeterBar(Vector3 barCenter, float progress, Color fillColor, float fullWidth = GaugeFullWidth)
     {
         float clamped = Math.Clamp(progress, 0f, 1f);
-        float fillWidth = GaugeFullWidth * clamped;
-        float leftEdgeX = barCenter.X - (GaugeFullWidth * 0.5f);
+        float fillWidth = fullWidth * clamped;
+        float leftEdgeX = barCenter.X - (fullWidth * 0.5f);
         var fillCenter = new Vector3(leftEdgeX + (fillWidth * 0.5f), barCenter.Y, barCenter.Z);
 
-        Raylib.DrawCube(barCenter, GaugeFullWidth, GaugeHeight, GaugeDepth, GaugeTrackColor);
-        Raylib.DrawCube(fillCenter, fillWidth, GaugeHeight + 0.4f, GaugeDepth + 0.4f, fillColor);
+        Raylib.DrawCube(barCenter, fullWidth, GaugeHeight, GaugeDepth, GaugeTrackColor);
+        Raylib.DrawCube(fillCenter, fillWidth, GaugeHeight + GaugeFillPadding, GaugeDepth + GaugeFillPadding, fillColor);
     }
 }

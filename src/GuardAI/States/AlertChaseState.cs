@@ -14,8 +14,6 @@ public sealed class AlertChaseState : IGuardPathState
     private const float ChaseSpeed = 132f;
     private const float CatchRadius = 28f;
     private const float SearchTimeoutSeconds = 5f;
-    private const float AlertVisionMultiplier = 1.25f;
-    private const float AlertHalfAngleDegrees = 55f;
     private const float RepathDistanceSquared = 64f;
 
     private readonly Guard _guard;
@@ -91,11 +89,7 @@ public sealed class AlertChaseState : IGuardPathState
 
     private void TrackSpottedIntruder(float deltaTime, GameContext context)
     {
-        bool playerVisible = GuardSensorHelper.CanSeePlayer(
-            _guard,
-            context,
-            GuardSensorHelper.DefaultVisionRange * AlertVisionMultiplier,
-            AlertHalfAngleDegrees);
+        bool playerVisible = GuardSensorHelper.CanSeePlayer(_guard, context);
 
         if (!playerVisible)
         {
