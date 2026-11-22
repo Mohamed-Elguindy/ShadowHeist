@@ -80,6 +80,7 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
         {
             VisionCone3DRenderer.DrawWarmLampGlows();
         }
+        AmbientAtmosphere3DRenderer.Draw(context.ElapsedSeconds, context.AreLobbyLightsPowered);
         VisionCone3DRenderer.DrawPlayerVisionCone(_visionConeVertices);
         _laserRenderer.Draw(_lasers, context.ElapsedSeconds);
     }

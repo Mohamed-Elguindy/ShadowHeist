@@ -3,6 +3,7 @@ using ShadowHeist.Core;
 using ShadowHeist.Core.Rendering3D;
 using ShadowHeist.HeistWorld.Interactables;
 using ShadowHeist.HeistWorld.Rendering;
+using ShadowHeist.PlayerSystem.Rendering;
 using Xunit;
 
 namespace ShadowHeist.Tests;
@@ -85,5 +86,16 @@ public sealed class VisualPolishTests
         renderer.Update(2.0f, context);
         Assert.Equal(0, renderer.ActivePopupCount);
         renderer.Reset();
+    }
+
+    [Fact]
+    public void PlayerAim3DRenderer_HandlesNullAimAndNonPlayingContextSafely()
+    {
+        using var context = new GameContext { Outcome = HeistOutcome.Escaped };
+        PlayerAim3DRenderer.Draw(context);
+
+        context.Outcome = HeistOutcome.Playing;
+        context.AimWorldOverride = null;
+        PlayerAim3DRenderer.Draw(context);
     }
 }

@@ -40,8 +40,6 @@ public sealed class HudRenderer
     private static readonly Color AlarmBoxBackground = new(48, 12, 22, 230);
     private static readonly Color AlarmBoxBorder = new(244, 63, 94, 235);
     private static readonly Color AlarmTextColor = new(255, 110, 130, 255);
-    private static readonly Color CashBoxBackground = new(15, 23, 42, 224);
-    private static readonly Color CashBoxBorder = new(56, 189, 248, 175);
 
     private readonly SoundMeter _soundMeter;
     private readonly RectangleBounds _getawayZone;
@@ -77,7 +75,7 @@ public sealed class HudRenderer
     {
         SoundMeterBarRenderer.Draw(_soundMeter.Level);
         DrawAlarmBanner(context.IsAlarmTriggered, context.Outcome);
-        DrawStolenCashBanner(context.StolenCash);
+        MissionTelemetryHud.DrawTopRightTelemetry(context.StolenCash, context.ElapsedSeconds, context.IsPlayerSneaking);
         ExtractionHudRenderer.Draw(context, _getawayZone);
         DrawHintBar(context.Camera.IsOverviewMode);
         DrawHoldProgressRing(context);
@@ -122,18 +120,6 @@ public sealed class HudRenderer
 
         UiPanelDrawer.DrawTacticalCard(new Rectangle(boxX, TopBannerMargin, boxWidth, BannerBoxHeight), AlarmBoxBackground, AlarmBoxBorder, AlarmBoxBorder);
         UiTypography.DrawText(text, boxX + BannerTextOffsetX, TopBannerMargin + BannerTextOffsetY, BannerFontSize, AlarmTextColor, bold: true);
-    }
-
-    private static void DrawStolenCashBanner(int stolenCash)
-    {
-        string text = $"STOLEN CASH: ${stolenCash:N0} / ${HeistConstants.TargetCashGoal:N0}";
-        int textWidth = UiTypography.MeasureTextWidth(text, BannerFontSize, bold: true);
-        int boxWidth = textWidth + BannerHorizontalPadding;
-        int boxX = Raylib.GetScreenWidth() - boxWidth - HudMargin;
-        Color accentColor = stolenCash >= HeistConstants.TargetCashGoal ? Color.Gold : Color.Green;
-
-        UiPanelDrawer.DrawTacticalCard(new Rectangle(boxX, TopBannerMargin, boxWidth, BannerBoxHeight), CashBoxBackground, CashBoxBorder, accentColor);
-        UiTypography.DrawText(text, boxX + BannerTextOffsetX, TopBannerMargin + BannerTextOffsetY, BannerFontSize, accentColor, bold: true);
     }
 
     private static void DrawHintBar(bool isOverviewCamera)

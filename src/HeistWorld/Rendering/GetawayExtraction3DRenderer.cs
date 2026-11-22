@@ -19,6 +19,10 @@ public static class GetawayExtraction3DRenderer
     private const float MarkerBobFrequency = 3.5f;
     private const float MarkerSize = 14f;
     private const float PulseFrequency = 4f;
+    private const float GroundRingY = 2.2f;
+    private const float GroundRingMaxRadius = 52f;
+    private const float GroundRingCycleSeconds = 1.6f;
+    private const float FlatGroundRotationDegrees = 90f;
     private const int BeaconSegments = 12;
 
     private static readonly Color LockedAccentColor = new(56, 189, 248, 200);
@@ -64,7 +68,17 @@ public static class GetawayExtraction3DRenderer
         var beamCenter = new Vector3(center.X, BeaconHeight * 0.5f, center.Y);
 
         Raylib.DrawCylinder(beamCenter, BeaconRadius, BeaconRadius, BeaconHeight, BeaconSegments, beamColor);
+        DrawExpandingGroundRing(center, timeSeconds);
         DrawFloatingMarker(center, timeSeconds);
+    }
+
+    private static void DrawExpandingGroundRing(Vector2 center, float timeSeconds)
+    {
+        float cycle = (timeSeconds % GroundRingCycleSeconds) / GroundRingCycleSeconds;
+        float radius = MathF.Max(BeaconRadius, cycle * GroundRingMaxRadius);
+        byte alpha = (byte)(180f * (1f - cycle));
+        var ringColor = new Color(ReadyAccentColor.R, ReadyAccentColor.G, ReadyAccentColor.B, alpha);
+        Raylib.DrawCircle3D(new Vector3(center.X, GroundRingY, center.Y), radius, Vector3.UnitX, FlatGroundRotationDegrees, ringColor);
     }
 
     private static void DrawFloatingMarker(Vector2 zoneCenter, float timeSeconds)

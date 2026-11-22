@@ -74,6 +74,7 @@ public sealed class PlayerSystemModule : IGameSystem, IDisposable
     public void Draw(GameContext context)
     {
         _rippleRenderer.Draw(context);
+        PlayerAim3DRenderer.Draw(context);
         _renderer?.Draw(_player, context);
     }
 

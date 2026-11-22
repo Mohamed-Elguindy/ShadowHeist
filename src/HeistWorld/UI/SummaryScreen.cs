@@ -58,6 +58,7 @@ public static class SummaryScreen
 
         DrawDimmedBackdrop();
         UiPanelDrawer.DrawTacticalCard(cardBounds, CardBackground, accentColor);
+        UiPanelDrawer.DrawBriefingCorners(cardBounds, accentColor);
         DrawHeaderTitle(cardBounds, report.Outcome, accentColor);
         DrawStatRows(cardBounds, report);
         DrawRankBadge(cardBounds, report.Rank, report.RankTitle);

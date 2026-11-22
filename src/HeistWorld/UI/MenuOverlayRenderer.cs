@@ -155,8 +155,12 @@ public static class MenuOverlayRenderer
     private static void DrawBackdrop() =>
         Raylib.DrawRectangle(0, 0, Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), MenuLayoutConfig.BackdropColor);
 
-    private static void DrawPanelFrame(int x, int y, int width, int height) =>
-        UiPanelDrawer.DrawTacticalCard(new Rectangle(x, y, width, height), MenuLayoutConfig.PanelBackground, MenuLayoutConfig.PanelBorder);
+    private static void DrawPanelFrame(int x, int y, int width, int height)
+    {
+        var bounds = new Rectangle(x, y, width, height);
+        UiPanelDrawer.DrawTacticalCard(bounds, MenuLayoutConfig.PanelBackground, MenuLayoutConfig.PanelBorder);
+        UiPanelDrawer.DrawBriefingCorners(bounds, MenuLayoutConfig.TitleAccent);
+    }
 
     private static void DrawActionOption(int x, int y, int width, string label, bool isHighlighted)
     {
