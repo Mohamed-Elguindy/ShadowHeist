@@ -15,16 +15,9 @@ namespace ShadowHeist;
 /// </summary>
 public static class Program
 {
-    private const int ScreenWidth = 1280;
-    private const int ScreenHeight = 720;
-    private const int TargetFps = 60;
-
     public static void Main()
     {
-        Raylib.SetConfigFlags(ConfigFlags.Msaa4xHint | ConfigFlags.ResizableWindow);
-        Raylib.InitWindow(ScreenWidth, ScreenHeight, "ShadowHeist 3D — Raylib C#");
-        Raylib.SetExitKey(KeyboardKey.Null);
-        Raylib.SetTargetFPS(TargetFps);
+        GameWindowChrome.InitializeWindow();
 
         try
         {
@@ -39,6 +32,8 @@ public static class Program
     private static void RunGameLoop()
     {
         using var context = new GameContext();
+        using var windowChrome = new GameWindowChrome();
+        windowChrome.LoadLogo();
         RegisterSystems(context);
         context.InitializeAll();
         context.Camera.Reset(context.PlayerPosition);
@@ -46,13 +41,15 @@ public static class Program
         while (!Raylib.WindowShouldClose() && !context.StateManager.ExitRequested)
         {
             float deltaTime = MathF.Min(Raylib.GetFrameTime(), 0.05f);
-            bool stateChanged = GameFlowInputRouter.ProcessInput(context);
+            bool headerConsumedInput = windowChrome.HandleInput(context);
+            bool stateChanged = !headerConsumedInput && GameFlowInputRouter.ProcessInput(context);
             PrepareFrameViewport(context, deltaTime);
             if (!stateChanged)
             {
                 UpdateSimulationIfPlaying(context, deltaTime);
             }
-            DrawFrame(context);
+            windowChrome.SyncTitle(context);
+            DrawFrame(context, windowChrome);
         }
     }
 
@@ -93,7 +90,7 @@ public static class Program
         context.StateManager.SyncWithMissionOutcome(context.Outcome);
     }
 
-    private static void DrawFrame(GameContext context)
+    private static void DrawFrame(GameContext context, GameWindowChrome windowChrome)
     {
         Color sky = context.IsAlarmTriggered ? Viewport3DConfig.AlarmSkyColor : Viewport3DConfig.SkyColor;
         Raylib.BeginDrawing();
@@ -105,6 +102,7 @@ public static class Program
         Raylib.EndMode3D();
 
         context.DrawHudAll();
+        windowChrome.Draw(context);
         Raylib.EndDrawing();
     }
 

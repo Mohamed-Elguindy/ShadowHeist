@@ -1,6 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Rendering3D;
 
 namespace ShadowHeist.HeistWorld.UI;
 
@@ -12,8 +13,8 @@ public static class ExtractionHudRenderer
     private const int BannerFontSize = 18;
     private const int BannerHeight = 32;
     private const int BannerHorizontalPadding = 28;
-    private const int BannerTopDefaultY = 20;
-    private const int BannerTopBelowAlarmY = 64;
+    private const int BannerTopDefaultY = 20 + GameWindowChrome.HeaderHeight;
+    private const int BannerTopBelowAlarmY = 64 + GameWindowChrome.HeaderHeight;
     private const float MarkerWorldHeightY = 96f;
     private const string ExtractMarkerText = "GETAWAY VAN, EXTRACT HERE";
 

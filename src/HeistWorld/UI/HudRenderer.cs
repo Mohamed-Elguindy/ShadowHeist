@@ -2,6 +2,7 @@ using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Interfaces;
+using ShadowHeist.Core.Rendering3D;
 using ShadowHeist.HeistWorld.Interactables;
 
 namespace ShadowHeist.HeistWorld.UI;
@@ -18,6 +19,7 @@ public sealed class HudRenderer
     private const int BannerTextOffsetY = 8;
     private const int HintFontSize = 18;
     private const int HudMargin = 20;
+    private const int TopBannerMargin = HudMargin + GameWindowChrome.HeaderHeight;
     private const int VignetteBandSize = 64;
     private const float HoldRingHeightOverGround = 42f;
     private const float PromptHeightOverGround = 88f;
@@ -95,9 +97,9 @@ public sealed class HudRenderer
         int boxWidth = textWidth + BannerHorizontalPadding;
         int boxX = (Raylib.GetScreenWidth() - boxWidth) / 2;
 
-        Raylib.DrawRectangle(boxX, HudMargin, boxWidth, BannerBoxHeight, AlarmBoxBackground);
-        Raylib.DrawRectangleLines(boxX, HudMargin, boxWidth, BannerBoxHeight, AlarmBoxBorder);
-        Raylib.DrawText(text, boxX + BannerTextOffsetX, HudMargin + BannerTextOffsetY, BannerFontSize, AlarmTextColor);
+        Raylib.DrawRectangle(boxX, TopBannerMargin, boxWidth, BannerBoxHeight, AlarmBoxBackground);
+        Raylib.DrawRectangleLines(boxX, TopBannerMargin, boxWidth, BannerBoxHeight, AlarmBoxBorder);
+        Raylib.DrawText(text, boxX + BannerTextOffsetX, TopBannerMargin + BannerTextOffsetY, BannerFontSize, AlarmTextColor);
     }
 
     private static void DrawStolenCashBanner(int stolenCash)
@@ -107,11 +109,11 @@ public sealed class HudRenderer
         int boxWidth = textWidth + BannerHorizontalPadding;
         int boxX = Raylib.GetScreenWidth() - boxWidth - HudMargin;
 
-        Raylib.DrawRectangle(boxX, HudMargin, boxWidth, BannerBoxHeight, CashBoxBackground);
-        Raylib.DrawRectangleLines(boxX, HudMargin, boxWidth, BannerBoxHeight, CashBoxBorder);
+        Raylib.DrawRectangle(boxX, TopBannerMargin, boxWidth, BannerBoxHeight, CashBoxBackground);
+        Raylib.DrawRectangleLines(boxX, TopBannerMargin, boxWidth, BannerBoxHeight, CashBoxBorder);
 
         Color textColor = stolenCash >= HeistConstants.TargetCashGoal ? Color.Gold : Color.Green;
-        Raylib.DrawText(text, boxX + BannerTextOffsetX, HudMargin + BannerTextOffsetY, BannerFontSize, textColor);
+        Raylib.DrawText(text, boxX + BannerTextOffsetX, TopBannerMargin + BannerTextOffsetY, BannerFontSize, textColor);
     }
 
     private static void DrawHintBar(bool isOverviewCamera)

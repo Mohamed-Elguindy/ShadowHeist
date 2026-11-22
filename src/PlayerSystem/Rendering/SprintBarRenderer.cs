@@ -1,4 +1,5 @@
 using Raylib_cs;
+using ShadowHeist.Core.Rendering3D;
 
 namespace ShadowHeist.PlayerSystem.Rendering;
 
@@ -12,7 +13,7 @@ public static class SprintBarRenderer
     private const int BarWidth = 120;
     private const int BarHeight = 12;
     private const int MarginLeft = 20;
-    private const int MarginTop = 64;
+    private const int MarginTop = 64 + GameWindowChrome.HeaderHeight;
     private const int BoxHeight = 36;
     private const int Padding = 8;
     private const int Spacing = 10;

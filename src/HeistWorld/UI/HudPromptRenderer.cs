@@ -1,5 +1,6 @@
 using System.Numerics;
 using Raylib_cs;
+using ShadowHeist.Core.Rendering3D;
 
 namespace ShadowHeist.HeistWorld.UI;
 
@@ -12,6 +13,7 @@ public static class HudPromptRenderer
     private const int HorizontalPadding = 20;
     private const int VerticalPadding = 10;
     private const int ScreenEdgeMargin = 8;
+    private const int MinScreenTop = ScreenEdgeMargin + GameWindowChrome.HeaderHeight;
 
     private static readonly Color BoxBackground = new(0, 0, 0, 210);
     private static readonly Color BoxBorder = Color.White;
@@ -29,10 +31,10 @@ public static class HudPromptRenderer
         int boxHeight = DefaultFontSize + VerticalPadding;
 
         int maxX = Math.Max(ScreenEdgeMargin, Raylib.GetScreenWidth() - boxWidth - ScreenEdgeMargin);
-        int maxY = Math.Max(ScreenEdgeMargin, Raylib.GetScreenHeight() - boxHeight - ScreenEdgeMargin);
+        int maxY = Math.Max(MinScreenTop, Raylib.GetScreenHeight() - boxHeight - ScreenEdgeMargin);
 
         int boxX = Math.Clamp((int)anchorScreenPosition.X - (boxWidth / 2), ScreenEdgeMargin, maxX);
-        int boxY = Math.Clamp((int)(anchorScreenPosition.Y + yOffset), ScreenEdgeMargin, maxY);
+        int boxY = Math.Clamp((int)(anchorScreenPosition.Y + yOffset), MinScreenTop, maxY);
 
         Raylib.DrawRectangle(boxX, boxY, boxWidth, boxHeight, BoxBackground);
         Raylib.DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, BoxBorder);

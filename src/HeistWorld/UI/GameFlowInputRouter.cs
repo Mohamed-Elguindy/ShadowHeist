@@ -1,5 +1,6 @@
 using Raylib_cs;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Rendering3D;
 
 namespace ShadowHeist.HeistWorld.UI;
 
@@ -20,7 +21,7 @@ public static class GameFlowInputRouter
     {
         if (Raylib.IsKeyPressed(KeyboardKey.F11))
         {
-            Raylib.ToggleBorderlessWindowed();
+            GameWindowChrome.ToggleMaximizeRestore();
         }
     }
 
