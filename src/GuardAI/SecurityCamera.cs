@@ -20,6 +20,7 @@ public sealed class SecurityCamera
 
     private const float FullConeFovScale = 2f;
     private const float AlarmRetriggerCooldownSeconds = 3f;
+    private const float MinVisibleDistanceSquared = 1f;
 
     private float _sweepElapsedSeconds;
     private float _alarmCooldownRemaining;
@@ -65,24 +66,15 @@ public sealed class SecurityCamera
 
     public void ApplyPowerState(PowerStateChangedEvent powerEvent)
     {
-        if (!MatchesPowerGroup(powerEvent.TargetGroupId))
-        {
-            return;
-        }
+        if (!MatchesPowerGroup(powerEvent.TargetGroupId)) return;
 
         IsPowered = powerEvent.IsPowered;
-        if (!IsPowered)
-        {
-            Detection.Reset();
-        }
+        if (!IsPowered) Detection.Reset();
     }
 
     public void DisableTemporarily(float durationSeconds)
     {
-        if (durationSeconds <= 0f)
-        {
-            return;
-        }
+        if (durationSeconds <= 0f) return;
 
         EmpDisabledRemainingSeconds = MathF.Max(EmpDisabledRemainingSeconds, durationSeconds);
         Detection.Reset();
@@ -90,10 +82,7 @@ public sealed class SecurityCamera
 
     public bool Update(float deltaTime, GameContext context, IReadOnlyList<RectangleBounds>? visionBlockers = null)
     {
-        if (deltaTime <= 0f)
-        {
-            return false;
-        }
+        if (deltaTime <= 0f) return false;
 
         UpdateTimers(deltaTime);
         SyncWithContextPower(context);
@@ -119,10 +108,7 @@ public sealed class SecurityCamera
             activeVisionRange: VisionRange,
             isPlayerSneaking: context.IsPlayerSneaking);
 
-        if (!fullyDetected || _alarmCooldownRemaining > 0f)
-        {
-            return false;
-        }
+        if (!fullyDetected || _alarmCooldownRemaining > 0f) return false;
 
         _alarmCooldownRemaining = AlarmRetriggerCooldownSeconds;
         context.IsAlarmTriggered = true;
@@ -130,33 +116,25 @@ public sealed class SecurityCamera
         return true;
     }
 
-    public IReadOnlyList<Vector2> ComputeVisionCone(IReadOnlyList<RectangleBounds> visionBlockers)
-    {
-        if (!IsActive)
-        {
-            return Array.Empty<Vector2>();
-        }
-
-        return VisionRaycaster.ComputeVisionCone(
-            Position,
-            CurrentAngleDegrees,
-            visionBlockers,
-            fovDegrees: HalfAngleDegrees * FullConeFovScale,
-            maxDistance: VisionRange,
-            rayCount: Viewport3DConfig.VisionRayCount);
-    }
+    public IReadOnlyList<Vector2> ComputeVisionCone(IReadOnlyList<RectangleBounds> visionBlockers) =>
+        !IsActive
+            ? Array.Empty<Vector2>()
+            : VisionRaycaster.ComputeVisionCone(
+                Position,
+                CurrentAngleDegrees,
+                visionBlockers,
+                fovDegrees: HalfAngleDegrees * FullConeFovScale,
+                maxDistance: VisionRange,
+                rayCount: Viewport3DConfig.VisionRayCount);
 
     public bool IsPlayerInsideCone(Vector2 playerPosition, IReadOnlyList<RectangleBounds> visionBlockers)
     {
-        if (!IsActive)
-        {
-            return false;
-        }
+        if (!IsActive) return false;
 
         Vector2 toPlayer = playerPosition - Position;
         float distSq = toPlayer.LengthSquared();
         if (distSq > VisionRange * VisionRange) return false;
-        if (distSq < 1f) return true;
+        if (distSq < MinVisibleDistanceSquared) return true;
 
         float rad = CurrentAngleDegrees * HeistConstants.DegToRad;
         Vector2 forward = new(MathF.Cos(rad), MathF.Sin(rad));
@@ -171,22 +149,15 @@ public sealed class SecurityCamera
     private void UpdateTimers(float deltaTime)
     {
         if (EmpDisabledRemainingSeconds > 0f)
-        {
             EmpDisabledRemainingSeconds = MathF.Max(0f, EmpDisabledRemainingSeconds - deltaTime);
-        }
-
         if (_alarmCooldownRemaining > 0f)
-        {
             _alarmCooldownRemaining = MathF.Max(0f, _alarmCooldownRemaining - deltaTime);
-        }
     }
 
     private void SyncWithContextPower(GameContext context)
     {
         if (string.Equals(PowerGroupId, DefaultPowerGroupId, StringComparison.OrdinalIgnoreCase) && !context.AreLobbyLightsPowered)
-        {
             IsPowered = false;
-        }
     }
 
     private bool MatchesPowerGroup(string targetGroupId) =>

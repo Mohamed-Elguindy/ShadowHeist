@@ -20,11 +20,14 @@ public static class SecurityCamera3DRenderer
     private const float DownwardPitchSlope = -0.36f;
     private const float LedSphereRadius = 2.4f;
     private const float LedBlinkSpeed = 4f;
+    private const float LedMinAlpha = 120f;
+    private const float LedAlphaPulseRange = 135f;
+    private const byte LedRedByte = 255;
+    private const byte LedGreenByte = 55;
+    private const byte LedBlueByte = 75;
     private const float VisionConeGroundY = 1.8f;
     private const float GaugeElevationOffsetY = 14f;
     private const float GaugeFullWidth = 20f;
-    private const float GaugeHeight = 3f;
-    private const float GaugeDepth = 3f;
     private const float MinGaugeThreshold = 0.02f;
 
     private static readonly Color BracketDarkSteel = new(44, 52, 66, 255);
@@ -37,7 +40,6 @@ public static class SecurityCamera3DRenderer
     private static readonly Color ConeDetectingEdge = new(253, 186, 116, 215);
     private static readonly Color ConeAlertFill = new(244, 63, 94, 120);
     private static readonly Color ConeAlertEdge = new(255, 110, 125, 225);
-    private static readonly Color GaugeTrackColor = new(18, 24, 38, 220);
 
     public static void Draw(
         IReadOnlyList<SecurityCamera> cameras,
@@ -86,8 +88,8 @@ public static class SecurityCamera3DRenderer
             return LedOfflineColor;
         }
 
-        byte alpha = (byte)(120f + (135f * MathF.Abs(MathF.Sin(timeSeconds * LedBlinkSpeed))));
-        return new Color((byte)255, (byte)55, (byte)75, alpha);
+        byte alpha = (byte)(LedMinAlpha + (LedAlphaPulseRange * MathF.Abs(MathF.Sin(timeSeconds * LedBlinkSpeed))));
+        return new Color(LedRedByte, LedGreenByte, LedBlueByte, alpha);
     }
 
     private static void DrawCameraVisionCone(
@@ -122,14 +124,8 @@ public static class SecurityCamera3DRenderer
 
     private static void DrawCameraDetectionGauge(SecurityCamera camera)
     {
-        float clamped = Math.Clamp(camera.DetectionProgress, 0f, 1f);
-        float fillWidth = GaugeFullWidth * clamped;
         var barCenter = new Vector3(camera.Position.X, MountElevationY + GaugeElevationOffsetY, camera.Position.Y);
-        float leftEdgeX = barCenter.X - (GaugeFullWidth * 0.5f);
-        var fillCenter = new Vector3(leftEdgeX + (fillWidth * 0.5f), barCenter.Y, barCenter.Z);
-
-        Color fillColor = clamped >= 1f ? ConeAlertEdge : ConeDetectingEdge;
-        Raylib.DrawCube(barCenter, GaugeFullWidth, GaugeHeight, GaugeDepth, GaugeTrackColor);
-        Raylib.DrawCube(fillCenter, fillWidth, GaugeHeight + 0.4f, GaugeDepth + 0.4f, fillColor);
+        Color fillColor = camera.DetectionProgress >= 1f ? ConeAlertEdge : ConeDetectingEdge;
+        GuardDetectionBadge3DRenderer.DrawDetectionMeterBar(barCenter, camera.DetectionProgress, fillColor, GaugeFullWidth);
     }
 }
