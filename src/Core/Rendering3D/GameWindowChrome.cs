@@ -50,20 +50,8 @@ public sealed class GameWindowChrome : IDisposable
     public void LoadLogo()
     {
         UiTypography.Load();
-        if (_logoTexture is not null || !Raylib.IsWindowReady() || WindowChromePresentation.ResolveIconPath() is not string iconPath)
-        {
-            return;
-        }
-
-        Texture2D texture = Raylib.LoadTexture(iconPath);
-        if (texture.Id == 0)
-        {
-            return;
-        }
-
-        Raylib.SetTextureFilter(texture, TextureFilter.Bilinear);
-        _logoTexture = texture;
-        BrandLogoTexture = texture;
+        _logoTexture ??= UiVisualHelpers.LoadBilinearTexture(WindowChromeLayout.WindowIconPath);
+        BrandLogoTexture = _logoTexture;
     }
 
     public bool HandleInput(GameContext context)

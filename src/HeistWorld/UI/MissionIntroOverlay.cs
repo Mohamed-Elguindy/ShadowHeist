@@ -89,11 +89,11 @@ public static class MissionIntroOverlay
         }
 
         float curtainT = Math.Clamp(elapsedSeconds / CurtainFadeDurationSeconds, 0f, 1f);
-        float curtainAlpha = 1f - EaseOutCubic(curtainT);
+        float curtainAlpha = 1f - UiVisualHelpers.EaseOutCubic(curtainT);
 
         float bannerAlpha = ComputeBannerAlpha(elapsedSeconds);
         float dividerT = Math.Clamp((elapsedSeconds - BannerFadeInStartSeconds) / DividerExpandDurationSeconds, 0f, 1f);
-        float dividerProgress = EaseOutCubic(dividerT);
+        float dividerProgress = UiVisualHelpers.EaseOutCubic(dividerT);
         float letterboxHeight = MaxLetterboxHeight * bannerAlpha;
 
         return new MissionIntroFrame(IsActive: true, curtainAlpha, bannerAlpha, dividerProgress, letterboxHeight);
@@ -109,7 +109,7 @@ public static class MissionIntroOverlay
         if (elapsedSeconds < BannerFadeInEndSeconds)
         {
             float inProgress = (elapsedSeconds - BannerFadeInStartSeconds) / (BannerFadeInEndSeconds - BannerFadeInStartSeconds);
-            return EaseOutCubic(Math.Clamp(inProgress, 0f, 1f));
+            return UiVisualHelpers.EaseOutCubic(Math.Clamp(inProgress, 0f, 1f));
         }
 
         if (elapsedSeconds <= BannerHoldEndSeconds)
@@ -118,13 +118,7 @@ public static class MissionIntroOverlay
         }
 
         float outProgress = (elapsedSeconds - BannerHoldEndSeconds) / (TotalDurationSeconds - BannerHoldEndSeconds);
-        return 1f - EaseOutCubic(Math.Clamp(outProgress, 0f, 1f));
-    }
-
-    private static float EaseOutCubic(float t)
-    {
-        float inverse = 1f - t;
-        return 1f - (inverse * inverse * inverse);
+        return 1f - UiVisualHelpers.EaseOutCubic(Math.Clamp(outProgress, 0f, 1f));
     }
 
     private static void DrawCurtainFade(float alpha)
@@ -135,7 +129,7 @@ public static class MissionIntroOverlay
         }
 
         byte byteAlpha = (byte)(MaxByte * Math.Clamp(alpha, 0f, 1f));
-        Color fill = WithAlpha(CurtainRgb, byteAlpha);
+        Color fill = UiVisualHelpers.WithAlpha(CurtainRgb, byteAlpha);
         Raylib.DrawRectangle(0, GameWindowChrome.HeaderHeight, Raylib.GetScreenWidth(), Raylib.GetScreenHeight() - GameWindowChrome.HeaderHeight, fill);
     }
 
@@ -147,7 +141,7 @@ public static class MissionIntroOverlay
             return;
         }
 
-        Color barColor = WithAlpha(LetterboxRgb, (byte)(LetterboxMaxAlpha * alpha));
+        Color barColor = UiVisualHelpers.WithAlpha(LetterboxRgb, (byte)(LetterboxMaxAlpha * alpha));
         int screenWidth = Raylib.GetScreenWidth();
         int screenHeight = Raylib.GetScreenHeight();
 
@@ -168,11 +162,11 @@ public static class MissionIntroOverlay
         int cardY = Math.Max(GameWindowChrome.HeaderHeight + (int)MaxLetterboxHeight + CardMinClearance, screenHeight / CardTopScreenDivisor);
         var bounds = new Rectangle(cardX, cardY, CardWidth, CardHeight);
 
-        Color background = WithAlpha(CardBgRgb, (byte)(CardMaxAlpha * frame.BannerAlpha));
-        Color border = WithAlpha(CardBorderRgb, (byte)(CardBorderMaxAlpha * frame.BannerAlpha));
-        Color kickerColor = WithAlpha(KickerRgb, (byte)(MaxByte * frame.BannerAlpha));
-        Color titleColor = WithAlpha(TitleRgb, (byte)(MaxByte * frame.BannerAlpha));
-        Color subtitleColor = WithAlpha(SubtitleRgb, (byte)(MaxByte * frame.BannerAlpha));
+        Color background = UiVisualHelpers.WithAlpha(CardBgRgb, (byte)(CardMaxAlpha * frame.BannerAlpha));
+        Color border = UiVisualHelpers.WithAlpha(CardBorderRgb, (byte)(CardBorderMaxAlpha * frame.BannerAlpha));
+        Color kickerColor = UiVisualHelpers.WithAlpha(KickerRgb, (byte)(MaxByte * frame.BannerAlpha));
+        Color titleColor = UiVisualHelpers.WithAlpha(TitleRgb, (byte)(MaxByte * frame.BannerAlpha));
+        Color subtitleColor = UiVisualHelpers.WithAlpha(SubtitleRgb, (byte)(MaxByte * frame.BannerAlpha));
 
         UiPanelDrawer.DrawTacticalCard(bounds, background, border);
         UiPanelDrawer.DrawBriefingCorners(bounds, kickerColor);
@@ -190,6 +184,4 @@ public static class MissionIntroOverlay
         string subtitle = level.Subtitle.ToUpperInvariant();
         UiTypography.DrawText(subtitle, UiTypography.CenterTextX(subtitle, cardX, CardWidth, SubtitleFontSize), cardY + SubtitleOffsetY, SubtitleFontSize, subtitleColor);
     }
-
-    private static Color WithAlpha(Color rgb, byte alpha) => new(rgb.R, rgb.G, rgb.B, alpha);
 }

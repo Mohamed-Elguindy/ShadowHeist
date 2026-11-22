@@ -1,5 +1,6 @@
 using Raylib_cs;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Rendering3D;
 
 namespace ShadowHeist.HeistWorld.UI;
 
@@ -131,11 +132,7 @@ public static class SummaryLayoutConfig
         _ => RankCColor
     };
 
-    public static float EaseOutCubic(float t)
-    {
-        float inv = 1f - t;
-        return 1f - (inv * inv * inv);
-    }
+    public static float EaseOutCubic(float t) => UiVisualHelpers.EaseOutCubic(t);
 
-    public static Color WithAlpha(Color rgb, byte alpha) => new(rgb.R, rgb.G, rgb.B, alpha);
+    public static Color WithAlpha(Color rgb, byte alpha) => UiVisualHelpers.WithAlpha(rgb, alpha);
 }

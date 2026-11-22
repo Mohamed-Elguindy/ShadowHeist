@@ -22,24 +22,7 @@ public sealed class StealthCursorRenderer : IDisposable
 
     public void Load()
     {
-        if (_crosshairTexture is not null || !Raylib.IsWindowReady())
-        {
-            return;
-        }
-
-        if (ResolveAssetPath(CrosshairAssetPath) is not string fullPath)
-        {
-            return;
-        }
-
-        Texture2D texture = Raylib.LoadTexture(fullPath);
-        if (texture.Id == 0)
-        {
-            return;
-        }
-
-        Raylib.SetTextureFilter(texture, TextureFilter.Bilinear);
-        _crosshairTexture = texture;
+        _crosshairTexture ??= UiVisualHelpers.LoadBilinearTexture(CrosshairAssetPath);
     }
 
     public void UpdateAndDraw(GameContext context)
@@ -104,16 +87,5 @@ public sealed class StealthCursorRenderer : IDisposable
         Color tint = isAlarmTriggered ? AlarmCursorTint : NormalCursorTint;
 
         Raylib.DrawTexturePro(texture, source, destination, Vector2.Zero, TextureRotation, tint);
-    }
-
-    private static string? ResolveAssetPath(string relativePath)
-    {
-        if (File.Exists(relativePath))
-        {
-            return relativePath;
-        }
-
-        string baseRelativePath = Path.Combine(AppContext.BaseDirectory, relativePath);
-        return File.Exists(baseRelativePath) ? baseRelativePath : null;
     }
 }

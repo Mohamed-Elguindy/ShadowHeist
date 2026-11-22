@@ -66,16 +66,8 @@ public static class WindowChromePresentation
         return new WindowControlBounds(minimize, maximize, close);
     }
 
-    public static string? ResolveIconPath()
-    {
-        if (File.Exists(WindowChromeLayout.WindowIconPath))
-        {
-            return WindowChromeLayout.WindowIconPath;
-        }
-
-        string baseRelativePath = Path.Combine(AppContext.BaseDirectory, WindowChromeLayout.WindowIconPath);
-        return File.Exists(baseRelativePath) ? baseRelativePath : null;
-    }
+    public static string? ResolveIconPath() =>
+        UiVisualHelpers.ResolveExistingAssetPath(WindowChromeLayout.WindowIconPath);
 
     private static string ResolveSummaryTitle(HeistOutcome outcome) => outcome switch
     {

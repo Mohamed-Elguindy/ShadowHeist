@@ -1,4 +1,5 @@
 using System.Numerics;
+using ShadowHeist.Core.Rendering3D;
 
 namespace ShadowHeist.Core;
 
@@ -33,14 +34,14 @@ internal static class CutscenePathMath
     public static Vector2 EvaluateEntryVanPosition(float elapsedSeconds)
     {
         float t = Math.Clamp(elapsedSeconds / EntryDriveDurationSeconds, 0f, 1f);
-        return Vector2.Lerp(EntryVanStartPosition, ParkedVanPosition, EaseOutCubic(t));
+        return Vector2.Lerp(EntryVanStartPosition, ParkedVanPosition, UiVisualHelpers.EaseOutCubic(t));
     }
 
     public static float EvaluateEntryVanYaw(float elapsedSeconds)
     {
         float driveT = Math.Clamp(elapsedSeconds / EntryDriveDurationSeconds, 0f, 1f);
         float turnT = Math.Clamp((driveT - VanTurnInStartFraction) / (1f - VanTurnInStartFraction), 0f, 1f);
-        return MathF.FusedMultiplyAdd(ParkedVanYawDegrees - RoadVanYawDegrees, EaseOutCubic(turnT), RoadVanYawDegrees);
+        return MathF.FusedMultiplyAdd(ParkedVanYawDegrees - RoadVanYawDegrees, UiVisualHelpers.EaseOutCubic(turnT), RoadVanYawDegrees);
     }
 
     public static Vector2 EvaluateEscapeVanPosition(float elapsedSeconds)
@@ -51,7 +52,7 @@ internal static class CutscenePathMath
         }
 
         float driveT = Math.Clamp((elapsedSeconds - EscapeBoardDurationSeconds) / EscapeDriveDurationSeconds, 0f, 1f);
-        return Vector2.Lerp(ParkedVanPosition, EscapeVanEndPosition, EaseInCubic(driveT));
+        return Vector2.Lerp(ParkedVanPosition, EscapeVanEndPosition, UiVisualHelpers.EaseInCubic(driveT));
     }
 
     public static float EvaluateEscapeVanYaw(float elapsedSeconds)
@@ -62,13 +63,13 @@ internal static class CutscenePathMath
         }
 
         float driveT = Math.Clamp((elapsedSeconds - EscapeBoardDurationSeconds) / (EscapeDriveDurationSeconds * HalfProgress), 0f, 1f);
-        return MathF.FusedMultiplyAdd(RoadVanYawDegrees - ParkedVanYawDegrees, EaseOutCubic(driveT), ParkedVanYawDegrees);
+        return MathF.FusedMultiplyAdd(RoadVanYawDegrees - ParkedVanYawDegrees, UiVisualHelpers.EaseOutCubic(driveT), ParkedVanYawDegrees);
     }
 
     public static float EvaluateCaughtZoomMultiplier(float elapsedSeconds)
     {
         float t = Math.Clamp(elapsedSeconds / CaughtDurationSeconds, 0f, 1f);
-        return MathF.FusedMultiplyAdd(CaughtZoomTargetMultiplier - 1f, EaseOutCubic(t), 1f);
+        return MathF.FusedMultiplyAdd(CaughtZoomTargetMultiplier - 1f, UiVisualHelpers.EaseOutCubic(t), 1f);
     }
 
     public static Vector2 EvaluateEntryPlayerPosition(float elapsedSeconds, Vector2 spawnPosition)
@@ -79,13 +80,13 @@ internal static class CutscenePathMath
         }
 
         float walkT = Math.Clamp((elapsedSeconds - EntryDriveDurationSeconds) / EntryWalkDurationSeconds, 0f, 1f);
-        return Vector2.Lerp(VanDoorPosition, spawnPosition, EaseOutCubic(walkT));
+        return Vector2.Lerp(VanDoorPosition, spawnPosition, UiVisualHelpers.EaseOutCubic(walkT));
     }
 
     public static Vector2 EvaluateEscapePlayerPosition(float elapsedSeconds, Vector2 startPosition)
     {
         float boardT = Math.Clamp(elapsedSeconds / EscapeBoardDurationSeconds, 0f, 1f);
-        return Vector2.Lerp(startPosition, VanDoorPosition, EaseInOutQuad(boardT));
+        return Vector2.Lerp(startPosition, VanDoorPosition, UiVisualHelpers.EaseInOutQuad(boardT));
     }
 
     public static float ComputeFacingDegrees(Vector2 from, Vector2 to, float fallbackDegrees)
@@ -93,15 +94,4 @@ internal static class CutscenePathMath
         Vector2 delta = to - from;
         return delta.LengthSquared() > MinFacingDistanceSq ? MathF.Atan2(delta.Y, delta.X) * HeistConstants.RadToDeg : fallbackDegrees;
     }
-
-    private static float EaseOutCubic(float t)
-    {
-        float inv = 1f - t;
-        return 1f - (inv * inv * inv);
-    }
-
-    private static float EaseInCubic(float t) => t * t * t;
-
-    private static float EaseInOutQuad(float t) =>
-        t < HalfProgress ? 2f * t * t : 1f - (MathF.Pow((-2f * t) + 2f, 2f) * HalfProgress);
 }

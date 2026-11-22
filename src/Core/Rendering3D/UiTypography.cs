@@ -96,7 +96,7 @@ public static class UiTypography
 
     private static Font? LoadFontAsset(string relativePath)
     {
-        if (ResolveAssetPath(relativePath) is not string fullPath)
+        if (UiVisualHelpers.ResolveExistingAssetPath(relativePath) is not string fullPath)
         {
             return null;
         }
@@ -122,16 +122,5 @@ public static class UiTypography
 
         codepoints[asciiCount] = EmDashCodepoint;
         return codepoints;
-    }
-
-    private static string? ResolveAssetPath(string relativePath)
-    {
-        if (File.Exists(relativePath))
-        {
-            return relativePath;
-        }
-
-        string baseRelativePath = Path.Combine(AppContext.BaseDirectory, relativePath);
-        return File.Exists(baseRelativePath) ? baseRelativePath : null;
     }
 }
