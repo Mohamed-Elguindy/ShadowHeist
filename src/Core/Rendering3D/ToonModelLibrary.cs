@@ -11,10 +11,11 @@ public sealed unsafe class ToonModelLibrary : IDisposable
     private const float MinDimensionEpsilon = 0.0001f;
 
     private readonly ToonShaderUniforms _shaders = new();
+    private readonly TextureCache _textures = new();
     private readonly List<Model> _models = new();
-    private readonly List<Texture2D> _textures = new();
-    private readonly HashSet<uint> _ownedTextureIds = new();
     private bool _shaderInitialized;
+
+    public int CachedTextureCount => _textures.CachedCount;
 
     public void EnsureLoaded()
     {
@@ -60,12 +61,11 @@ public sealed unsafe class ToonModelLibrary : IDisposable
 
     public CharacterRig? LoadCharacterRig(string directory, string skinPath, float uniformScale)
     {
-        if (!File.Exists(skinPath))
+        if (_textures.Load(skinPath) is not Texture2D skin)
         {
             return null;
         }
 
-        Texture2D skin = LoadTrackedTexture(skinPath);
         Model? body = LoadCharacterPart(Path.Combine(directory, "part_body.obj"), skin);
         Model? head = LoadCharacterPart(Path.Combine(directory, "part_head.obj"), skin);
         Model? armLeft = LoadCharacterPart(Path.Combine(directory, "part_arm_left.obj"), skin);
@@ -83,16 +83,19 @@ public sealed unsafe class ToonModelLibrary : IDisposable
 
     public Model? LoadTexturedBox(string texturePath, float width, float height, float length)
     {
-        if (!File.Exists(texturePath))
+        if (_textures.Load(texturePath) is not Texture2D texture)
         {
             return null;
         }
 
         Model model = Raylib.LoadModelFromMesh(Raylib.GenMeshCube(width, height, length));
-        ApplyTexturedMaterial(model, LoadTrackedTexture(texturePath));
+        ApplyTexturedMaterial(model, texture);
         _models.Add(model);
         return model;
     }
+
+    public Texture2D? LoadTexture(string texturePath, TextureFilter filter = TextureFilter.Bilinear) =>
+        _textures.Load(texturePath, filter);
 
     public void DrawCenteredProp(LoadedModel prop, Vector3 centerPosition, float rotationDegrees, Color tint, float outlineWidth) =>
         ToonOutlineDrawer.DrawCenteredProp(_shaders, prop, centerPosition, rotationDegrees, tint, outlineWidth);
@@ -108,24 +111,10 @@ public sealed unsafe class ToonModelLibrary : IDisposable
             Raylib.UnloadModel(model);
         }
 
-        foreach (Texture2D texture in _textures)
-        {
-            Raylib.UnloadTexture(texture);
-        }
-
+        _textures.Dispose();
         _shaders.Dispose();
         _models.Clear();
-        _textures.Clear();
-        _ownedTextureIds.Clear();
         _shaderInitialized = false;
-    }
-
-    private Texture2D LoadTrackedTexture(string texturePath)
-    {
-        Texture2D texture = Raylib.LoadTexture(texturePath);
-        _textures.Add(texture);
-        _ownedTextureIds.Add(texture.Id);
-        return texture;
     }
 
     private Model? LoadCharacterPart(string partPath, Texture2D skin)
@@ -157,7 +146,7 @@ public sealed unsafe class ToonModelLibrary : IDisposable
         for (int i = 0; i < model.MaterialCount; i++)
         {
             Texture2D albedoTexture = model.Materials[i].Maps[albedoIndex].Texture;
-            if (_ownedTextureIds.Contains(albedoTexture.Id))
+            if (_textures.Owns(albedoTexture.Id))
             {
                 model.Materials[i].Maps[albedoIndex].Texture = default;
             }

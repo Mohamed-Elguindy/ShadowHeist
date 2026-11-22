@@ -17,6 +17,7 @@ public sealed class PlayerSystemModule : IGameSystem, IDisposable
     private readonly IInputProvider _input;
     private readonly PlayerSoundRippleRenderer _rippleRenderer = new();
     private readonly Gadget3DVfxRenderer _gadgetVfx = new();
+    private readonly GadgetHudRenderer _gadgetHud = new();
     private readonly SprintStamina _stamina = new();
     private readonly PlayerGadgetLoadout _gadgets = new();
     private Player _player = null!;
@@ -38,6 +39,7 @@ public sealed class PlayerSystemModule : IGameSystem, IDisposable
         _player = new Player(context.PlayerPosition);
         _renderer ??= new PlayerRenderer();
         _renderer.Load(context.Models);
+        _gadgetHud.Load(context.Models);
         _rippleRenderer.SubscribeEvents(context.EventBus);
         context.EventBus.Subscribe<PowerStateChangedEvent>(_gadgets.OnPowerStateChanged);
 
@@ -87,12 +89,13 @@ public sealed class PlayerSystemModule : IGameSystem, IDisposable
         SprintBarRenderer.Draw(_stamina.Ratio, _stamina.IsOnCooldown);
         if (context.Outcome == HeistOutcome.Playing)
         {
-            GadgetHudRenderer.Draw(_gadgets);
+            _gadgetHud.Draw(_gadgets);
         }
     }
 
     public void Dispose()
     {
+        _gadgetHud.ClearCachedReferences();
         _renderer?.Dispose();
         _renderer = null;
     }

@@ -1,46 +1,127 @@
-using System.Globalization;
+using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core.Interfaces;
+using ShadowHeist.Core.Rendering3D;
 using ShadowHeist.PlayerSystem.Gadgets;
 
 namespace ShadowHeist.PlayerSystem.Rendering;
 
 /// <summary>
-/// Renders the active gadget slots, remaining charges, and EMP countdown in the bottom-left HUD.
+/// Renders the equipped gadget sprite icon, active status, and slot summary in the bottom-left HUD.
 /// </summary>
-public static class GadgetHudRenderer
+public sealed class GadgetHudRenderer
 {
-    private const int MarginLeft = 20;
-    private const int BottomOffset = 74;
-    private const int BoxHeight = 32;
-    private const int HorizontalPadding = 10;
-    private const int FontSize = 15;
+    private static readonly string[] IconAssetPaths =
+    {
+        GadgetHudLayout.CoinIconPath,
+        GadgetHudLayout.EmpIconPath
+    };
 
-    private static readonly Color PanelBackground = new(15, 23, 42, 220);
-    private static readonly Color IdleBorder = new(56, 189, 248, 190);
-    private static readonly Color EmpActiveBorder = new(167, 139, 250, 230);
-    private static readonly Color ActiveTextColor = new(224, 242, 254, 255);
-    private static readonly Color EmptyTextColor = new(148, 163, 184, 255);
+    private readonly Dictionary<string, Texture2D> _iconsByPath = new(StringComparer.OrdinalIgnoreCase);
 
-    public static void Draw(PlayerGadgetLoadout loadout)
+    public void Load(ToonModelLibrary models)
+    {
+        ArgumentNullException.ThrowIfNull(models);
+        if (!Raylib.IsWindowReady())
+        {
+            return;
+        }
+
+        foreach (string path in IconAssetPaths)
+        {
+            if (!_iconsByPath.ContainsKey(path) && models.LoadTexture(path) is Texture2D texture)
+            {
+                _iconsByPath[path] = texture;
+            }
+        }
+    }
+
+    public void ClearCachedReferences() => _iconsByPath.Clear();
+
+    public void Draw(PlayerGadgetLoadout loadout)
+    {
+        ArgumentNullException.ThrowIfNull(loadout);
+        if (!Raylib.IsWindowReady())
+        {
+            return;
+        }
+
+        IGadget active = loadout.ActiveGadget;
+        bool isEmpPulseActive = loadout.Emp.IsActivePulse;
+        int panelY = Math.Max(GadgetHudLayout.MinTopMargin, Raylib.GetScreenHeight() - GadgetHudLayout.BottomOffset);
+        Color borderColor = GadgetHudPresentation.ResolveBorderColor(active, isEmpPulseActive);
+
+        DrawIconPanel(GadgetHudLayout.MarginLeft, panelY, active, borderColor);
+        DrawInfoPanel(
+            GadgetHudLayout.MarginLeft + GadgetHudLayout.IconBoxSize + GadgetHudLayout.SectionGap,
+            panelY,
+            loadout,
+            borderColor);
+    }
+
+    private void DrawIconPanel(int panelX, int panelY, IGadget active, Color borderColor)
+    {
+        Raylib.DrawRectangle(panelX, panelY, GadgetHudLayout.IconBoxSize, GadgetHudLayout.IconBoxSize, GadgetHudLayout.PanelBackground);
+        Raylib.DrawRectangleLines(panelX, panelY, GadgetHudLayout.IconBoxSize, GadgetHudLayout.IconBoxSize, borderColor);
+
+        string iconPath = GadgetHudPresentation.ResolveIconPath(active);
+        if (_iconsByPath.TryGetValue(iconPath, out Texture2D texture))
+        {
+            DrawIconTexture(texture, panelX, panelY, GadgetHudPresentation.ResolveIconTint(active));
+            return;
+        }
+
+        DrawFallbackBadge(panelX, panelY, active);
+    }
+
+    private static void DrawIconTexture(Texture2D texture, int panelX, int panelY, Color tint)
+    {
+        var source = new Rectangle(GadgetHudLayout.TextureOrigin, GadgetHudLayout.TextureOrigin, texture.Width, texture.Height);
+        var destination = new Rectangle(
+            panelX + GadgetHudLayout.IconPadding,
+            panelY + GadgetHudLayout.IconPadding,
+            GadgetHudLayout.IconDrawSize,
+            GadgetHudLayout.IconDrawSize);
+
+        Raylib.DrawTexturePro(
+            texture,
+            source,
+            destination,
+            Vector2.Zero,
+            GadgetHudLayout.TextureRotation,
+            tint);
+    }
+
+    private static void DrawFallbackBadge(int panelX, int panelY, IGadget active)
+    {
+        string label = GadgetHudPresentation.ResolveFallbackBadge(active);
+        int textWidth = Raylib.MeasureText(label, GadgetHudLayout.FallbackFontSize);
+        int textX = panelX + CenterOffset(GadgetHudLayout.IconBoxSize, textWidth);
+        int textY = panelY + CenterOffset(GadgetHudLayout.IconBoxSize, GadgetHudLayout.FallbackFontSize);
+
+        Raylib.DrawText(label, textX, textY, GadgetHudLayout.FallbackFontSize, GadgetHudPresentation.ResolveFallbackColor(active));
+    }
+
+    private static int CenterOffset(int outerSize, int innerSize) =>
+        (outerSize - innerSize) / GadgetHudLayout.CenterDivisor;
+
+    private static void DrawInfoPanel(int panelX, int panelY, PlayerGadgetLoadout loadout, Color borderColor)
     {
         IGadget active = loadout.ActiveGadget;
-        string empSuffix = loadout.Emp.IsActivePulse
-            ? string.Create(CultureInfo.InvariantCulture, $" ({loadout.Emp.ActiveRemainingSeconds:0.0}s)")
-            : string.Empty;
+        string headerText = GadgetHudPresentation.BuildHeaderText(active, loadout.Emp);
+        string slotsText = GadgetHudPresentation.BuildSlotsText(loadout);
 
-        string text = string.Create(
-            CultureInfo.InvariantCulture,
-            $"[1] COIN x{loadout.Coin.RemainingCharges}   |   [2] EMP x{loadout.Emp.RemainingCharges}{empSuffix}   |   [Q] USE {active.Name.ToUpperInvariant()}");
+        int contentWidth = Math.Max(
+            Raylib.MeasureText(headerText, GadgetHudLayout.HeaderFontSize),
+            Raylib.MeasureText(slotsText, GadgetHudLayout.SlotsFontSize));
+        int panelWidth = contentWidth + (GadgetHudLayout.InfoPaddingX * GadgetHudLayout.BothSidesCount);
 
-        int textWidth = Raylib.MeasureText(text, FontSize);
-        int boxWidth = textWidth + (HorizontalPadding * 2);
-        int boxY = Raylib.GetScreenHeight() - BottomOffset;
-        Color border = loadout.Emp.IsActivePulse ? EmpActiveBorder : IdleBorder;
-        Color textColor = active.RemainingCharges > 0 ? ActiveTextColor : EmptyTextColor;
+        Raylib.DrawRectangle(panelX, panelY, panelWidth, GadgetHudLayout.PanelHeight, GadgetHudLayout.PanelBackground);
+        Raylib.DrawRectangleLines(panelX, panelY, panelWidth, GadgetHudLayout.PanelHeight, borderColor);
 
-        Raylib.DrawRectangle(MarginLeft, boxY, boxWidth, BoxHeight, PanelBackground);
-        Raylib.DrawRectangleLines(MarginLeft, boxY, boxWidth, BoxHeight, border);
-        Raylib.DrawText(text, MarginLeft + HorizontalPadding, boxY + ((BoxHeight - FontSize) / 2), FontSize, textColor);
+        int textX = panelX + GadgetHudLayout.InfoPaddingX;
+        Color headerColor = GadgetHudPresentation.ResolveHeaderTextColor(active, loadout.Emp.IsActivePulse);
+        Raylib.DrawText(headerText, textX, panelY + GadgetHudLayout.InfoPaddingY, GadgetHudLayout.HeaderFontSize, headerColor);
+        Raylib.DrawText(slotsText, textX, panelY + GadgetHudLayout.SlotsOffsetY, GadgetHudLayout.SlotsFontSize, GadgetHudLayout.SecondaryTextColor);
     }
 }
