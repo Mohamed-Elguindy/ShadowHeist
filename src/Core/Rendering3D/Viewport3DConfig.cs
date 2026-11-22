@@ -50,7 +50,7 @@ public static class Viewport3DConfig
     public static readonly Vector2[] WarmLampPositions = [new(84f, 344f), new(912f, 646f)];
 
     public static readonly Color SkyColor = new(12, 16, 26, 255);
-    public static readonly Color AlarmSkyColor = new(34, 12, 18, 255);
+    public static readonly Color AlarmSkyColor = new(12, 14, 24, 255);
     public static readonly Color WallTint = new(168, 178, 198, 255);
     public static readonly Color WallCapColor = new(102, 118, 144, 255);
     public static readonly Color OutlineColor = new(12, 15, 22, 255);
