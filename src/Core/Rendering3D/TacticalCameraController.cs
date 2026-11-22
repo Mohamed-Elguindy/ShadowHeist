@@ -35,11 +35,13 @@ public sealed class TacticalCameraController
     public Vector3 CurrentShakeOffset => _shake.CurrentOffset;
     public float ShakeTrauma => _shake.Trauma;
     public bool IsOverviewMode { get; private set; }
+    public float CutsceneZoomMultiplier { get; set; } = 1f;
 
     public void Reset(Vector2 playerPosition)
     {
         _hasInitialFocus = false;
         _desiredPeekOffset = Vector3.Zero;
+        CutsceneZoomMultiplier = 1f;
         _shake.Reset();
         Update(0f, playerPosition);
     }
@@ -160,7 +162,7 @@ public sealed class TacticalCameraController
         IsOverviewMode ? Viewport3DConfig.OverviewFovDegrees : Viewport3DConfig.FollowFovDegrees;
 
     private Vector3 ComputeActiveOffset() =>
-        (IsOverviewMode ? Viewport3DConfig.OverviewCameraOffset : Viewport3DConfig.FollowCameraOffset) * _zoom;
+        (IsOverviewMode ? Viewport3DConfig.OverviewCameraOffset : Viewport3DConfig.FollowCameraOffset) * (_zoom * CutsceneZoomMultiplier);
 
     private Camera3D BuildUnpeekedCamera(Vector2 playerPosition) =>
         BuildCameraAt(_hasInitialFocus ? _unpeekedFocusPoint : ComputeBaseTarget(playerPosition));

@@ -79,6 +79,7 @@ public static class Program
 
         Vector2 cameraTarget = context.Cutscene.ResolveCameraFocus(context.PlayerPosition);
         Vector2 mousePosition = Raylib.GetMousePosition();
+        context.Camera.CutsceneZoomMultiplier = context.Cutscene.ResolveCameraZoomMultiplier();
         context.Camera.ApplyZoomWheel(Raylib.GetMouseWheelMove());
         context.Camera.UpdatePeekFromScreen(
             !context.Cutscene.IsActive && Raylib.IsMouseButtonDown(MouseButton.Right),
@@ -102,7 +103,14 @@ public static class Program
             return;
         }
 
+        HeistOutcome previousOutcome = context.Outcome;
         context.UpdateAll(deltaTime);
+        if (previousOutcome == HeistOutcome.Playing && context.Outcome == HeistOutcome.Caught)
+        {
+            context.Cutscene.BeginCaught(context.PlayerPosition);
+            context.Camera.TriggerAlarmShake();
+        }
+
         if (context.Cutscene.IsReadyForSummary)
         {
             context.StateManager.SyncWithMissionOutcome(context.Outcome);

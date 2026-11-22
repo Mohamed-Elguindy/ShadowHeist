@@ -29,6 +29,7 @@ public sealed class HudRenderer
     private const float AlarmVignetteSpeed = 4.5f;
     private const float AlarmVignetteBaseAlpha = 75f;
     private const float AlarmVignettePulseAlpha = 55f;
+    private const float CaughtImpactFlashMaxAlpha = 72f;
     private const float HoldRingHeightOverGround = 42f;
     private const float PromptHeightOverGround = 88f;
 
@@ -52,7 +53,8 @@ public sealed class HudRenderer
 
     public void DrawHudOverlay(GameContext context)
     {
-        DrawVignette(context.IsAlarmTriggered && context.Outcome == HeistOutcome.Playing, context.ElapsedSeconds);
+        bool showCrimsonVignette = (context.IsAlarmTriggered && context.Outcome == HeistOutcome.Playing) || context.Cutscene.IsCaughtPlaying;
+        DrawVignette(showCrimsonVignette, context.ElapsedSeconds, context.Cutscene.ResolveCaughtRedPulseIntensity());
 
         GameFlowState flowState = context.StateManager.CurrentState;
         if (flowState is GameFlowState.MainMenu or GameFlowState.LevelSelect)
@@ -87,12 +89,18 @@ public sealed class HudRenderer
         DrawContextualPrompt(context);
     }
 
-    private static void DrawVignette(bool isAlarmActive, float elapsedSeconds)
+    private static void DrawVignette(bool isAlarmActive, float elapsedSeconds, float caughtPulseIntensity)
     {
         int width = Raylib.GetScreenWidth();
         int height = Raylib.GetScreenHeight();
         Color transparent = new(0, 0, 0, 0);
-        Color edgeColor = ResolveVignetteColor(isAlarmActive, elapsedSeconds);
+        Color edgeColor = ResolveVignetteColor(isAlarmActive, elapsedSeconds, caughtPulseIntensity);
+
+        if (caughtPulseIntensity > 0f)
+        {
+            byte flashAlpha = (byte)(CaughtImpactFlashMaxAlpha * caughtPulseIntensity);
+            Raylib.DrawRectangle(0, GameWindowChrome.HeaderHeight, width, height - GameWindowChrome.HeaderHeight, new Color(AlarmVignetteRgb.R, AlarmVignetteRgb.G, AlarmVignetteRgb.B, flashAlpha));
+        }
 
         Raylib.DrawRectangleGradientV(0, 0, width, VignetteBandSize, edgeColor, transparent);
         Raylib.DrawRectangleGradientV(0, height - VignetteBandSize, width, VignetteBandSize, transparent, edgeColor);
@@ -100,14 +108,17 @@ public sealed class HudRenderer
         Raylib.DrawRectangleGradientH(width - VignetteBandSize, 0, VignetteBandSize, height, transparent, edgeColor);
     }
 
-    private static Color ResolveVignetteColor(bool isAlarmActive, float elapsedSeconds)
+    private static Color ResolveVignetteColor(bool isAlarmActive, float elapsedSeconds, float caughtPulseIntensity)
     {
         if (!isAlarmActive)
         {
             return VignetteEdge;
         }
 
-        byte alpha = (byte)(AlarmVignetteBaseAlpha + (AlarmVignettePulseAlpha * (0.5f + 0.5f * MathF.Sin(elapsedSeconds * AlarmVignetteSpeed))));
+        float pulseWeight = caughtPulseIntensity > 0f
+            ? MathF.Max(0.5f + 0.5f * MathF.Sin(elapsedSeconds * AlarmVignetteSpeed), caughtPulseIntensity)
+            : 0.5f + 0.5f * MathF.Sin(elapsedSeconds * AlarmVignetteSpeed);
+        byte alpha = (byte)(AlarmVignetteBaseAlpha + (AlarmVignettePulseAlpha * pulseWeight));
         return new Color(AlarmVignetteRgb.R, AlarmVignetteRgb.G, AlarmVignetteRgb.B, alpha);
     }
 

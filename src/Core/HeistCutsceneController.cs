@@ -6,7 +6,8 @@ public enum CutsceneMode
 {
     None,
     EntryArrival,
-    EscapeGetaway
+    EscapeGetaway,
+    CaughtBusted
 }
 
 /// <summary>
@@ -21,12 +22,14 @@ public sealed class HeistCutsceneController
     public const float EscapeDriveDurationSeconds = CutscenePathMath.EscapeDriveDurationSeconds;
     public const float EscapeSummaryDelaySeconds = CutscenePathMath.EscapeSummaryDelaySeconds;
     public const float EscapeTotalDurationSeconds = CutscenePathMath.EscapeTotalDurationSeconds;
+    public const float CaughtDurationSeconds = CutscenePathMath.CaughtDurationSeconds;
 
     private const float EntryCameraVanBlend = 0.45f;
     private const float EscapeCameraVanBlend = 0.72f;
 
     private Vector2 _entrySpawnPosition;
     private Vector2 _escapeStartPosition;
+    private Vector2 _caughtPosition;
 
     public bool IsEnabled { get; set; }
     public CutsceneMode Mode { get; private set; } = CutsceneMode.None;
@@ -35,8 +38,14 @@ public sealed class HeistCutsceneController
     public bool IsActive => Mode != CutsceneMode.None;
     public bool IsEntryPlaying => Mode == CutsceneMode.EntryArrival;
     public bool IsEscapePlaying => Mode == CutsceneMode.EscapeGetaway;
+    public bool IsCaughtPlaying => Mode == CutsceneMode.CaughtBusted;
     public bool IsBlockingPlayerControl => Mode != CutsceneMode.None;
-    public bool IsReadyForSummary => Mode != CutsceneMode.EscapeGetaway || ElapsedSeconds >= EscapeSummaryDelaySeconds;
+    public bool IsReadyForSummary => Mode switch
+    {
+        CutsceneMode.EscapeGetaway => ElapsedSeconds >= EscapeSummaryDelaySeconds,
+        CutsceneMode.CaughtBusted => ElapsedSeconds >= CaughtDurationSeconds,
+        _ => true
+    };
 
     public void Reset()
     {
@@ -71,6 +80,18 @@ public sealed class HeistCutsceneController
         Mode = CutsceneMode.EscapeGetaway;
     }
 
+    public void BeginCaught(Vector2 playerPosition)
+    {
+        if (!IsEnabled)
+        {
+            return;
+        }
+
+        _caughtPosition = playerPosition;
+        ElapsedSeconds = 0f;
+        Mode = CutsceneMode.CaughtBusted;
+    }
+
     public void SkipEntry()
     {
         if (Mode == CutsceneMode.EntryArrival)
@@ -97,6 +118,10 @@ public sealed class HeistCutsceneController
         else if (Mode == CutsceneMode.EscapeGetaway && ElapsedSeconds >= EscapeTotalDurationSeconds)
         {
             ElapsedSeconds = EscapeTotalDurationSeconds;
+        }
+        else if (Mode == CutsceneMode.CaughtBusted && ElapsedSeconds >= CaughtDurationSeconds)
+        {
+            ElapsedSeconds = CaughtDurationSeconds;
         }
     }
 
@@ -145,6 +170,21 @@ public sealed class HeistCutsceneController
             ResolvePlayerPosition(simulationPosition),
             ResolveVanPosition(CutscenePathMath.ParkedVanPosition),
             ElapsedSeconds < EscapeBoardDurationSeconds ? EscapeCameraVanBlend : 1f),
+        CutsceneMode.CaughtBusted => _caughtPosition,
         _ => simulationPosition
     };
+
+    public float ResolveCameraZoomMultiplier() =>
+        Mode == CutsceneMode.CaughtBusted ? CutscenePathMath.EvaluateCaughtZoomMultiplier(ElapsedSeconds) : 1f;
+
+    public float ResolveCaughtRedPulseIntensity()
+    {
+        if (Mode != CutsceneMode.CaughtBusted)
+        {
+            return 0f;
+        }
+
+        float progress = Math.Clamp(ElapsedSeconds / CaughtDurationSeconds, 0f, 1f);
+        return MathF.Sin(progress * MathF.PI);
+    }
 }

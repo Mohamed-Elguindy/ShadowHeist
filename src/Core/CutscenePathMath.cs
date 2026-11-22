@@ -15,6 +15,8 @@ internal static class CutscenePathMath
     public const float EscapeDriveDurationSeconds = 1.45f;
     public const float EscapeSummaryDelaySeconds = EscapeBoardDurationSeconds + EscapeDriveDurationSeconds;
     public const float EscapeTotalDurationSeconds = EscapeBoardDurationSeconds + EscapeDriveDurationSeconds;
+    public const float CaughtDurationSeconds = 0.75f;
+    private const float CaughtZoomTargetMultiplier = 0.62f;
 
     private const float VanTurnInStartFraction = 0.60f;
     private const float VanDoorOffsetY = -54f;
@@ -61,6 +63,12 @@ internal static class CutscenePathMath
 
         float driveT = Math.Clamp((elapsedSeconds - EscapeBoardDurationSeconds) / (EscapeDriveDurationSeconds * HalfProgress), 0f, 1f);
         return MathF.FusedMultiplyAdd(RoadVanYawDegrees - ParkedVanYawDegrees, EaseOutCubic(driveT), ParkedVanYawDegrees);
+    }
+
+    public static float EvaluateCaughtZoomMultiplier(float elapsedSeconds)
+    {
+        float t = Math.Clamp(elapsedSeconds / CaughtDurationSeconds, 0f, 1f);
+        return MathF.FusedMultiplyAdd(CaughtZoomTargetMultiplier - 1f, EaseOutCubic(t), 1f);
     }
 
     public static Vector2 EvaluateEntryPlayerPosition(float elapsedSeconds, Vector2 spawnPosition)

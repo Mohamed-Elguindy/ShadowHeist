@@ -111,4 +111,27 @@ public sealed class CutsceneControllerTests
         Assert.Equal(HeistOutcome.Escaped, context.Outcome);
         Assert.True(context.Cutscene.IsEscapePlaying);
     }
+
+    [Fact]
+    public void CaughtBusted_ZoomsCameraPulsesRedAndDelaysSummaryUntilComplete()
+    {
+        var cutscene = new HeistCutsceneController { IsEnabled = true };
+        var caughtPos = new Vector2(420f, 310f);
+
+        cutscene.BeginCaught(caughtPos);
+        Assert.True(cutscene.IsCaughtPlaying);
+        Assert.True(cutscene.IsPlayerVisible());
+        Assert.False(cutscene.IsReadyForSummary);
+        Assert.Equal(caughtPos, cutscene.ResolveCameraFocus(Vector2.Zero));
+        Assert.Equal(1f, cutscene.ResolveCameraZoomMultiplier(), 0.01f);
+
+        cutscene.Update(HeistCutsceneController.CaughtDurationSeconds * 0.5f);
+        Assert.False(cutscene.IsReadyForSummary);
+        Assert.True(cutscene.ResolveCameraZoomMultiplier() < 0.85f);
+        Assert.True(cutscene.ResolveCaughtRedPulseIntensity() > 0.8f);
+
+        cutscene.Update(HeistCutsceneController.CaughtDurationSeconds * 0.5f);
+        Assert.True(cutscene.IsReadyForSummary);
+        Assert.Equal(0.62f, cutscene.ResolveCameraZoomMultiplier(), 0.02f);
+    }
 }

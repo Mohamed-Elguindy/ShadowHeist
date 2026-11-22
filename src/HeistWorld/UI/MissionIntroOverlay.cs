@@ -60,6 +60,7 @@ public static class MissionIntroOverlay
         if (context.StateManager.CurrentState != GameFlowState.Playing ||
             context.Outcome != HeistOutcome.Playing ||
             context.Cutscene.IsEscapePlaying ||
+            context.Cutscene.IsCaughtPlaying ||
             context.Cutscene.WasEntrySkipped)
         {
             return;
