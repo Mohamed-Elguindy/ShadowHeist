@@ -38,4 +38,17 @@ public static class HudPromptRenderer
         Raylib.DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, BoxBorder);
         Raylib.DrawText(prompt, boxX + (HorizontalPadding / 2), boxY + (VerticalPadding / 2), DefaultFontSize, PromptTextColor);
     }
+
+    public static bool TryProjectInFrontOfCamera(Vector3 worldPos, Camera3D camera, out Vector2 screenPos)
+    {
+        Vector3 forward = camera.Target - camera.Position;
+        if (Vector3.Dot(worldPos - camera.Position, forward) <= 0f)
+        {
+            screenPos = Vector2.Zero;
+            return false;
+        }
+
+        screenPos = Raylib.GetWorldToScreen(worldPos, camera);
+        return true;
+    }
 }

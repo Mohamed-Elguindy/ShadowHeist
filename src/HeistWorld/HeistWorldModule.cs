@@ -14,6 +14,13 @@ namespace ShadowHeist.HeistWorld;
 /// </summary>
 public sealed class HeistWorldModule : IGameSystem, IDisposable
 {
+    private const string DefaultFuseBoxId = "fusebox_lobby";
+    private const string DefaultFuseBoxTargetGroupId = "lobby_lights";
+    private const string DefaultLaserSwitchId = "laser_switch_hall";
+    private const string DefaultLaserTargetGroupId = "laser_hall";
+    private static readonly Vector2 DefaultFuseBoxPosition = new(290f, 288f);
+    private static readonly Vector2 DefaultLaserSwitchPosition = new(284f, 444f);
+
     private readonly InteractionController _interaction = new();
     private readonly LootSparkRenderer _lootSparks = new();
     private readonly WorldLightingModule? _world;
@@ -29,15 +36,19 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
     }
 
     public float SoundMeterLevel => _soundMeter?.Level ?? 0f;
+    public RectangleBounds GetawayZone => _getawayZone;
+
+    public bool IsExtractionReady(GameContext context) =>
+        context.StolenCash >= HeistConstants.TargetCashGoal;
 
     public void Init(GameContext context)
     {
         _interaction.Reset();
         _lootSparks.Reset();
         _soundMeter = new SoundMeter(context.EventBus);
-        _hud = new HudRenderer(_soundMeter);
 
         BuildWorldObjects(context);
+        _hud = new HudRenderer(_soundMeter, _getawayZone);
         _renderer ??= new HeistWorldRenderer();
         _renderer.Reset();
         _renderer.Load(context.Models);
@@ -65,6 +76,7 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
     {
         _renderer?.Draw(context);
         _lootSparks.Draw();
+        GetawayExtraction3DRenderer.Draw(_getawayZone, context);
     }
 
     public void DrawHud(GameContext context) => _hud?.DrawHudOverlay(context);
@@ -104,22 +116,43 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
 
     private void EnsureRequiredFallbackObjects()
     {
-        if (!_worldObjects.OfType<LootCrate>().Any())
+        EnsureLootCratesExist();
+        VaultDoor door = EnsureVaultDoorExists();
+        EnsureFallbackExists(() => new KeypadTerminal("vault_keypad", new Vector2(988f, 368f), door.Id));
+        EnsureFallbackExists(() => new FuseBox(DefaultFuseBoxId, DefaultFuseBoxPosition, DefaultFuseBoxTargetGroupId));
+        EnsureFallbackExists(() => new LaserSwitch(DefaultLaserSwitchId, DefaultLaserSwitchPosition, DefaultLaserTargetGroupId));
+    }
+
+    private void EnsureLootCratesExist()
+    {
+        if (_worldObjects.OfType<LootCrate>().Any())
         {
-            _worldObjects.Add(new LootCrate("loot_vault_1", new Vector2(460f, 288f)));
-            _worldObjects.Add(new LootCrate("loot_vault_2", new Vector2(720f, 288f)));
+            return;
         }
 
-        VaultDoor? door = _worldObjects.OfType<VaultDoor>().FirstOrDefault();
-        if (door is null)
+        _worldObjects.Add(new LootCrate("loot_vault_1", new Vector2(460f, 288f)));
+        _worldObjects.Add(new LootCrate("loot_vault_2", new Vector2(720f, 288f)));
+    }
+
+    private VaultDoor EnsureVaultDoorExists()
+    {
+        VaultDoor? existing = _worldObjects.OfType<VaultDoor>().FirstOrDefault();
+        if (existing is not null)
         {
-            door = new VaultDoor("vault_door", new Vector2(944f, 288f));
-            _worldObjects.Add(door);
+            return existing;
         }
 
-        if (!_worldObjects.OfType<KeypadTerminal>().Any())
+        var door = new VaultDoor("vault_door", new Vector2(944f, 288f));
+        _worldObjects.Add(door);
+        return door;
+    }
+
+    private void EnsureFallbackExists<TInteractable>(Func<TInteractable> factory)
+        where TInteractable : IInteractable
+    {
+        if (!_worldObjects.OfType<TInteractable>().Any())
         {
-            _worldObjects.Add(new KeypadTerminal("vault_keypad", new Vector2(988f, 368f), door.Id));
+            _worldObjects.Add(factory());
         }
     }
 
@@ -140,6 +173,8 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
         "LootCrate" => new LootCrate(dto.Id, new Vector2(dto.X, dto.Y), dto.CashValue),
         "VaultDoor" => new VaultDoor(dto.Id, new Vector2(dto.X, dto.Y)),
         "KeypadTerminal" => new KeypadTerminal(dto.Id, new Vector2(dto.X, dto.Y), dto.TargetId ?? "vault_door"),
+        "FuseBox" => new FuseBox(dto.Id, new Vector2(dto.X, dto.Y), dto.TargetId ?? DefaultFuseBoxTargetGroupId),
+        "LaserSwitch" => new LaserSwitch(dto.Id, new Vector2(dto.X, dto.Y), dto.TargetId ?? DefaultLaserTargetGroupId),
         _ => null
     };
 
