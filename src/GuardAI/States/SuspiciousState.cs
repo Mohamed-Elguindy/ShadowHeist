@@ -76,7 +76,7 @@ public sealed class SuspiciousState : IGuardPathState
 
     public IGuardState Update(float deltaTime, GameContext context)
     {
-        if (GuardSensorHelper.TrySpotIntruder(_guard, _guard.Waypoints, context, out IGuardState alertState))
+        if (GuardSensorHelper.TrySpotIntruder(_guard, _guard.Waypoints, context, deltaTime, out IGuardState alertState))
         {
             return alertState;
         }

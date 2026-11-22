@@ -28,18 +28,6 @@ public sealed class GuardRenderer : IDisposable
     private const float FlashlightBulbOffsetY = -13f;
     private const float FlashlightBulbOffsetZ = 2.2f;
     private const float FlashlightBulbRadius = 2.8f;
-    private const float BadgeBaseElevationY = 84f;
-    private const float BadgeAlertBobSpeed = 10f;
-    private const float BadgeIdleBobSpeed = 3f;
-    private const float BadgeBobAmplitude = 2.5f;
-    private const float BadgeAlertConeHeight = 12f;
-    private const float BadgeIdleConeHeight = 6f;
-    private const float BadgeAlertConeRadius = 4.5f;
-    private const float BadgeIdleConeRadius = 3.2f;
-    private const float BadgeConeTipRadius = 0.5f;
-    private const int BadgeConeSides = 6;
-    private const float BadgeDotOffsetY = -4f;
-    private const float BadgeDotRadius = 2.5f;
 
     private readonly CharacterPoseAnimator _poseAnimator = new();
     private readonly GuardPathGizmo3DRenderer _pathGizmoRenderer = new();
@@ -78,6 +66,7 @@ public sealed class GuardRenderer : IDisposable
         foreach (Guard guard in guards)
         {
             DrawGuardVisionCone(guard, visionBlockers, context.IsAlarmTriggered, context.ElapsedSeconds);
+            GuardDetectionBadge3DRenderer.DrawProximityCircle(guard, context.IsAlarmTriggered);
 
             if (_guardRig is not CharacterRig guardRig)
             {
@@ -89,7 +78,7 @@ public sealed class GuardRenderer : IDisposable
 
             Raylib3DPrimitives.DrawGroundRing(guard.Position, ResolveGuardRingColor(stateName));
             CharacterMeshDrawer.DrawCharacterRig(context.Models, guardRig, guard.Position, guard.RotationDegrees, pose, DrawGuardFlashlight);
-            DrawAwarenessBadge(guard.Position, stateName, context.ElapsedSeconds);
+            GuardDetectionBadge3DRenderer.DrawAwarenessBadgeAndGauge(guard, context.ElapsedSeconds);
         }
     }
 
@@ -101,13 +90,14 @@ public sealed class GuardRenderer : IDisposable
         bool alarmActive,
         float elapsedSeconds)
     {
+        bool isAlertCone = alarmActive || guard.CurrentState.StateName == "Alert";
         (Color fill, Color edge) = ResolveGuardConeColors(guard.CurrentState.StateName, alarmActive, elapsedSeconds);
         IReadOnlyList<Vector2> cone = VisionRaycaster.ComputeVisionCone(
             guard.Position,
             guard.RotationDegrees,
             visionBlockers,
-            fovDegrees: Viewport3DConfig.VisionHalfAngleDegrees * FullConeFovScale,
-            maxDistance: Viewport3DConfig.VisionRange,
+            fovDegrees: GuardSensorHelper.ResolveHalfAngleDegrees(isAlertCone) * FullConeFovScale,
+            maxDistance: GuardSensorHelper.ResolveVisionRange(isAlertCone),
             rayCount: Viewport3DConfig.VisionRayCount);
 
         VisionCone3DRenderer.DrawProjectedVisionPolygon(cone, groundY: VisionConeGroundY, sourceY: VisionConeSourceY, fill, edge);
@@ -142,26 +132,5 @@ public sealed class GuardRenderer : IDisposable
         Vector3 bulbCenter = handPosition + new Vector3(0f, FlashlightBulbOffsetY, FlashlightBulbOffsetZ);
         Raylib.DrawCylinderEx(handPosition, flashlightTip, FlashlightStartRadius, FlashlightEndRadius, FlashlightCylinderSides, new Color(24, 28, 36, 255));
         Raylib.DrawSphere(bulbCenter, FlashlightBulbRadius, new Color(255, 240, 160, 235));
-    }
-
-    private static void DrawAwarenessBadge(Vector2 position, string stateName, float timeSeconds)
-    {
-        bool isAlert = stateName == "Alert";
-        bool isSuspicious = stateName == "Suspicious";
-        float bobSpeed = isAlert ? BadgeAlertBobSpeed : BadgeIdleBobSpeed;
-        float bobY = BadgeBaseElevationY + (MathF.Sin(timeSeconds * bobSpeed) * BadgeBobAmplitude);
-        var badgeBase = new Vector3(position.X, bobY, position.Y);
-        Color badgeColor = isAlert
-            ? new Color(244, 63, 94, 245)
-            : isSuspicious ? new Color(250, 204, 21, 240) : new Color(255, 214, 78, 175);
-
-        float coneHeight = isAlert ? BadgeAlertConeHeight : BadgeIdleConeHeight;
-        float coneRadius = isAlert ? BadgeAlertConeRadius : BadgeIdleConeRadius;
-        Raylib.DrawCylinderEx(badgeBase, badgeBase + new Vector3(0f, coneHeight, 0f), BadgeConeTipRadius, coneRadius, BadgeConeSides, badgeColor);
-
-        if (isAlert || isSuspicious)
-        {
-            Raylib.DrawSphere(badgeBase + new Vector3(0f, BadgeDotOffsetY, 0f), BadgeDotRadius, badgeColor);
-        }
     }
 }
