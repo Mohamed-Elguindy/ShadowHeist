@@ -118,6 +118,12 @@ public static class GameFlowInputRouter
             return;
         }
 
+        if (context.Cutscene.IsEntryPlaying && (Raylib.IsKeyPressed(KeyboardKey.Space) || Raylib.IsKeyPressed(KeyboardKey.Enter)))
+        {
+            context.Cutscene.SkipEntry();
+            return;
+        }
+
         if (Raylib.IsKeyPressed(KeyboardKey.R))
         {
             context.StateManager.RestartMission(context);

@@ -34,27 +34,29 @@ public sealed class PlayerRenderer : IDisposable
 
     public void Draw(Player player, GameContext context)
     {
-        if (_thiefRig is not CharacterRig thiefRig)
+        if (_thiefRig is not CharacterRig thiefRig || !context.Cutscene.IsPlayerVisible())
         {
             return;
         }
 
+        Vector2 drawPosition = context.Cutscene.ResolvePlayerPosition(player.Position);
+        float drawRotation = context.Cutscene.ResolvePlayerRotation(player.RotationDegrees);
         Color ringColor = player.CurrentStance is SprintStance
             ? Color.Orange
             : new Color(56, 225, 255, 190);
         CharacterPose pose = _poseAnimator.ComputePose(
             "player",
             thiefRig.Scale,
-            context.IsPlayerSneaking,
+            context.IsPlayerSneaking && !context.Cutscene.IsActive,
             isGuard: false,
             context.ElapsedSeconds);
 
-        Raylib3DPrimitives.DrawGroundRing(player.Position, ringColor);
+        Raylib3DPrimitives.DrawGroundRing(drawPosition, ringColor);
         CharacterMeshDrawer.DrawCharacterRig(
             context.Models,
             thiefRig,
-            player.Position,
-            player.RotationDegrees,
+            drawPosition,
+            drawRotation,
             pose,
             DrawPlayerPistol);
     }

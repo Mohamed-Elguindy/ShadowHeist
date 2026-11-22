@@ -32,6 +32,7 @@ public static class Program
     private static void RunGameLoop()
     {
         using var context = new GameContext();
+        context.Cutscene.IsEnabled = true;
         using var windowChrome = new GameWindowChrome();
         using var stealthCursor = new StealthCursorRenderer();
         windowChrome.LoadLogo();
@@ -45,11 +46,11 @@ public static class Program
             float deltaTime = MathF.Min(Raylib.GetFrameTime(), 0.05f);
             bool headerConsumedInput = windowChrome.HandleInput(context);
             bool stateChanged = !headerConsumedInput && GameFlowInputRouter.ProcessInput(context);
-            PrepareFrameViewport(context, deltaTime);
             if (!stateChanged)
             {
-                UpdateSimulationIfPlaying(context, deltaTime);
+                UpdateSimulationAndCutscene(context, deltaTime);
             }
+            PrepareFrameViewport(context, deltaTime);
             windowChrome.SyncTitle(context);
             DrawFrame(context, windowChrome, stealthCursor);
         }
@@ -76,27 +77,36 @@ public static class Program
             return;
         }
 
+        Vector2 cameraTarget = context.Cutscene.ResolveCameraFocus(context.PlayerPosition);
         Vector2 mousePosition = Raylib.GetMousePosition();
         context.Camera.ApplyZoomWheel(Raylib.GetMouseWheelMove());
         context.Camera.UpdatePeekFromScreen(
-            Raylib.IsMouseButtonDown(MouseButton.Right),
+            !context.Cutscene.IsActive && Raylib.IsMouseButtonDown(MouseButton.Right),
             mousePosition,
-            context.PlayerPosition);
+            cameraTarget);
         context.Camera.NotifyAlarmState(context.IsAlarmTriggered);
-        context.Camera.Update(deltaTime, context.PlayerPosition);
+        context.Camera.Update(deltaTime, cameraTarget);
         context.AimWorldOverride = context.Camera.ScreenToGroundPoint(mousePosition);
         context.Models.UpdateFrameLighting(context.Camera.Camera.Position, context);
     }
 
-    private static void UpdateSimulationIfPlaying(GameContext context, float deltaTime)
+    private static void UpdateSimulationAndCutscene(GameContext context, float deltaTime)
     {
+        if (context.StateManager.CurrentState is GameFlowState.Playing or GameFlowState.Summary)
+        {
+            context.Cutscene.Update(deltaTime);
+        }
+
         if (!context.StateManager.ShouldUpdateSimulation)
         {
             return;
         }
 
         context.UpdateAll(deltaTime);
-        context.StateManager.SyncWithMissionOutcome(context.Outcome);
+        if (context.Cutscene.IsReadyForSummary)
+        {
+            context.StateManager.SyncWithMissionOutcome(context.Outcome);
+        }
     }
 
     private static void DrawFrame(GameContext context, GameWindowChrome windowChrome, StealthCursorRenderer stealthCursor)

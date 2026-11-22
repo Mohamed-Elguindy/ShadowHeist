@@ -51,7 +51,7 @@ public sealed class StealthCursorRenderer : IDisposable
         }
 
         Vector2 mouse = Raylib.GetMousePosition();
-        bool showTacticalCrosshair = ShouldUseCustomCrosshair(context.StateManager.CurrentState, mouse.Y);
+        bool showTacticalCrosshair = ShouldUseCustomCrosshair(context.StateManager.CurrentState, mouse.Y) && !context.Cutscene.IsActive;
 
         SyncOsCursorVisibility(showTacticalCrosshair);
         if (showTacticalCrosshair && _crosshairTexture is Texture2D texture)

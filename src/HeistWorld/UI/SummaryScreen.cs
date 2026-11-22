@@ -38,7 +38,7 @@ public static class SummaryScreen
     public static void Draw(GameContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        if (context.Outcome == HeistOutcome.Playing)
+        if (context.Outcome == HeistOutcome.Playing || !context.Cutscene.IsReadyForSummary)
         {
             _revealSeconds = 0f;
             return;

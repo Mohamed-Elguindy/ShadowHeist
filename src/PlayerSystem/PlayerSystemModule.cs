@@ -53,6 +53,13 @@ public sealed class PlayerSystemModule : IGameSystem, IDisposable
     public void Update(float deltaTime, GameContext context)
     {
         _rippleRenderer.Update(deltaTime);
+        if (context.Cutscene.IsBlockingPlayerControl)
+        {
+            System.Numerics.Vector2 animatedPosition = context.Cutscene.ResolvePlayerPosition(_player.Position);
+            _renderer?.UpdateAnimation(animatedPosition, deltaTime);
+            return;
+        }
+
         if (context.Outcome != HeistOutcome.Playing)
         {
             return;
@@ -80,7 +87,9 @@ public sealed class PlayerSystemModule : IGameSystem, IDisposable
 
     public void DrawHud(GameContext context)
     {
-        if (context.StateManager.CurrentState != GameFlowState.Playing || context.Outcome != HeistOutcome.Playing)
+        if (context.StateManager.CurrentState != GameFlowState.Playing ||
+            context.Outcome != HeistOutcome.Playing ||
+            context.Cutscene.IsActive)
         {
             return;
         }

@@ -68,6 +68,7 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
 
         if (context.StolenCash >= HeistConstants.TargetCashGoal && IsInsideZone(context.PlayerPosition, _getawayZone))
         {
+            context.Cutscene.BeginEscape(context.PlayerPosition);
             context.Outcome = HeistOutcome.Escaped;
         }
     }

@@ -27,7 +27,9 @@ public static class PlayerAim3DRenderer
 
     public static void Draw(GameContext context)
     {
-        if (context.Outcome != HeistOutcome.Playing || context.AimWorldOverride is not Vector2 aimWorld)
+        if (context.Outcome != HeistOutcome.Playing ||
+            context.Cutscene.IsActive ||
+            context.AimWorldOverride is not Vector2 aimWorld)
         {
             return;
         }

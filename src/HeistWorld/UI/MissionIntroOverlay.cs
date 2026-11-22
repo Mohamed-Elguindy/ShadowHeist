@@ -57,12 +57,19 @@ public static class MissionIntroOverlay
     public static void Draw(GameContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        if (context.StateManager.CurrentState != GameFlowState.Playing || context.Outcome != HeistOutcome.Playing)
+        if (context.StateManager.CurrentState != GameFlowState.Playing ||
+            context.Outcome != HeistOutcome.Playing ||
+            context.Cutscene.IsEscapePlaying ||
+            context.Cutscene.WasEntrySkipped)
         {
             return;
         }
 
-        MissionIntroFrame frame = EvaluateFrame(context.ElapsedSeconds);
+        float introElapsed = context.Cutscene.IsEntryPlaying
+            ? context.Cutscene.ElapsedSeconds
+            : (context.Cutscene.IsEnabled ? HeistCutsceneController.EntryTotalDurationSeconds + context.ElapsedSeconds : context.ElapsedSeconds);
+
+        MissionIntroFrame frame = EvaluateFrame(introElapsed);
         if (!frame.IsActive || !Raylib.IsWindowReady())
         {
             return;

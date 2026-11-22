@@ -73,9 +73,10 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
 
     public void Draw(GameContext context)
     {
+        ExteriorStreet3DRenderer.Draw(context.ElapsedSeconds, context.IsAlarmTriggered);
         _architecture.Draw(_currentMap?.Walls ?? context.Walls, _currentMap?.GetawayZone, context.ElapsedSeconds, context.PlayerPosition, context.Camera.Camera.Position);
         _furniture.Draw();
-        _decor.Draw(context.ElapsedSeconds);
+        _decor.Draw(context);
         if (context.AreLobbyLightsPowered)
         {
             VisionCone3DRenderer.DrawWarmLampGlows();

@@ -61,7 +61,11 @@ public sealed class HudRenderer
             return;
         }
 
-        DrawGameplayHud(context);
+        if (!context.Cutscene.IsActive)
+        {
+            DrawGameplayHud(context);
+        }
+
         if (flowState == GameFlowState.Paused)
         {
             MenuOverlayRenderer.Draw(context);

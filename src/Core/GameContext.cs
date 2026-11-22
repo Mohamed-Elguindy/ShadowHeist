@@ -23,6 +23,7 @@ public sealed class GameContext : IDisposable
     public TacticalCameraController Camera { get; } = new();
     public ToonModelLibrary Models { get; } = new();
     public GameStateManager StateManager { get; } = new();
+    public HeistCutsceneController Cutscene { get; } = new();
 
     public string SelectedMapPath { get; set; } = HeistConstants.DefaultMapPath;
     public Vector2 PlayerPosition { get; set; } = DefaultPlayerPosition;
@@ -54,7 +55,7 @@ public sealed class GameContext : IDisposable
 
     public void UpdateAll(float deltaTime)
     {
-        if (Outcome == HeistOutcome.Playing)
+        if (Outcome == HeistOutcome.Playing && !Cutscene.IsBlockingPlayerControl)
         {
             ElapsedSeconds += deltaTime;
         }
@@ -98,6 +99,7 @@ public sealed class GameContext : IDisposable
         PlayerPosition = DefaultPlayerPosition;
         PlayerRotationDegrees = 0f;
         IsPlayerSneaking = false;
+        Cutscene.Reset();
         InitializeAll();
         Camera.Reset(PlayerPosition);
     }
