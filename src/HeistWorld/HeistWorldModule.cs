@@ -79,7 +79,15 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
         GetawayExtraction3DRenderer.Draw(_getawayZone, context);
     }
 
-    public void DrawHud(GameContext context) => _hud?.DrawHudOverlay(context);
+    public void DrawHud(GameContext context)
+    {
+        if (context.StateManager.CurrentState == GameFlowState.Playing && context.Outcome == HeistOutcome.Playing)
+        {
+            _lootSparks.DrawHudPopups(context.Camera.Camera);
+        }
+
+        _hud?.DrawHudOverlay(context);
+    }
 
     public void Dispose()
     {

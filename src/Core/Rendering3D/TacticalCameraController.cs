@@ -11,6 +11,9 @@ public sealed class TacticalCameraController
     private const float MaxGroundRayDistance = 5000f;
     private const float MinDownwardRaySlope = -0.001f;
     private const float MinWheelDelta = 0.01f;
+    private const float MenuOrbitSpeedRadians = 0.16f;
+    private const float MenuOrbitRadiusX = 90f;
+    private const float MenuOrbitRadiusZ = 55f;
 
     private readonly CameraShakeEffect _shake = new();
     private Camera3D _camera = new()
@@ -87,6 +90,19 @@ public sealed class TacticalCameraController
         UpdateFocusPoints(deltaTime, playerPosition);
         _shake.Update(deltaTime);
         ApplyCameraTransform();
+    }
+
+    public void UpdateMenuOrbit(float elapsedSeconds)
+    {
+        float angle = elapsedSeconds * MenuOrbitSpeedRadians;
+        Vector3 orbitTarget = Viewport3DConfig.OverviewTarget + new Vector3(
+            MathF.Sin(angle) * MenuOrbitRadiusX,
+            0f,
+            MathF.Cos(angle) * MenuOrbitRadiusZ);
+
+        _camera.FovY = Viewport3DConfig.OverviewFovDegrees;
+        _camera.Target = orbitTarget;
+        _camera.Position = orbitTarget + Viewport3DConfig.OverviewCameraOffset;
     }
 
     public Vector2? ScreenToGroundPoint(Vector2 screenPosition) =>

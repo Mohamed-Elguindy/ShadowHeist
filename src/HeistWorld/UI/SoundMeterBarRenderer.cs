@@ -8,17 +8,18 @@ public static class SoundMeterBarRenderer
     private const string LabelText = "NOISE";
     private const int LabelFontSize = 14;
     private const int BarWidth = 120;
-    private const int BarHeight = 12;
+    private const int BarHeight = 10;
     private const int MarginLeft = 20;
     private const int MarginTop = 20 + GameWindowChrome.HeaderHeight;
     private const int BoxHeight = 36;
-    private const int Padding = 8;
+    private const int Padding = 12;
     private const int Spacing = 10;
+    private const int CenterDivisor = 2;
     private const float QuietLevelLimit = 0.35f;
     private const float LoudLevelStart = 0.70f;
 
-    private static readonly Color PanelBackground = new(15, 23, 42, 220);
-    private static readonly Color PanelBorder = new(56, 189, 248, 180);
+    private static readonly Color PanelBackground = new(15, 23, 42, 224);
+    private static readonly Color PanelBorder = new(56, 189, 248, 160);
     private static readonly Color TrackBackground = new(30, 41, 59, 255);
     private static readonly Color TrackBorder = new(71, 85, 105, 255);
     private static readonly Color QuietColor = new(34, 197, 94, 255);
@@ -29,35 +30,30 @@ public static class SoundMeterBarRenderer
     {
         float clampedLevel = Math.Clamp(level, 0f, 1f);
         int fillWidth = (int)(BarWidth * clampedLevel);
-        int labelWidth = Raylib.MeasureText(LabelText, LabelFontSize);
+        int labelWidth = UiTypography.MeasureTextWidth(LabelText, LabelFontSize, bold: true);
         int boxWidth = Padding + labelWidth + Spacing + BarWidth + Padding;
+        Color accent = ResolveFillColor(clampedLevel);
 
-        DrawPanelBox(MarginLeft, MarginTop, boxWidth);
+        UiPanelDrawer.DrawTacticalCard(new Rectangle(MarginLeft, MarginTop, boxWidth, BoxHeight), PanelBackground, PanelBorder, accent);
         DrawNoiseLabel(MarginLeft, MarginTop);
-        DrawMeterTrackAndFill(MarginLeft, MarginTop, labelWidth, fillWidth, clampedLevel);
-    }
-
-    private static void DrawPanelBox(int boxX, int boxY, int boxWidth)
-    {
-        Raylib.DrawRectangle(boxX, boxY, boxWidth, BoxHeight, PanelBackground);
-        Raylib.DrawRectangleLines(boxX, boxY, boxWidth, BoxHeight, PanelBorder);
+        DrawMeterTrackAndFill(MarginLeft, MarginTop, labelWidth, fillWidth, accent);
     }
 
     private static void DrawNoiseLabel(int boxX, int boxY)
     {
         int labelX = boxX + Padding;
-        int labelY = boxY + (BoxHeight - LabelFontSize) / 2;
-        Raylib.DrawText(LabelText, labelX, labelY, LabelFontSize, Color.RayWhite);
+        int labelY = boxY + ((BoxHeight - LabelFontSize) / CenterDivisor);
+        UiTypography.DrawText(LabelText, labelX, labelY, LabelFontSize, Color.RayWhite, bold: true);
     }
 
-    private static void DrawMeterTrackAndFill(int boxX, int boxY, int labelWidth, int fillWidth, float clampedLevel)
+    private static void DrawMeterTrackAndFill(int boxX, int boxY, int labelWidth, int fillWidth, Color fillColor)
     {
         int barX = boxX + Padding + labelWidth + Spacing;
-        int barY = boxY + (BoxHeight - BarHeight) / 2;
+        int barY = boxY + ((BoxHeight - BarHeight) / CenterDivisor);
         Raylib.DrawRectangle(barX, barY, BarWidth, BarHeight, TrackBackground);
         if (fillWidth > 0)
         {
-            Raylib.DrawRectangle(barX, barY, fillWidth, BarHeight, ResolveFillColor(clampedLevel));
+            Raylib.DrawRectangle(barX, barY, fillWidth, BarHeight, fillColor);
         }
 
         Raylib.DrawRectangleLines(barX, barY, BarWidth, BarHeight, TrackBorder);
@@ -70,11 +66,6 @@ public static class SoundMeterBarRenderer
             return LoudColor;
         }
 
-        if (level >= QuietLevelLimit)
-        {
-            return ModerateColor;
-        }
-
-        return QuietColor;
+        return level >= QuietLevelLimit ? ModerateColor : QuietColor;
     }
 }

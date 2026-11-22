@@ -32,14 +32,15 @@ internal static class WindowChromeRenderer
         DrawLogoIcon(logoTexture);
 
         int brandY = (WindowChromeLayout.HeaderHeight - WindowChromeLayout.BrandFontSize) / WindowChromeLayout.CenterDivisor;
-        Raylib.DrawText(
+        UiTypography.DrawText(
             WindowChromeLayout.BrandHeaderText,
             WindowChromeLayout.BrandOffsetX,
             brandY,
             WindowChromeLayout.BrandFontSize,
-            WindowChromeLayout.BrandTitleColor);
+            WindowChromeLayout.BrandTitleColor,
+            bold: true);
 
-        int brandWidth = Raylib.MeasureText(WindowChromeLayout.BrandHeaderText, WindowChromeLayout.BrandFontSize);
+        int brandWidth = UiTypography.MeasureTextWidth(WindowChromeLayout.BrandHeaderText, WindowChromeLayout.BrandFontSize, bold: true);
         int separatorX = WindowChromeLayout.BrandOffsetX + brandWidth + WindowChromeLayout.TagSeparatorGap;
         int separatorY = (WindowChromeLayout.HeaderHeight - WindowChromeLayout.TagSeparatorHeight) / WindowChromeLayout.CenterDivisor;
         Raylib.DrawRectangle(
@@ -52,7 +53,7 @@ internal static class WindowChromeRenderer
         string tag = WindowChromePresentation.ResolveHeaderTag(stateManager, outcome);
         int tagX = separatorX + WindowChromeLayout.TagSeparatorWidth + WindowChromeLayout.TagSeparatorGap;
         int tagY = (WindowChromeLayout.HeaderHeight - WindowChromeLayout.TagFontSize) / WindowChromeLayout.CenterDivisor;
-        Raylib.DrawText(tag, tagX, tagY, WindowChromeLayout.TagFontSize, WindowChromePresentation.ResolveTagColor(stateManager, outcome));
+        UiTypography.DrawText(tag, tagX, tagY, WindowChromeLayout.TagFontSize, WindowChromePresentation.ResolveTagColor(stateManager, outcome), bold: true);
     }
 
     private static void DrawLogoIcon(Texture2D? logoTexture)

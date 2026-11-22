@@ -33,7 +33,9 @@ public static class Program
     {
         using var context = new GameContext();
         using var windowChrome = new GameWindowChrome();
+        using var stealthCursor = new StealthCursorRenderer();
         windowChrome.LoadLogo();
+        stealthCursor.Load();
         RegisterSystems(context);
         context.InitializeAll();
         context.Camera.Reset(context.PlayerPosition);
@@ -49,7 +51,7 @@ public static class Program
                 UpdateSimulationIfPlaying(context, deltaTime);
             }
             windowChrome.SyncTitle(context);
-            DrawFrame(context, windowChrome);
+            DrawFrame(context, windowChrome, stealthCursor);
         }
     }
 
@@ -67,6 +69,13 @@ public static class Program
 
     private static void PrepareFrameViewport(GameContext context, float deltaTime)
     {
+        if (context.StateManager.CurrentState is GameFlowState.MainMenu or GameFlowState.LevelSelect)
+        {
+            context.Camera.UpdateMenuOrbit((float)Raylib.GetTime());
+            context.Models.UpdateFrameLighting(context.Camera.Camera.Position, context);
+            return;
+        }
+
         Vector2 mousePosition = Raylib.GetMousePosition();
         context.Camera.ApplyZoomWheel(Raylib.GetMouseWheelMove());
         context.Camera.UpdatePeekFromScreen(
@@ -90,7 +99,7 @@ public static class Program
         context.StateManager.SyncWithMissionOutcome(context.Outcome);
     }
 
-    private static void DrawFrame(GameContext context, GameWindowChrome windowChrome)
+    private static void DrawFrame(GameContext context, GameWindowChrome windowChrome, StealthCursorRenderer stealthCursor)
     {
         Color sky = context.IsAlarmTriggered ? Viewport3DConfig.AlarmSkyColor : Viewport3DConfig.SkyColor;
         Raylib.BeginDrawing();
@@ -103,6 +112,7 @@ public static class Program
 
         context.DrawHudAll();
         windowChrome.Draw(context);
+        stealthCursor.UpdateAndDraw(context);
         Raylib.EndDrawing();
     }
 

@@ -12,25 +12,36 @@ namespace ShadowHeist.HeistWorld.UI;
 /// </summary>
 public sealed class HudRenderer
 {
-    private const int BannerFontSize = 20;
-    private const int BannerBoxHeight = 36;
-    private const int BannerHorizontalPadding = 28;
-    private const int BannerTextOffsetX = 14;
-    private const int BannerTextOffsetY = 8;
-    private const int HintFontSize = 18;
+    private const int BannerFontSize = 16;
+    private const int BannerBoxHeight = 34;
+    private const int BannerHorizontalPadding = 32;
+    private const int BannerTextOffsetX = 16;
+    private const int BannerTextOffsetY = 9;
+    private const int HintFontSize = 13;
+    private const int HintPillPaddingX = 10;
+    private const int HintPillHeight = 24;
+    private const int HintPillGap = 8;
+    private const int HintBottomOffset = 34;
     private const int HudMargin = 20;
     private const int TopBannerMargin = HudMargin + GameWindowChrome.HeaderHeight;
-    private const int VignetteBandSize = 64;
+    private const int VignetteBandSize = 68;
+    private const int CenterDivisor = 2;
+    private const float AlarmVignetteSpeed = 4.5f;
+    private const float AlarmVignetteBaseAlpha = 75f;
+    private const float AlarmVignettePulseAlpha = 55f;
     private const float HoldRingHeightOverGround = 42f;
     private const float PromptHeightOverGround = 88f;
 
-    private static readonly Color HintTextColor = new(110, 225, 255, 255);
+    private static readonly Color HintPillBackground = new(12, 18, 32, 200);
+    private static readonly Color HintPillBorder = new(51, 65, 85, 190);
+    private static readonly Color HintTextColor = new(148, 163, 184, 255);
     private static readonly Color VignetteEdge = new(4, 6, 12, 130);
-    private static readonly Color AlarmBoxBackground = new(48, 12, 22, 225);
+    private static readonly Color AlarmVignetteRgb = new(185, 28, 56, 0);
+    private static readonly Color AlarmBoxBackground = new(48, 12, 22, 230);
     private static readonly Color AlarmBoxBorder = new(244, 63, 94, 235);
     private static readonly Color AlarmTextColor = new(255, 110, 130, 255);
-    private static readonly Color CashBoxBackground = new(15, 23, 42, 220);
-    private static readonly Color CashBoxBorder = new(56, 189, 248, 180);
+    private static readonly Color CashBoxBackground = new(15, 23, 42, 224);
+    private static readonly Color CashBoxBorder = new(56, 189, 248, 175);
 
     private readonly SoundMeter _soundMeter;
     private readonly RectangleBounds _getawayZone;
@@ -43,7 +54,7 @@ public sealed class HudRenderer
 
     public void DrawHudOverlay(GameContext context)
     {
-        DrawVignette();
+        DrawVignette(context.IsAlarmTriggered && context.Outcome == HeistOutcome.Playing, context.ElapsedSeconds);
 
         GameFlowState flowState = context.StateManager.CurrentState;
         if (flowState is GameFlowState.MainMenu or GameFlowState.LevelSelect)
@@ -73,16 +84,28 @@ public sealed class HudRenderer
         DrawContextualPrompt(context);
     }
 
-    private static void DrawVignette()
+    private static void DrawVignette(bool isAlarmActive, float elapsedSeconds)
     {
         int width = Raylib.GetScreenWidth();
         int height = Raylib.GetScreenHeight();
         Color transparent = new(0, 0, 0, 0);
+        Color edgeColor = ResolveVignetteColor(isAlarmActive, elapsedSeconds);
 
-        Raylib.DrawRectangleGradientV(0, 0, width, VignetteBandSize, VignetteEdge, transparent);
-        Raylib.DrawRectangleGradientV(0, height - VignetteBandSize, width, VignetteBandSize, transparent, VignetteEdge);
-        Raylib.DrawRectangleGradientH(0, 0, VignetteBandSize, height, VignetteEdge, transparent);
-        Raylib.DrawRectangleGradientH(width - VignetteBandSize, 0, VignetteBandSize, height, transparent, VignetteEdge);
+        Raylib.DrawRectangleGradientV(0, 0, width, VignetteBandSize, edgeColor, transparent);
+        Raylib.DrawRectangleGradientV(0, height - VignetteBandSize, width, VignetteBandSize, transparent, edgeColor);
+        Raylib.DrawRectangleGradientH(0, 0, VignetteBandSize, height, edgeColor, transparent);
+        Raylib.DrawRectangleGradientH(width - VignetteBandSize, 0, VignetteBandSize, height, transparent, edgeColor);
+    }
+
+    private static Color ResolveVignetteColor(bool isAlarmActive, float elapsedSeconds)
+    {
+        if (!isAlarmActive)
+        {
+            return VignetteEdge;
+        }
+
+        byte alpha = (byte)(AlarmVignetteBaseAlpha + (AlarmVignettePulseAlpha * (0.5f + 0.5f * MathF.Sin(elapsedSeconds * AlarmVignetteSpeed))));
+        return new Color(AlarmVignetteRgb.R, AlarmVignetteRgb.G, AlarmVignetteRgb.B, alpha);
     }
 
     private static void DrawAlarmBanner(bool isAlarmTriggered, HeistOutcome outcome)
@@ -93,34 +116,42 @@ public sealed class HudRenderer
         }
 
         const string text = "! ALARM TRIGGERED !";
-        int textWidth = Raylib.MeasureText(text, BannerFontSize);
+        int textWidth = UiTypography.MeasureTextWidth(text, BannerFontSize, bold: true);
         int boxWidth = textWidth + BannerHorizontalPadding;
-        int boxX = (Raylib.GetScreenWidth() - boxWidth) / 2;
+        int boxX = (Raylib.GetScreenWidth() - boxWidth) / CenterDivisor;
 
-        Raylib.DrawRectangle(boxX, TopBannerMargin, boxWidth, BannerBoxHeight, AlarmBoxBackground);
-        Raylib.DrawRectangleLines(boxX, TopBannerMargin, boxWidth, BannerBoxHeight, AlarmBoxBorder);
-        Raylib.DrawText(text, boxX + BannerTextOffsetX, TopBannerMargin + BannerTextOffsetY, BannerFontSize, AlarmTextColor);
+        UiPanelDrawer.DrawTacticalCard(new Rectangle(boxX, TopBannerMargin, boxWidth, BannerBoxHeight), AlarmBoxBackground, AlarmBoxBorder, AlarmBoxBorder);
+        UiTypography.DrawText(text, boxX + BannerTextOffsetX, TopBannerMargin + BannerTextOffsetY, BannerFontSize, AlarmTextColor, bold: true);
     }
 
     private static void DrawStolenCashBanner(int stolenCash)
     {
         string text = $"STOLEN CASH: ${stolenCash:N0} / ${HeistConstants.TargetCashGoal:N0}";
-        int textWidth = Raylib.MeasureText(text, BannerFontSize);
+        int textWidth = UiTypography.MeasureTextWidth(text, BannerFontSize, bold: true);
         int boxWidth = textWidth + BannerHorizontalPadding;
         int boxX = Raylib.GetScreenWidth() - boxWidth - HudMargin;
+        Color accentColor = stolenCash >= HeistConstants.TargetCashGoal ? Color.Gold : Color.Green;
 
-        Raylib.DrawRectangle(boxX, TopBannerMargin, boxWidth, BannerBoxHeight, CashBoxBackground);
-        Raylib.DrawRectangleLines(boxX, TopBannerMargin, boxWidth, BannerBoxHeight, CashBoxBorder);
-
-        Color textColor = stolenCash >= HeistConstants.TargetCashGoal ? Color.Gold : Color.Green;
-        Raylib.DrawText(text, boxX + BannerTextOffsetX, TopBannerMargin + BannerTextOffsetY, BannerFontSize, textColor);
+        UiPanelDrawer.DrawTacticalCard(new Rectangle(boxX, TopBannerMargin, boxWidth, BannerBoxHeight), CashBoxBackground, CashBoxBorder, accentColor);
+        UiTypography.DrawText(text, boxX + BannerTextOffsetX, TopBannerMargin + BannerTextOffsetY, BannerFontSize, accentColor, bold: true);
     }
 
     private static void DrawHintBar(bool isOverviewCamera)
     {
         string cameraLabel = isOverviewCamera ? "FOLLOW" : "OVERVIEW";
-        string text = $"[F6] {cameraLabel}   |   [RMB] PEEK   |   [ESC] PAUSE   |   [SCROLL] ZOOM   |   [R] RESTART";
-        Raylib.DrawText(text, HudMargin, Raylib.GetScreenHeight() - 30, HintFontSize, HintTextColor);
+        string[] pills = { $"[F6] {cameraLabel}", "[RMB] PEEK", "[SCROLL] ZOOM", "[R] RESTART", "[F11] DISPLAY", "[ESC] PAUSE" };
+
+        int x = HudMargin;
+        int y = Raylib.GetScreenHeight() - HintBottomOffset;
+        int textOffsetY = (HintPillHeight - HintFontSize) / CenterDivisor;
+
+        foreach (string pill in pills)
+        {
+            int pillWidth = UiTypography.MeasureTextWidth(pill, HintFontSize) + (HintPillPaddingX * CenterDivisor);
+            UiPanelDrawer.DrawTacticalCard(new Rectangle(x, y, pillWidth, HintPillHeight), HintPillBackground, HintPillBorder);
+            UiTypography.DrawText(pill, x + HintPillPaddingX, y + textOffsetY, HintFontSize, HintTextColor);
+            x += pillWidth + HintPillGap;
+        }
     }
 
     private static void DrawHoldProgressRing(GameContext context)

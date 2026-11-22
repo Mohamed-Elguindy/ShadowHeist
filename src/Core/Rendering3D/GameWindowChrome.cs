@@ -10,6 +10,8 @@ public sealed class GameWindowChrome : IDisposable
 {
     public const int HeaderHeight = WindowChromeLayout.HeaderHeight;
 
+    public static Texture2D? BrandLogoTexture { get; private set; }
+
     private Texture2D? _logoTexture;
     private string? _lastAppliedTitle;
     private bool _isDraggingWindow;
@@ -47,6 +49,7 @@ public sealed class GameWindowChrome : IDisposable
 
     public void LoadLogo()
     {
+        UiTypography.Load();
         if (_logoTexture is not null || !Raylib.IsWindowReady() || WindowChromePresentation.ResolveIconPath() is not string iconPath)
         {
             return;
@@ -60,6 +63,7 @@ public sealed class GameWindowChrome : IDisposable
 
         Raylib.SetTextureFilter(texture, TextureFilter.Bilinear);
         _logoTexture = texture;
+        BrandLogoTexture = texture;
     }
 
     public bool HandleInput(GameContext context)
@@ -119,7 +123,9 @@ public sealed class GameWindowChrome : IDisposable
             Raylib.UnloadTexture(texture);
         }
 
+        UiTypography.Unload();
         _logoTexture = null;
+        BrandLogoTexture = null;
         _isDraggingWindow = false;
     }
 

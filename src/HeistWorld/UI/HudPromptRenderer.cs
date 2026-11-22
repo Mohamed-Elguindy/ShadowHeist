@@ -9,15 +9,16 @@ namespace ShadowHeist.HeistWorld.UI;
 /// </summary>
 public static class HudPromptRenderer
 {
-    private const int DefaultFontSize = 16;
-    private const int HorizontalPadding = 20;
-    private const int VerticalPadding = 10;
+    private const int DefaultFontSize = 15;
+    private const int HorizontalPadding = 22;
+    private const int VerticalPadding = 12;
     private const int ScreenEdgeMargin = 8;
     private const int MinScreenTop = ScreenEdgeMargin + GameWindowChrome.HeaderHeight;
+    private const int CenterDivisor = 2;
 
-    private static readonly Color BoxBackground = new(0, 0, 0, 210);
-    private static readonly Color BoxBorder = Color.White;
-    private static readonly Color PromptTextColor = Color.Yellow;
+    private static readonly Color BoxBackground = new(10, 15, 28, 228);
+    private static readonly Color BoxBorder = new(250, 204, 21, 210);
+    private static readonly Color PromptTextColor = new(254, 240, 138, 255);
 
     public static void DrawPromptBox(string prompt, Vector2 anchorScreenPosition, float yOffset = 0f)
     {
@@ -26,19 +27,18 @@ public static class HudPromptRenderer
             return;
         }
 
-        int textWidth = Raylib.MeasureText(prompt, DefaultFontSize);
+        int textWidth = UiTypography.MeasureTextWidth(prompt, DefaultFontSize, bold: true);
         int boxWidth = textWidth + HorizontalPadding;
         int boxHeight = DefaultFontSize + VerticalPadding;
 
         int maxX = Math.Max(ScreenEdgeMargin, Raylib.GetScreenWidth() - boxWidth - ScreenEdgeMargin);
         int maxY = Math.Max(MinScreenTop, Raylib.GetScreenHeight() - boxHeight - ScreenEdgeMargin);
 
-        int boxX = Math.Clamp((int)anchorScreenPosition.X - (boxWidth / 2), ScreenEdgeMargin, maxX);
+        int boxX = Math.Clamp((int)anchorScreenPosition.X - (boxWidth / CenterDivisor), ScreenEdgeMargin, maxX);
         int boxY = Math.Clamp((int)(anchorScreenPosition.Y + yOffset), MinScreenTop, maxY);
 
-        Raylib.DrawRectangle(boxX, boxY, boxWidth, boxHeight, BoxBackground);
-        Raylib.DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, BoxBorder);
-        Raylib.DrawText(prompt, boxX + (HorizontalPadding / 2), boxY + (VerticalPadding / 2), DefaultFontSize, PromptTextColor);
+        UiPanelDrawer.DrawTacticalCard(new Rectangle(boxX, boxY, boxWidth, boxHeight), BoxBackground, BoxBorder, BoxBorder);
+        UiTypography.DrawText(prompt, boxX + (HorizontalPadding / CenterDivisor), boxY + (VerticalPadding / CenterDivisor), DefaultFontSize, PromptTextColor, bold: true);
     }
 
     public static bool TryProjectInFrontOfCamera(Vector3 worldPos, Camera3D camera, out Vector2 screenPos)
@@ -46,7 +46,7 @@ public static class HudPromptRenderer
         Vector3 forward = camera.Target - camera.Position;
         if (Vector3.Dot(worldPos - camera.Position, forward) <= 0f)
         {
-            screenPos = Vector2.Zero;
+            screenPos = default;
             return false;
         }
 
