@@ -130,6 +130,7 @@ public sealed class GameStateManager
         ArgumentNullException.ThrowIfNull(context);
         context.RestartMission();
         CurrentState = GameFlowState.Playing;
+        context.Cutscene.BeginEntry(context.PlayerPosition);
     }
 
     public void SyncWithMissionOutcome(HeistOutcome outcome)
@@ -162,5 +163,6 @@ public sealed class GameStateManager
         context.SelectedMapPath = SelectedLevel.MapPath;
         context.RestartMission();
         CurrentState = GameFlowState.Playing;
+        context.Cutscene.BeginEntry(context.PlayerPosition);
     }
 }

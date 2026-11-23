@@ -126,4 +126,47 @@ public sealed class MissionSummaryTests
         context.EventBus.Publish(new AlarmTriggeredEvent(Vector2.Zero, "Guard:beta"));
         Assert.Equal(1, context.AlarmCount);
     }
+
+    [Fact]
+    public void BuildDebrief_ComputesCommendationsParLootRatioAndTip()
+    {
+        using var context = new GameContext();
+        context.InitializeAll();
+        context.UpdateAll(60.0f);
+        context.StolenCash = HeistConstants.TargetCashGoal;
+        context.Outcome = HeistOutcome.Escaped;
+
+        MissionDebriefDetails debrief = MissionSummaryCalculator.BuildDebrief(context);
+
+        Assert.Equal(StealthRank.S, debrief.Report.Rank);
+        Assert.Equal(1f, debrief.LootRatio, 0.01f);
+        Assert.True(debrief.IsUnderPar);
+        Assert.Contains("ZERO ALARMS", debrief.Commendations);
+        Assert.Contains("FULL VAULT", debrief.Commendations);
+        Assert.Contains("UNDER PAR", debrief.Commendations);
+        Assert.Contains("FLAWLESS", debrief.DebriefTip);
+    }
+
+    [Fact]
+    public void SummaryScreenRevealAndFooterButtons_ComputeCleanlyHeadlessly()
+    {
+        SummaryRevealFrame start = SummaryScreen.EvaluateReveal(0f);
+        SummaryRevealFrame end = SummaryScreen.EvaluateReveal(1f);
+
+        Assert.Equal(0f, start.CardAlpha, 0.01f);
+        Assert.True(start.SealScale > 1f);
+        Assert.Equal(1f, end.CardAlpha, 0.01f);
+        Assert.Equal(1f, end.SealAlpha, 0.01f);
+        Assert.Equal(1f, end.SealScale, 0.01f);
+
+        var retryBounds = SummaryLayoutConfig.GetFooterButtonBounds(1280, 720, 0);
+        var contractsBounds = SummaryLayoutConfig.GetFooterButtonBounds(1280, 720, 1);
+        var menuBounds = SummaryLayoutConfig.GetFooterButtonBounds(1280, 720, 2);
+
+        Assert.True(retryBounds.X < contractsBounds.X && contractsBounds.X < menuBounds.X);
+        Assert.Equal(retryBounds.Width, menuBounds.Width, 0.01f);
+
+        using var context = new GameContext { Outcome = HeistOutcome.Caught };
+        SummaryScreen.Draw(context);
+    }
 }

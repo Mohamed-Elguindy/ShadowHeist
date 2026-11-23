@@ -1,6 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Rendering3D;
 
 namespace ShadowHeist.HeistWorld.UI;
 
@@ -9,19 +10,20 @@ namespace ShadowHeist.HeistWorld.UI;
 /// </summary>
 public static class ExtractionHudRenderer
 {
-    private const int BannerFontSize = 18;
-    private const int BannerHeight = 32;
-    private const int BannerHorizontalPadding = 28;
-    private const int BannerTopDefaultY = 20;
-    private const int BannerTopBelowAlarmY = 64;
+    private const int BannerFontSize = 16;
+    private const int BannerHeight = 34;
+    private const int BannerHorizontalPadding = 32;
+    private const int BannerTopDefaultY = 20 + GameWindowChrome.HeaderHeight;
+    private const int BannerTopBelowAlarmY = 64 + GameWindowChrome.HeaderHeight;
+    private const int CenterDivisor = 2;
     private const float MarkerWorldHeightY = 96f;
-    private const string ExtractMarkerText = "GETAWAY VAN, EXTRACT HERE";
+    private const string ExtractMarkerText = "GETAWAY VAN — EXTRACT HERE";
 
-    private static readonly Color ObjectiveBgColor = new(15, 23, 42, 215);
-    private static readonly Color ObjectiveBorderColor = new(56, 189, 248, 190);
+    private static readonly Color ObjectiveBgColor = new(15, 23, 42, 224);
+    private static readonly Color ObjectiveBorderColor = new(56, 189, 248, 175);
     private static readonly Color ObjectiveTextColor = new(186, 230, 253, 255);
-    private static readonly Color ReadyBgColor = new(12, 42, 28, 225);
-    private static readonly Color ReadyBorderColor = new(74, 222, 128, 240);
+    private static readonly Color ReadyBgColor = new(12, 42, 28, 228);
+    private static readonly Color ReadyBorderColor = new(74, 222, 128, 220);
     private static readonly Color ReadyTextColor = new(134, 239, 172, 255);
 
     public static void Draw(GameContext context, RectangleBounds getawayZone)
@@ -44,7 +46,7 @@ public static class ExtractionHudRenderer
     private static void DrawObjectiveBanner(bool isExtractionReady, int boxY)
     {
         string text = isExtractionReady
-            ? "EXTRACTION READY, REACH THE GETAWAY VAN!"
+            ? "EXTRACTION READY — REACH THE GETAWAY VAN!"
             : $"OBJECTIVE: STEAL ${HeistConstants.TargetCashGoal:N0} FROM THE VAULT";
 
         Color background = isExtractionReady ? ReadyBgColor : ObjectiveBgColor;
@@ -61,13 +63,13 @@ public static class ExtractionHudRenderer
         Color border,
         Color textColor)
     {
-        int textWidth = Raylib.MeasureText(text, BannerFontSize);
+        int textWidth = UiTypography.MeasureTextWidth(text, BannerFontSize, bold: true);
         int boxWidth = textWidth + BannerHorizontalPadding;
-        int boxX = (Raylib.GetScreenWidth() - boxWidth) / 2;
+        int boxX = (Raylib.GetScreenWidth() - boxWidth) / CenterDivisor;
+        int textY = boxY + ((BannerHeight - BannerFontSize) / CenterDivisor);
 
-        Raylib.DrawRectangle(boxX, boxY, boxWidth, BannerHeight, background);
-        Raylib.DrawRectangleLines(boxX, boxY, boxWidth, BannerHeight, border);
-        Raylib.DrawText(text, boxX + (BannerHorizontalPadding / 2), boxY + 7, BannerFontSize, textColor);
+        UiPanelDrawer.DrawTacticalCard(new Rectangle(boxX, boxY, boxWidth, BannerHeight), background, border, border);
+        UiTypography.DrawText(text, boxX + (BannerHorizontalPadding / CenterDivisor), textY, BannerFontSize, textColor, bold: true);
     }
 
     private static void DrawWorldExtractionTag(Camera3D camera, RectangleBounds getawayZone)

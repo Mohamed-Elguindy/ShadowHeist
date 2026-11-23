@@ -11,6 +11,9 @@ public sealed class TacticalCameraController
     private const float MaxGroundRayDistance = 5000f;
     private const float MinDownwardRaySlope = -0.001f;
     private const float MinWheelDelta = 0.01f;
+    private const float MenuOrbitSpeedRadians = 0.16f;
+    private const float MenuOrbitRadiusX = 90f;
+    private const float MenuOrbitRadiusZ = 55f;
 
     private readonly CameraShakeEffect _shake = new();
     private Camera3D _camera = new()
@@ -32,11 +35,13 @@ public sealed class TacticalCameraController
     public Vector3 CurrentShakeOffset => _shake.CurrentOffset;
     public float ShakeTrauma => _shake.Trauma;
     public bool IsOverviewMode { get; private set; }
+    public float CutsceneZoomMultiplier { get; set; } = 1f;
 
     public void Reset(Vector2 playerPosition)
     {
         _hasInitialFocus = false;
         _desiredPeekOffset = Vector3.Zero;
+        CutsceneZoomMultiplier = 1f;
         _shake.Reset();
         Update(0f, playerPosition);
     }
@@ -87,6 +92,19 @@ public sealed class TacticalCameraController
         UpdateFocusPoints(deltaTime, playerPosition);
         _shake.Update(deltaTime);
         ApplyCameraTransform();
+    }
+
+    public void UpdateMenuOrbit(float elapsedSeconds)
+    {
+        float angle = elapsedSeconds * MenuOrbitSpeedRadians;
+        Vector3 orbitTarget = Viewport3DConfig.OverviewTarget + new Vector3(
+            MathF.Sin(angle) * MenuOrbitRadiusX,
+            0f,
+            MathF.Cos(angle) * MenuOrbitRadiusZ);
+
+        _camera.FovY = Viewport3DConfig.OverviewFovDegrees;
+        _camera.Target = orbitTarget;
+        _camera.Position = orbitTarget + Viewport3DConfig.OverviewCameraOffset;
     }
 
     public Vector2? ScreenToGroundPoint(Vector2 screenPosition) =>
@@ -144,7 +162,7 @@ public sealed class TacticalCameraController
         IsOverviewMode ? Viewport3DConfig.OverviewFovDegrees : Viewport3DConfig.FollowFovDegrees;
 
     private Vector3 ComputeActiveOffset() =>
-        (IsOverviewMode ? Viewport3DConfig.OverviewCameraOffset : Viewport3DConfig.FollowCameraOffset) * _zoom;
+        (IsOverviewMode ? Viewport3DConfig.OverviewCameraOffset : Viewport3DConfig.FollowCameraOffset) * (_zoom * CutsceneZoomMultiplier);
 
     private Camera3D BuildUnpeekedCamera(Vector2 playerPosition) =>
         BuildCameraAt(_hasInitialFocus ? _unpeekedFocusPoint : ComputeBaseTarget(playerPosition));
