@@ -14,6 +14,16 @@ public sealed class BankDecorRenderer
     private const float VanLength = 148f;
     private const float VanYawDegrees = 14f;
     private const float VanOutlineWidth = 0.045f;
+    private const float DrivingBeamLength = 195f;
+    private const float ParkedBeamLength = 140f;
+    private const byte DrivingBeamAlpha = 58;
+    private const byte ParkedBeamAlpha = 36;
+    private const float DrivingBlinkSpeed = 9f;
+    private const float ParkedBlinkSpeed = 4f;
+    private const float VanFrontOffset = 72f;
+    private const float VanRearOffset = 66f;
+    private const float VanRearLightHeight = 24f;
+    private const float VanRearLightSpread = 16f;
 
     private static readonly Vector2 VanPosition = new(134f, 828f);
     private static readonly Vector2 TellerPosition = new(560f, 536f);
@@ -37,45 +47,58 @@ public sealed class BankDecorRenderer
         _vanModel = library.LoadProp(VanModelPath, VanLength);
     }
 
-    public void Draw(float elapsedSeconds)
+    public void Draw(GameContext context)
     {
+        Vector2 vanPos = context.Cutscene.ResolveVanPosition(VanPosition);
+        float vanYaw = context.Cutscene.ResolveVanYaw(VanYawDegrees);
+        bool isDriving = context.Cutscene.IsActive;
+
         DrawVanParkingBay();
-        DrawGetawayVanModel(elapsedSeconds);
-        DrawTellerStation(elapsedSeconds);
-        DrawSecurityCameras(elapsedSeconds);
+        DrawGetawayVanModel(vanPos, vanYaw, isDriving, context.ElapsedSeconds);
+        DrawTellerStation(context.ElapsedSeconds);
+        DrawSecurityCameras(context.ElapsedSeconds);
         DrawBankPlaque();
     }
 
     private static void DrawVanParkingBay()
     {
-        Raylib.DrawCube(new Vector3(VanPosition.X + 8f, -1.5f, VanPosition.Y), 220f, 3f, 112f, AsphaltColor);
-        Raylib.DrawCube(new Vector3(VanPosition.X + 8f, 0.2f, VanPosition.Y - 54f), 200f, 0.5f, 3f, new Color(246, 196, 54, 150));
+        Raylib.DrawCube(new Vector3(VanPosition.X + 8f, -2.5f, VanPosition.Y), 220f, 0.6f, 94f, AsphaltColor);
+        Raylib.DrawCube(new Vector3(VanPosition.X + 8f, -2.1f, VanPosition.Y - 34f), 200f, 0.4f, 3f, new Color(246, 196, 54, 150));
     }
 
-    private void DrawGetawayVanModel(float timeSeconds)
+    private void DrawGetawayVanModel(Vector2 vanPosition, float vanYawDegrees, bool isDriving, float timeSeconds)
     {
         if (_vanModel is not LoadedModel van || _library is null)
         {
             return;
         }
 
-        var origin = new Vector3(VanPosition.X, van.BaseOffsetY, VanPosition.Y);
-        _library.DrawCenteredProp(van, origin, VanYawDegrees, Color.White, VanOutlineWidth);
-        DrawVanLightsAndHazards(origin, timeSeconds);
+        var origin = new Vector3(vanPosition.X, van.BaseOffsetY, vanPosition.Y);
+        _library.DrawCenteredProp(van, origin, vanYawDegrees, Color.White, VanOutlineWidth);
+        DrawVanLightsAndHazards(origin, vanYawDegrees, isDriving, timeSeconds);
     }
 
-    private static void DrawVanLightsAndHazards(Vector3 origin, float timeSeconds)
+    private static void DrawVanLightsAndHazards(Vector3 origin, float yawDegrees, bool isDriving, float timeSeconds)
     {
-        Raylib.DrawTriangle3D(
-            origin + new Vector3(72f, 4f, -14f),
-            origin + new Vector3(140f, 1f, -34f),
-            origin + new Vector3(140f, 1f, 8f),
-            new Color((byte)255, (byte)242, (byte)168, (byte)36));
+        float yawRad = -yawDegrees * HeistConstants.DegToRad;
+        Vector3 forward = new(MathF.Cos(yawRad), 0f, MathF.Sin(yawRad));
+        Vector3 right = new(-forward.Z, 0f, forward.X);
 
-        byte blinkerAlpha = (byte)(150f + 90f * MathF.Sin(timeSeconds * 4f));
+        float beamLength = isDriving ? DrivingBeamLength : ParkedBeamLength;
+        byte beamAlpha = isDriving ? DrivingBeamAlpha : ParkedBeamAlpha;
+        Vector3 frontBumper = origin + (forward * VanFrontOffset);
+        Raylib.DrawTriangle3D(
+            frontBumper + new Vector3(0f, 4f, 0f) - (right * 14f),
+            origin + (forward * beamLength) - (right * 34f) + new Vector3(0f, 1f, 0f),
+            origin + (forward * beamLength) + (right * VanRearLightSpread) + new Vector3(0f, 1f, 0f),
+            new Color((byte)255, (byte)242, (byte)168, beamAlpha));
+
+        float blinkSpeed = isDriving ? DrivingBlinkSpeed : ParkedBlinkSpeed;
+        byte blinkerAlpha = (byte)(150f + 90f * MathF.Sin(timeSeconds * blinkSpeed));
         var hazardRed = new Color((byte)244, (byte)63, (byte)94, blinkerAlpha);
-        Raylib.DrawSphere(origin + new Vector3(-66f, 24f, -20f), 4f, hazardRed);
-        Raylib.DrawSphere(origin + new Vector3(-66f, 24f, 12f), 4f, hazardRed);
+        Vector3 rear = origin - (forward * VanRearOffset) + new Vector3(0f, VanRearLightHeight, 0f);
+        Raylib.DrawSphere(rear - (right * VanRearLightSpread), 4f, hazardRed);
+        Raylib.DrawSphere(rear + (right * VanRearLightSpread), 4f, hazardRed);
     }
 
     private static void DrawTellerStation(float timeSeconds)

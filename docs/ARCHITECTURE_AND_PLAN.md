@@ -306,7 +306,11 @@ Each week wraps up with a **Friday 30-Minute Merge & Playtest Session** where ev
 | **#29** | 🔜 | 🧠 Hatem | Create wall-mounted 3D `SecurityCamera.cs` with sweeping `VisionRaycaster` cone (disabled by EMP/`FuseBox`) | Component Reuse |
 | **#30** | 🔜 | 🧠 Hatem | Expand `xUnit` tests covering `DetectionMeter`, `SecurityCamera`, and `AlertChaseState` A* edge cases | Automated Unit Testing |
 | **#31** | 🔜 | 🔦 Ali | Design **Level 2 (`level2_penthouse.json`)** multi-room bank/penthouse layout + furniture & laser placements | Content Pipeline |
-| **#32** | 🔜 | 🔦 Ali | Add GLSL Bloom post-processing (`bloom.fs`) + `AudioManager : IDisposable` with safe teardown order before `CloseWindow()` | Resource Lifecycle (`IDisposable`) |
+| **#32** | 🔜 | 🔦 Ali | Add GLSL Bloom post-processing (`bloom.fs`) + **SFX-only** `AudioManager : IDisposable` (alarm, footsteps, glass, coin, EMP, loot/UI clicks — **no background music**) with safe teardown order before `CloseWindow()` | Resource Lifecycle (`IDisposable`) |
+
+> [!IMPORTANT]
+> **Audio Policy (#32 — SFX Only, Zero Music):**
+> `AudioManager` must **not** include background music, soundtracks, or musical instruments anywhere in the game (menus, gameplay, or summary). Use strictly realistic/tactical **sound effects (`Sound`)** triggered via `GameEventBus` and UI states (e.g., alarm klaxon on `AlarmTriggeredEvent`, footsteps/glass/coin clink on `NoiseEmittedEvent`, EMP zap & breaker clunk on `PowerStateChangedEvent`, loot/keypad/vault clicks, and mute toggle), guarded by `Raylib.IsAudioDeviceReady()` for headless test safety.
 
 ---
 

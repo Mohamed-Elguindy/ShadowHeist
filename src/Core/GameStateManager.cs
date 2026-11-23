@@ -53,6 +53,9 @@ public sealed class GameStateManager
     public void SelectPreviousMenuOption() =>
         MenuOptionIndex = WrapIndex(MenuOptionIndex, -1, ResolveMenuOptionCount());
 
+    public void SelectMenuOption(int index) =>
+        MenuOptionIndex = Math.Clamp(index, 0, ResolveMenuOptionCount() - 1);
+
     public void ActivateMainMenuOption(GameContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -127,6 +130,7 @@ public sealed class GameStateManager
         ArgumentNullException.ThrowIfNull(context);
         context.RestartMission();
         CurrentState = GameFlowState.Playing;
+        context.Cutscene.BeginEntry(context.PlayerPosition);
     }
 
     public void SyncWithMissionOutcome(HeistOutcome outcome)
@@ -159,5 +163,6 @@ public sealed class GameStateManager
         context.SelectedMapPath = SelectedLevel.MapPath;
         context.RestartMission();
         CurrentState = GameFlowState.Playing;
+        context.Cutscene.BeginEntry(context.PlayerPosition);
     }
 }

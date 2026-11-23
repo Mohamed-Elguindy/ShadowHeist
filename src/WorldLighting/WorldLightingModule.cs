@@ -87,21 +87,18 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
     public void Draw(GameContext context)
     {
         IReadOnlyList<RectangleBounds> architecturalWalls = _currentMap?.Walls ?? context.Walls;
-        _architecture.Draw(
-            architecturalWalls,
-            _currentMap?.GetawayZone,
-            context.ElapsedSeconds,
-            context.PlayerPosition,
-            context.Camera.Camera.Position);
+        ExteriorStreet3DRenderer.Draw(context.ElapsedSeconds, context.IsAlarmTriggered);
+        _architecture.Draw(architecturalWalls, _currentMap?.GetawayZone, context.ElapsedSeconds, context.PlayerPosition, context.Camera.Camera.Position);
         _shadowMoodRenderer.Draw(_shadowLighting, architecturalWalls, _keypadPositions, context.ElapsedSeconds);
         _furniture.Draw();
-        _decor.Draw(context.ElapsedSeconds);
+        _decor.Draw(context);
         _glassRenderer.Draw(_glassHazards, context.ElapsedSeconds);
         if (context.AreLobbyLightsPowered && _shadowLighting.IsMainPowerOnline)
         {
             VisionCone3DRenderer.DrawWarmLampGlows();
         }
 
+        AmbientAtmosphere3DRenderer.Draw(context.ElapsedSeconds, context.AreLobbyLightsPowered);
         VisionCone3DRenderer.DrawPlayerVisionCone(_visionConeVertices);
         _laserRenderer.Draw(_lasers, context.ElapsedSeconds);
     }

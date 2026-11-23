@@ -68,6 +68,7 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
 
         if (context.StolenCash >= HeistConstants.TargetCashGoal && IsInsideZone(context.PlayerPosition, _getawayZone))
         {
+            context.Cutscene.BeginEscape(context.PlayerPosition);
             context.Outcome = HeistOutcome.Escaped;
         }
     }
@@ -79,7 +80,15 @@ public sealed class HeistWorldModule : IGameSystem, IDisposable
         GetawayExtraction3DRenderer.Draw(_getawayZone, context);
     }
 
-    public void DrawHud(GameContext context) => _hud?.DrawHudOverlay(context);
+    public void DrawHud(GameContext context)
+    {
+        if (context.StateManager.CurrentState == GameFlowState.Playing && context.Outcome == HeistOutcome.Playing)
+        {
+            _lootSparks.DrawHudPopups(context.Camera.Camera);
+        }
+
+        _hud?.DrawHudOverlay(context);
+    }
 
     public void Dispose()
     {

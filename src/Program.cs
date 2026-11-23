@@ -1,3 +1,4 @@
+using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
 using ShadowHeist.Core.Rendering3D;
@@ -14,16 +15,9 @@ namespace ShadowHeist;
 /// </summary>
 public static class Program
 {
-    private const int ScreenWidth = 1280;
-    private const int ScreenHeight = 720;
-    private const int TargetFps = 60;
-
     public static void Main()
     {
-        Raylib.SetConfigFlags(ConfigFlags.Msaa4xHint | ConfigFlags.ResizableWindow);
-        Raylib.InitWindow(ScreenWidth, ScreenHeight, "ShadowHeist 3D — Raylib C#");
-        Raylib.SetExitKey(KeyboardKey.Null);
-        Raylib.SetTargetFPS(TargetFps);
+        GameWindowChrome.InitializeWindow();
 
         try
         {
@@ -38,6 +32,11 @@ public static class Program
     private static void RunGameLoop()
     {
         using var context = new GameContext();
+        context.Cutscene.IsEnabled = true;
+        using var windowChrome = new GameWindowChrome();
+        using var stealthCursor = new StealthCursorRenderer();
+        windowChrome.LoadLogo();
+        stealthCursor.Load();
         RegisterSystems(context);
         context.InitializeAll();
         context.Camera.Reset(context.PlayerPosition);
@@ -45,13 +44,15 @@ public static class Program
         while (!Raylib.WindowShouldClose() && !context.StateManager.ExitRequested)
         {
             float deltaTime = MathF.Min(Raylib.GetFrameTime(), 0.05f);
-            bool stateChanged = GameFlowInputRouter.ProcessInput(context);
-            PrepareFrameViewport(context, deltaTime);
+            bool headerConsumedInput = windowChrome.HandleInput(context);
+            bool stateChanged = !headerConsumedInput && GameFlowInputRouter.ProcessInput(context);
             if (!stateChanged)
             {
-                UpdateSimulationIfPlaying(context, deltaTime);
+                UpdateSimulationAndCutscene(context, deltaTime);
             }
-            DrawFrame(context);
+            PrepareFrameViewport(context, deltaTime);
+            windowChrome.SyncTitle(context);
+            DrawFrame(context, windowChrome, stealthCursor);
         }
     }
 
@@ -69,24 +70,54 @@ public static class Program
 
     private static void PrepareFrameViewport(GameContext context, float deltaTime)
     {
+        if (context.StateManager.CurrentState is GameFlowState.MainMenu or GameFlowState.LevelSelect)
+        {
+            context.Camera.UpdateMenuOrbit((float)Raylib.GetTime());
+            context.Models.UpdateFrameLighting(context.Camera.Camera.Position, context);
+            return;
+        }
+
+        Vector2 cameraTarget = context.Cutscene.ResolveCameraFocus(context.PlayerPosition);
+        Vector2 mousePosition = Raylib.GetMousePosition();
+        context.Camera.CutsceneZoomMultiplier = context.Cutscene.ResolveCameraZoomMultiplier();
         context.Camera.ApplyZoomWheel(Raylib.GetMouseWheelMove());
-        context.Camera.Update(deltaTime, context.PlayerPosition);
-        context.AimWorldOverride = context.Camera.ScreenToGroundPoint(Raylib.GetMousePosition());
+        context.Camera.UpdatePeekFromScreen(
+            !context.Cutscene.IsActive && Raylib.IsMouseButtonDown(MouseButton.Right),
+            mousePosition,
+            cameraTarget);
+        context.Camera.NotifyAlarmState(context.IsAlarmTriggered);
+        context.Camera.Update(deltaTime, cameraTarget);
+        context.AimWorldOverride = context.Camera.ScreenToGroundPoint(mousePosition);
         context.Models.UpdateFrameLighting(context.Camera.Camera.Position, context);
     }
 
-    private static void UpdateSimulationIfPlaying(GameContext context, float deltaTime)
+    private static void UpdateSimulationAndCutscene(GameContext context, float deltaTime)
     {
+        if (context.StateManager.CurrentState is GameFlowState.Playing or GameFlowState.Summary)
+        {
+            context.Cutscene.Update(deltaTime);
+        }
+
         if (!context.StateManager.ShouldUpdateSimulation)
         {
             return;
         }
 
+        HeistOutcome previousOutcome = context.Outcome;
         context.UpdateAll(deltaTime);
-        context.StateManager.SyncWithMissionOutcome(context.Outcome);
+        if (previousOutcome == HeistOutcome.Playing && context.Outcome == HeistOutcome.Caught)
+        {
+            context.Cutscene.BeginCaught(context.PlayerPosition);
+            context.Camera.TriggerAlarmShake();
+        }
+
+        if (context.Cutscene.IsReadyForSummary)
+        {
+            context.StateManager.SyncWithMissionOutcome(context.Outcome);
+        }
     }
 
-    private static void DrawFrame(GameContext context)
+    private static void DrawFrame(GameContext context, GameWindowChrome windowChrome, StealthCursorRenderer stealthCursor)
     {
         Color sky = context.IsAlarmTriggered ? Viewport3DConfig.AlarmSkyColor : Viewport3DConfig.SkyColor;
         Raylib.BeginDrawing();
@@ -98,6 +129,8 @@ public static class Program
         Raylib.EndMode3D();
 
         context.DrawHudAll();
+        windowChrome.Draw(context);
+        stealthCursor.UpdateAndDraw(context);
         Raylib.EndDrawing();
     }
 

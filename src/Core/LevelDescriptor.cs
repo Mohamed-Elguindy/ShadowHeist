@@ -22,7 +22,7 @@ public static class LevelCatalog
         new LevelDescriptor(
             Id: "level1_city_bank",
             Title: "Level 1: City Central Bank",
-            Subtitle: "Standard Vault & Laser Grid — $500,000 Target",
+            Subtitle: "Standard Vault & Laser Grid, $500,000 Target",
             MapPath: HeistConstants.DefaultMapPath),
         new LevelDescriptor(
             Id: "level2_penthouse",

@@ -15,7 +15,7 @@ public sealed class GameContext : IDisposable
     private static readonly Vector2 DefaultPlayerPosition = new(160f, 360f);
 
     private readonly List<IGameSystem> _systems = new();
-    private bool _isPowerSubscribed;
+    private bool _isCoreEventsSubscribed;
 
     public GameEventBus EventBus { get; } = new();
     public List<IInteractable> Interactables { get; } = new();
@@ -23,6 +23,7 @@ public sealed class GameContext : IDisposable
     public TacticalCameraController Camera { get; } = new();
     public ToonModelLibrary Models { get; } = new();
     public GameStateManager StateManager { get; } = new();
+    public HeistCutsceneController Cutscene { get; } = new();
 
     public string SelectedMapPath { get; set; } = HeistConstants.DefaultMapPath;
     public Vector2 PlayerPosition { get; set; } = DefaultPlayerPosition;
@@ -32,6 +33,7 @@ public sealed class GameContext : IDisposable
     public float ElapsedSeconds { get; private set; }
     public int StolenCash { get; set; }
     public bool IsAlarmTriggered { get; set; }
+    public int AlarmCount { get; private set; }
     public bool AreLobbyLightsPowered { get; set; } = true;
     public HeistOutcome Outcome { get; set; } = HeistOutcome.Playing;
     public PlayerInputCommand CurrentInput { get; set; }
@@ -44,7 +46,7 @@ public sealed class GameContext : IDisposable
 
     public void InitializeAll()
     {
-        SubscribeToPowerEvents();
+        SubscribeToCoreEvents();
         foreach (IGameSystem system in _systems)
         {
             system.Init(this);
@@ -53,7 +55,7 @@ public sealed class GameContext : IDisposable
 
     public void UpdateAll(float deltaTime)
     {
-        if (Outcome == HeistOutcome.Playing)
+        if (Outcome == HeistOutcome.Playing && !Cutscene.IsBlockingPlayerControl)
         {
             ElapsedSeconds += deltaTime;
         }
@@ -85,10 +87,11 @@ public sealed class GameContext : IDisposable
         Interactables.Clear();
         Walls.Clear();
         EventBus.ClearSubscribers();
-        _isPowerSubscribed = false;
+        _isCoreEventsSubscribed = false;
         ElapsedSeconds = 0f;
         StolenCash = 0;
         IsAlarmTriggered = false;
+        AlarmCount = 0;
         AreLobbyLightsPowered = true;
         Outcome = HeistOutcome.Playing;
         CurrentInput = default;
@@ -96,6 +99,7 @@ public sealed class GameContext : IDisposable
         PlayerPosition = DefaultPlayerPosition;
         PlayerRotationDegrees = 0f;
         IsPlayerSneaking = false;
+        Cutscene.Reset();
         InitializeAll();
         Camera.Reset(PlayerPosition);
     }
@@ -113,15 +117,22 @@ public sealed class GameContext : IDisposable
         Models.Dispose();
     }
 
-    private void SubscribeToPowerEvents()
+    private void SubscribeToCoreEvents()
     {
-        if (_isPowerSubscribed)
+        if (_isCoreEventsSubscribed)
         {
             return;
         }
 
+        EventBus.Subscribe<AlarmTriggeredEvent>(OnAlarmTriggered);
         EventBus.Subscribe<PowerStateChangedEvent>(OnPowerStateChanged);
-        _isPowerSubscribed = true;
+        _isCoreEventsSubscribed = true;
+    }
+
+    private void OnAlarmTriggered(AlarmTriggeredEvent _)
+    {
+        AlarmCount++;
+        Camera.TriggerAlarmShake();
     }
 
     private void OnPowerStateChanged(PowerStateChangedEvent evt)
