@@ -114,7 +114,7 @@ public sealed class GuardAiTests
     }
 
     [Fact]
-    public void Guard_TransitionsToAlertAndTriggersAlarm_WhenPlayerVisibleInCone()
+    public void Guard_TransitionsToAlertAndTriggersAlarm_WhenDetectionMeterReachesFull()
     {
         using var context = new GameContext { PlayerPosition = new Vector2(200f, 100f) };
         var guard = new Guard("guard_1", new Vector2(100f, 100f), new[] { new Vector2(400f, 100f) })
@@ -122,8 +122,12 @@ public sealed class GuardAiTests
             RotationDegrees = 0f
         };
 
-        guard.Update(0.05f, context);
+        guard.Update(0.2f, context);
+        Assert.True(guard.DetectionProgress > 0f && guard.DetectionProgress < 1f);
+        Assert.IsType<PatrolState>(guard.CurrentState);
 
+        guard.Update(1.0f, context);
+        Assert.Equal(1f, guard.DetectionProgress);
         Assert.IsType<AlertChaseState>(guard.CurrentState);
         Assert.True(context.IsAlarmTriggered);
     }
@@ -138,8 +142,9 @@ public sealed class GuardAiTests
             RotationDegrees = 0f
         };
 
-        guard.Update(0.05f, context);
+        guard.Update(0.5f, context);
 
+        Assert.Equal(0f, guard.DetectionProgress);
         Assert.IsType<PatrolState>(guard.CurrentState);
         Assert.False(context.IsAlarmTriggered);
     }
@@ -162,7 +167,7 @@ public sealed class GuardAiTests
         using var context = new GameContext { PlayerPosition = new Vector2(110f, 100f) };
         var guard = new Guard("guard_1", new Vector2(100f, 100f), new[] { new Vector2(400f, 100f) });
 
-        guard.Update(0.05f, context);
+        guard.Update(0.4f, context);
         guard.Update(0.05f, context);
 
         Assert.Equal(HeistOutcome.Caught, context.Outcome);

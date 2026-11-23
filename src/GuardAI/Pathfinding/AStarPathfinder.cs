@@ -12,6 +12,7 @@ public static class AStarPathfinder
 
     private static IReadOnlyList<RectangleBounds>? _cachedWalls;
     private static int _cachedWallCount;
+    private static RectangleBounds _cachedLastWall;
     private static float _cachedCellSize;
     private static GridGraph? _cachedGraph;
 
@@ -70,9 +71,11 @@ public static class AStarPathfinder
 
     private static GridGraph GetOrCreateGraph(IReadOnlyList<RectangleBounds> walls, float cellSize)
     {
+        RectangleBounds lastWall = walls[^1];
         if (_cachedGraph is not null &&
             ReferenceEquals(_cachedWalls, walls) &&
             _cachedWallCount == walls.Count &&
+            _cachedLastWall == lastWall &&
             MathF.Abs(_cachedCellSize - cellSize) < float.Epsilon)
         {
             return _cachedGraph;
@@ -80,6 +83,7 @@ public static class AStarPathfinder
 
         _cachedWalls = walls;
         _cachedWallCount = walls.Count;
+        _cachedLastWall = lastWall;
         _cachedCellSize = cellSize;
         _cachedGraph = new GridGraph(walls, cellSize);
         return _cachedGraph;
