@@ -35,6 +35,12 @@ public static class Viewport3DConfig
     public const float MinZoom = 0.7f;
     public const float MaxZoom = 2.6f;
     public const float ZoomStep = 0.1f;
+    public const float MaxPeekDistance = 155f;
+    public const float PeekDistanceScale = 0.45f;
+    public const float PeekActivationDeadzone = 8f;
+    public const float MaxAlarmShakeOffset = 14f;
+    public const float AlarmShakeDecayRate = 1.25f;
+    public const float AlarmShakeFrequency = 34f;
 
     public static readonly Vector3 FollowCameraOffset = new(-65f, 560f, 460f);
     public static readonly Vector3 OverviewTarget = new(630f, 0f, 385f);
@@ -44,7 +50,7 @@ public static class Viewport3DConfig
     public static readonly Vector2[] WarmLampPositions = [new(84f, 344f), new(912f, 646f)];
 
     public static readonly Color SkyColor = new(12, 16, 26, 255);
-    public static readonly Color AlarmSkyColor = new(34, 12, 18, 255);
+    public static readonly Color AlarmSkyColor = new(12, 14, 24, 255);
     public static readonly Color WallTint = new(168, 178, 198, 255);
     public static readonly Color WallCapColor = new(102, 118, 144, 255);
     public static readonly Color OutlineColor = new(12, 15, 22, 255);

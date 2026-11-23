@@ -53,6 +53,7 @@ public sealed class Architecture3DRenderer
 
     public void Draw(IReadOnlyList<RectangleBounds> architecturalWalls, RectangleBounds? getawayZone, float elapsedSeconds, Vector2 playerPosition, Vector3 cameraPosition)
     {
+        BlueprintGrid3DRenderer.Draw();
         DrawFloorZones();
         DrawGetawayPad(getawayZone, elapsedSeconds);
         DrawWallsAndPillars(architecturalWalls, playerPosition, new Vector2(cameraPosition.X, cameraPosition.Z));

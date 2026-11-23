@@ -1,6 +1,7 @@
 using System.Numerics;
 using ShadowHeist.Core;
 using ShadowHeist.HeistWorld;
+using ShadowHeist.HeistWorld.UI;
 using ShadowHeist.WorldLighting;
 using Xunit;
 
@@ -229,5 +230,35 @@ public sealed class GameStateManagerTests
         Assert.Equal(PauseMenuOption.MainMenu, manager.SelectedPauseMenuOption);
         manager.ActivatePauseMenuOption(context);
         Assert.Equal(GameFlowState.MainMenu, manager.CurrentState);
+    }
+
+    [Fact]
+    public void MenuMouseHitTesting_ResolvesMainMenuAndLevelSelectAndPauseRows()
+    {
+        using var context = new GameContext();
+        GameStateManager manager = context.StateManager;
+
+        var secondOptionBounds = MenuLayoutConfig.GetMainMenuOptionBounds(1280, 720, 1);
+        var clickPoint = new Vector2(secondOptionBounds.X + 20f, secondOptionBounds.Y + 10f);
+        int hoveredMain = MenuLayoutConfig.FindHoveredIndex(
+            clickPoint,
+            GameStateManager.MainMenuOptionCount,
+            i => MenuLayoutConfig.GetMainMenuOptionBounds(1280, 720, i));
+
+        Assert.Equal(1, hoveredMain);
+        manager.SelectMenuOption(hoveredMain);
+        manager.ActivateMainMenuOption(context);
+        Assert.Equal(GameFlowState.LevelSelect, manager.CurrentState);
+
+        var firstLevelBounds = MenuLayoutConfig.GetLevelCardBounds(1280, 720, manager.Levels.Count, 0);
+        int hoveredLevel = MenuLayoutConfig.FindHoveredIndex(
+            new Vector2(firstLevelBounds.X + 10f, firstLevelBounds.Y + 10f),
+            manager.Levels.Count,
+            i => MenuLayoutConfig.GetLevelCardBounds(1280, 720, manager.Levels.Count, i));
+
+        Assert.Equal(0, hoveredLevel);
+        manager.SelectLevel(hoveredLevel);
+        manager.LaunchSelectedLevel(context);
+        Assert.Equal(GameFlowState.Playing, manager.CurrentState);
     }
 }

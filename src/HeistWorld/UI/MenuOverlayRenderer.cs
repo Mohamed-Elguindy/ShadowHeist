@@ -1,5 +1,7 @@
+using System.Numerics;
 using Raylib_cs;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Rendering3D;
 
 namespace ShadowHeist.HeistWorld.UI;
 
@@ -8,8 +10,11 @@ namespace ShadowHeist.HeistWorld.UI;
 /// </summary>
 public static class MenuOverlayRenderer
 {
-    private const string NavigationHintText = "[UP/DOWN or W/S] NAVIGATE   |   [ENTER] SELECT";
-    private const string LevelSelectHintText = "[UP/DOWN] CHOOSE   |   [ENTER] DEPLOY   |   [ESC] BACK";
+    private const string NavigationHintText = "[UP/DOWN or W/S] NAVIGATE   |   [ENTER / CLICK] SELECT";
+    private const string LevelSelectHintText = "[UP/DOWN] CHOOSE   |   [ENTER / CLICK] DEPLOY   |   [ESC] BACK";
+    private const int HalfDivisor = 2;
+    private const float TextureOrigin = 0f;
+    private const float TextureRotation = 0f;
 
     public static void Draw(GameContext context)
     {
@@ -33,12 +38,27 @@ public static class MenuOverlayRenderer
         int panelX = CenterPanelX(MenuLayoutConfig.PanelWidth);
         int panelY = CenterPanelY(MenuLayoutConfig.MainMenuPanelHeight);
         DrawPanelFrame(panelX, panelY, MenuLayoutConfig.PanelWidth, MenuLayoutConfig.MainMenuPanelHeight);
+        DrawHeroLogo(panelX, panelY);
 
-        DrawCenteredText("SHADOW HEIST", panelY + MenuLayoutConfig.MainTitleOffsetY, MenuLayoutConfig.TitleFontSize, MenuLayoutConfig.TitleAccent);
-        DrawCenteredText("3D TACTICAL STEALTH INFILTRATION", panelY + MenuLayoutConfig.MainSubtitleOffsetY, MenuLayoutConfig.SubtitleFontSize, MenuLayoutConfig.MutedText);
+        DrawCenteredText("SHADOW HEIST", panelY + MenuLayoutConfig.MainTitleOffsetY, MenuLayoutConfig.TitleFontSize, MenuLayoutConfig.TitleAccent, bold: true);
+        DrawCenteredText("TACTICAL STEALTH INFILTRATION", panelY + MenuLayoutConfig.MainSubtitleOffsetY, MenuLayoutConfig.SubtitleFontSize, MenuLayoutConfig.MutedText, bold: false);
 
         DrawOptionRows(panelX, panelY + MenuLayoutConfig.MainOptionsStartOffsetY, selectedOption, ResolveMainMenuLabel);
-        DrawCenteredText(NavigationHintText, panelY + MenuLayoutConfig.MainMenuPanelHeight - MenuLayoutConfig.FooterHintBottomMargin, MenuLayoutConfig.HintFontSize, MenuLayoutConfig.MutedText);
+        DrawCenteredText(NavigationHintText, panelY + MenuLayoutConfig.MainMenuPanelHeight - MenuLayoutConfig.FooterHintBottomMargin, MenuLayoutConfig.HintFontSize, MenuLayoutConfig.MutedText, bold: false);
+    }
+
+    private static void DrawHeroLogo(int panelX, int panelY)
+    {
+        if (GameWindowChrome.BrandLogoTexture is not Texture2D logo)
+        {
+            return;
+        }
+
+        int logoX = panelX + ((MenuLayoutConfig.PanelWidth - MenuLayoutConfig.MainLogoSize) / HalfDivisor);
+        int logoY = panelY + MenuLayoutConfig.MainLogoOffsetY;
+        var source = new Rectangle(TextureOrigin, TextureOrigin, logo.Width, logo.Height);
+        var destination = new Rectangle(logoX, logoY, MenuLayoutConfig.MainLogoSize, MenuLayoutConfig.MainLogoSize);
+        Raylib.DrawTexturePro(logo, source, destination, Vector2.Zero, TextureRotation, Color.White);
     }
 
     private static void DrawLevelSelect(GameStateManager stateManager)
@@ -49,13 +69,13 @@ public static class MenuOverlayRenderer
         int panelY = CenterPanelY(panelHeight);
         DrawPanelFrame(panelX, panelY, MenuLayoutConfig.PanelWidth, panelHeight);
 
-        DrawCenteredText("SELECT CONTRACT", panelY + MenuLayoutConfig.LevelSelectTitleOffsetY, MenuLayoutConfig.SubPanelTitleFontSize, MenuLayoutConfig.TitleAccent);
+        DrawCenteredText("SELECT CONTRACT", panelY + MenuLayoutConfig.LevelSelectTitleOffsetY, MenuLayoutConfig.SubPanelTitleFontSize, MenuLayoutConfig.TitleAccent, bold: true);
         DrawLevelEntries(
             stateManager,
             panelX + MenuLayoutConfig.LevelListHorizontalMargin,
             panelY + MenuLayoutConfig.LevelSelectListStartOffsetY,
-            MenuLayoutConfig.PanelWidth - (MenuLayoutConfig.LevelListHorizontalMargin * 2));
-        DrawCenteredText(LevelSelectHintText, panelY + panelHeight - MenuLayoutConfig.LevelSelectFooterBottomMargin, MenuLayoutConfig.HintFontSize, MenuLayoutConfig.MutedText);
+            MenuLayoutConfig.PanelWidth - (MenuLayoutConfig.LevelListHorizontalMargin * HalfDivisor));
+        DrawCenteredText(LevelSelectHintText, panelY + panelHeight - MenuLayoutConfig.LevelSelectFooterBottomMargin, MenuLayoutConfig.HintFontSize, MenuLayoutConfig.MutedText, bold: false);
     }
 
     private static void DrawPauseMenu(bool isOverviewCamera, PauseMenuOption selectedOption)
@@ -65,9 +85,9 @@ public static class MenuOverlayRenderer
         int panelY = CenterPanelY(MenuLayoutConfig.PauseMenuPanelHeight);
         DrawPanelFrame(panelX, panelY, MenuLayoutConfig.PanelWidth, MenuLayoutConfig.PauseMenuPanelHeight);
 
-        DrawCenteredText("MISSION PAUSED", panelY + MenuLayoutConfig.PauseTitleOffsetY, MenuLayoutConfig.PauseTitleFontSize, MenuLayoutConfig.TitleAccent);
+        DrawCenteredText("MISSION PAUSED", panelY + MenuLayoutConfig.PauseTitleOffsetY, MenuLayoutConfig.PauseTitleFontSize, MenuLayoutConfig.TitleAccent, bold: true);
         DrawOptionRows(panelX, panelY + MenuLayoutConfig.PauseOptionsStartOffsetY, selectedOption, option => ResolvePauseMenuLabel(option, isOverviewCamera));
-        DrawCenteredText(NavigationHintText, panelY + MenuLayoutConfig.PauseMenuPanelHeight - MenuLayoutConfig.FooterHintBottomMargin, MenuLayoutConfig.HintFontSize, MenuLayoutConfig.MutedText);
+        DrawCenteredText(NavigationHintText, panelY + MenuLayoutConfig.PauseMenuPanelHeight - MenuLayoutConfig.FooterHintBottomMargin, MenuLayoutConfig.HintFontSize, MenuLayoutConfig.MutedText, bold: false);
     }
 
     private static void DrawOptionRows<TOption>(
@@ -79,7 +99,7 @@ public static class MenuOverlayRenderer
     {
         TOption[] options = Enum.GetValues<TOption>();
         int rowX = panelX + MenuLayoutConfig.MenuHorizontalMargin;
-        int rowWidth = MenuLayoutConfig.PanelWidth - (MenuLayoutConfig.MenuHorizontalMargin * 2);
+        int rowWidth = MenuLayoutConfig.PanelWidth - (MenuLayoutConfig.MenuHorizontalMargin * HalfDivisor);
 
         for (int i = 0; i < options.Length; i++)
         {
@@ -120,16 +140,16 @@ public static class MenuOverlayRenderer
     {
         Color bg = isSelected ? MenuLayoutConfig.SelectedRowBg : MenuLayoutConfig.RowBg;
         Color border = isSelected ? MenuLayoutConfig.SelectedRowBorder : MenuLayoutConfig.RowBorder;
-        Raylib.DrawRectangle(x, y, width, MenuLayoutConfig.LevelCardHeight, bg);
-        Raylib.DrawRectangleLines(x, y, width, MenuLayoutConfig.LevelCardHeight, border);
+        Color? accent = isSelected ? MenuLayoutConfig.SelectedRowBorder : null;
+        UiPanelDrawer.DrawTacticalCard(new Rectangle(x, y, width, MenuLayoutConfig.LevelCardHeight), bg, border, accent);
 
-        Raylib.DrawText(level.Title, x + MenuLayoutConfig.CardPaddingX, y + MenuLayoutConfig.CardTitleOffsetY, MenuLayoutConfig.ItemFontSize, isSelected ? Color.White : MenuLayoutConfig.MutedText);
-        Raylib.DrawText(level.Subtitle, x + MenuLayoutConfig.CardPaddingX, y + MenuLayoutConfig.CardSubtitleOffsetY, MenuLayoutConfig.CardDetailFontSize, MenuLayoutConfig.MutedText);
+        UiTypography.DrawText(level.Title, x + MenuLayoutConfig.CardPaddingX, y + MenuLayoutConfig.CardTitleOffsetY, MenuLayoutConfig.ItemFontSize, isSelected ? Color.White : MenuLayoutConfig.MutedText, bold: true);
+        UiTypography.DrawText(level.Subtitle, x + MenuLayoutConfig.CardPaddingX, y + MenuLayoutConfig.CardSubtitleOffsetY, MenuLayoutConfig.CardDetailFontSize, MenuLayoutConfig.MutedText);
 
         string statusText = level.IsMapFilePresent ? "READY" : "FALLBACK";
         Color statusColor = level.IsMapFilePresent ? MenuLayoutConfig.ReadyTagColor : MenuLayoutConfig.FallbackTagColor;
-        int statusWidth = Raylib.MeasureText(statusText, MenuLayoutConfig.CardDetailFontSize);
-        Raylib.DrawText(statusText, x + width - statusWidth - MenuLayoutConfig.CardPaddingX, y + MenuLayoutConfig.CardStatusOffsetY, MenuLayoutConfig.CardDetailFontSize, statusColor);
+        int statusWidth = UiTypography.MeasureTextWidth(statusText, MenuLayoutConfig.CardDetailFontSize, bold: true);
+        UiTypography.DrawText(statusText, x + width - statusWidth - MenuLayoutConfig.CardPaddingX, y + MenuLayoutConfig.CardStatusOffsetY, MenuLayoutConfig.CardDetailFontSize, statusColor, bold: true);
     }
 
     private static void DrawBackdrop() =>
@@ -137,29 +157,30 @@ public static class MenuOverlayRenderer
 
     private static void DrawPanelFrame(int x, int y, int width, int height)
     {
-        Raylib.DrawRectangle(x, y, width, height, MenuLayoutConfig.PanelBackground);
-        Raylib.DrawRectangleLines(x, y, width, height, MenuLayoutConfig.PanelBorder);
+        var bounds = new Rectangle(x, y, width, height);
+        UiPanelDrawer.DrawTacticalCard(bounds, MenuLayoutConfig.PanelBackground, MenuLayoutConfig.PanelBorder);
+        UiPanelDrawer.DrawBriefingCorners(bounds, MenuLayoutConfig.TitleAccent);
     }
 
     private static void DrawActionOption(int x, int y, int width, string label, bool isHighlighted)
     {
         Color bg = isHighlighted ? MenuLayoutConfig.SelectedRowBg : MenuLayoutConfig.RowBg;
         Color border = isHighlighted ? MenuLayoutConfig.SelectedRowBorder : MenuLayoutConfig.RowBorder;
-        Raylib.DrawRectangle(x, y, width, MenuLayoutConfig.MenuRowHeight, bg);
-        Raylib.DrawRectangleLines(x, y, width, MenuLayoutConfig.MenuRowHeight, border);
-        DrawCenteredTextInBox(label, x, y + MenuLayoutConfig.MenuRowLabelOffsetY, width, MenuLayoutConfig.ItemFontSize, Color.RayWhite);
+        Color? accent = isHighlighted ? MenuLayoutConfig.SelectedRowBorder : null;
+        UiPanelDrawer.DrawTacticalCard(new Rectangle(x, y, width, MenuLayoutConfig.MenuRowHeight), bg, border, accent);
+        DrawCenteredTextInBox(label, x, y + MenuLayoutConfig.MenuRowLabelOffsetY, width, MenuLayoutConfig.ItemFontSize, Color.RayWhite, bold: isHighlighted);
     }
 
-    private static void DrawCenteredText(string text, int y, int fontSize, Color color) =>
-        DrawCenteredTextInBox(text, 0, y, Raylib.GetScreenWidth(), fontSize, color);
+    private static void DrawCenteredText(string text, int y, int fontSize, Color color, bool bold) =>
+        DrawCenteredTextInBox(text, 0, y, Raylib.GetScreenWidth(), fontSize, color, bold);
 
-    private static void DrawCenteredTextInBox(string text, int boxX, int y, int boxWidth, int fontSize, Color color)
+    private static void DrawCenteredTextInBox(string text, int boxX, int y, int boxWidth, int fontSize, Color color, bool bold)
     {
-        int textWidth = Raylib.MeasureText(text, fontSize);
-        Raylib.DrawText(text, boxX + ((boxWidth - textWidth) / 2), y, fontSize, color);
+        int centeredX = UiTypography.CenterTextX(text, boxX, boxWidth, fontSize, bold);
+        UiTypography.DrawText(text, centeredX, y, fontSize, color, bold);
     }
 
-    private static int CenterPanelX(int width) => (Raylib.GetScreenWidth() - width) / 2;
+    private static int CenterPanelX(int width) => (Raylib.GetScreenWidth() - width) / HalfDivisor;
 
-    private static int CenterPanelY(int height) => (Raylib.GetScreenHeight() - height) / 2;
+    private static int CenterPanelY(int height) => (Raylib.GetScreenHeight() - height) / HalfDivisor;
 }

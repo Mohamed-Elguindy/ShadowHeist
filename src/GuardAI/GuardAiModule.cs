@@ -69,7 +69,7 @@ public sealed class GuardAiModule : IGameSystem, IDisposable
 
     public void Update(float deltaTime, GameContext context)
     {
-        if (context.Outcome != HeistOutcome.Playing)
+        if (context.Outcome != HeistOutcome.Playing || context.Cutscene.IsBlockingPlayerControl)
         {
             return;
         }

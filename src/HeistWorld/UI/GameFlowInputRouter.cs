@@ -1,5 +1,6 @@
 using Raylib_cs;
 using ShadowHeist.Core;
+using ShadowHeist.Core.Rendering3D;
 
 namespace ShadowHeist.HeistWorld.UI;
 
@@ -20,7 +21,7 @@ public static class GameFlowInputRouter
     {
         if (Raylib.IsKeyPressed(KeyboardKey.F11))
         {
-            Raylib.ToggleBorderlessWindowed();
+            GameWindowChrome.ToggleMaximizeRestore();
         }
     }
 
@@ -48,19 +49,24 @@ public static class GameFlowInputRouter
 
     private static void HandleMainMenuInput(GameContext context)
     {
-        if (IsMoveUpPressed())
+        if (MenuLayoutConfig.TryHandleMenuMouse(
+            GameStateManager.MainMenuOptionCount,
+            i => MenuLayoutConfig.GetMainMenuOptionBounds(Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), i),
+            context.StateManager.SelectMenuOption,
+            () => context.StateManager.ActivateMainMenuOption(context)))
         {
-            context.StateManager.SelectPreviousMenuOption();
+            return;
         }
-        else if (IsMoveDownPressed())
+
+        if (TryHandleMenuNavigation(
+            context.StateManager.SelectPreviousMenuOption,
+            context.StateManager.SelectNextMenuOption,
+            () => context.StateManager.ActivateMainMenuOption(context)))
         {
-            context.StateManager.SelectNextMenuOption();
+            return;
         }
-        else if (IsConfirmPressed())
-        {
-            context.StateManager.ActivateMainMenuOption(context);
-        }
-        else if (Raylib.IsKeyPressed(KeyboardKey.L))
+
+        if (Raylib.IsKeyPressed(KeyboardKey.L))
         {
             context.StateManager.OpenLevelSelect();
         }
@@ -72,19 +78,25 @@ public static class GameFlowInputRouter
 
     private static void HandleLevelSelectInput(GameContext context)
     {
-        if (IsMoveUpPressed())
+        int levelCount = context.StateManager.Levels.Count;
+        if (MenuLayoutConfig.TryHandleMenuMouse(
+            levelCount,
+            i => MenuLayoutConfig.GetLevelCardBounds(Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), levelCount, i),
+            context.StateManager.SelectLevel,
+            () => context.StateManager.LaunchSelectedLevel(context)))
         {
-            context.StateManager.SelectPreviousLevel();
+            return;
         }
-        else if (IsMoveDownPressed())
+
+        if (TryHandleMenuNavigation(
+            context.StateManager.SelectPreviousLevel,
+            context.StateManager.SelectNextLevel,
+            () => context.StateManager.LaunchSelectedLevel(context)))
         {
-            context.StateManager.SelectNextLevel();
+            return;
         }
-        else if (IsConfirmPressed())
-        {
-            context.StateManager.LaunchSelectedLevel(context);
-        }
-        else if (Raylib.IsKeyPressed(KeyboardKey.Escape) || Raylib.IsKeyPressed(KeyboardKey.Backspace))
+
+        if (Raylib.IsKeyPressed(KeyboardKey.Escape) || Raylib.IsKeyPressed(KeyboardKey.Backspace))
         {
             context.StateManager.ReturnToMainMenu();
         }
@@ -95,6 +107,12 @@ public static class GameFlowInputRouter
         if (Raylib.IsKeyPressed(KeyboardKey.Escape))
         {
             context.StateManager.TogglePause();
+            return;
+        }
+
+        if (context.Cutscene.IsEntryPlaying && (Raylib.IsKeyPressed(KeyboardKey.Space) || Raylib.IsKeyPressed(KeyboardKey.Enter)))
+        {
+            context.Cutscene.SkipEntry();
             return;
         }
 
@@ -111,19 +129,24 @@ public static class GameFlowInputRouter
 
     private static void HandlePausedInput(GameContext context)
     {
-        if (IsMoveUpPressed())
+        if (MenuLayoutConfig.TryHandleMenuMouse(
+            GameStateManager.PauseMenuOptionCount,
+            i => MenuLayoutConfig.GetPauseMenuOptionBounds(Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), i),
+            context.StateManager.SelectMenuOption,
+            () => context.StateManager.ActivatePauseMenuOption(context)))
         {
-            context.StateManager.SelectPreviousMenuOption();
+            return;
         }
-        else if (IsMoveDownPressed())
+
+        if (TryHandleMenuNavigation(
+            context.StateManager.SelectPreviousMenuOption,
+            context.StateManager.SelectNextMenuOption,
+            () => context.StateManager.ActivatePauseMenuOption(context)))
         {
-            context.StateManager.SelectNextMenuOption();
+            return;
         }
-        else if (IsConfirmPressed())
-        {
-            context.StateManager.ActivatePauseMenuOption(context);
-        }
-        else if (Raylib.IsKeyPressed(KeyboardKey.Escape))
+
+        if (Raylib.IsKeyPressed(KeyboardKey.Escape))
         {
             context.StateManager.ResumePlaying();
         }
@@ -143,6 +166,11 @@ public static class GameFlowInputRouter
 
     private static void HandleSummaryInput(GameContext context)
     {
+        if (SummaryLayoutConfig.TryHandleFooterMouse(context, Raylib.GetScreenWidth(), Raylib.GetScreenHeight()))
+        {
+            return;
+        }
+
         if (Raylib.IsKeyPressed(KeyboardKey.R))
         {
             context.StateManager.RestartMission(context);
@@ -157,12 +185,16 @@ public static class GameFlowInputRouter
         }
     }
 
-    private static bool IsMoveUpPressed() =>
-        Raylib.IsKeyPressed(KeyboardKey.Up) || Raylib.IsKeyPressed(KeyboardKey.W);
+    private static bool TryHandleMenuNavigation(Action onPrevious, Action onNext, Action onConfirm)
+    {
+        Action? action = IsAnyPressed(KeyboardKey.Up, KeyboardKey.W) ? onPrevious
+            : IsAnyPressed(KeyboardKey.Down, KeyboardKey.S) ? onNext
+            : IsAnyPressed(KeyboardKey.Enter, KeyboardKey.Space) ? onConfirm
+            : null;
+        action?.Invoke();
+        return action is not null;
+    }
 
-    private static bool IsMoveDownPressed() =>
-        Raylib.IsKeyPressed(KeyboardKey.Down) || Raylib.IsKeyPressed(KeyboardKey.S);
-
-    private static bool IsConfirmPressed() =>
-        Raylib.IsKeyPressed(KeyboardKey.Enter) || Raylib.IsKeyPressed(KeyboardKey.Space);
+    private static bool IsAnyPressed(KeyboardKey first, KeyboardKey second) =>
+        Raylib.IsKeyPressed(first) || Raylib.IsKeyPressed(second);
 }
