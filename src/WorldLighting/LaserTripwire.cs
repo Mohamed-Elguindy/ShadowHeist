@@ -8,6 +8,10 @@ public sealed class LaserTripwire
 {
     public const float DefaultMaxLaserLength = 1280f;
     private const float SegmentLengthEpsilon = 0.0001f;
+    private const float MaxContinuousStepDistance = 96f;
+    private const string AlarmReasonPrefix = "LaserTripwire:";
+
+    private Vector2? _previousActorPosition;
 
     public string Id { get; }
     public Vector2 Origin { get; }
@@ -40,15 +44,27 @@ public sealed class LaserTripwire
         if (!IsActive)
         {
             BeamEnd = Origin;
+            _previousActorPosition = context.PlayerPosition;
             return;
         }
 
         BeamEnd = VisionRaycaster.CastRay(Origin, Direction, MaxLength, walls ?? context.Walls);
 
-        if (DoesActorIntersectBeam(context.PlayerPosition, actorRadius))
+        if (DoesActorIntersectBeam(context.PlayerPosition, actorRadius) ||
+            DidActorPassThroughBeam(_previousActorPosition, context.PlayerPosition, actorRadius))
         {
             TriggerAlarm(context);
         }
+
+        _previousActorPosition = context.PlayerPosition;
+    }
+
+    public void Reset()
+    {
+        HasTriggeredAlarm = false;
+        IsActive = true;
+        BeamEnd = Origin;
+        _previousActorPosition = null;
     }
 
     private void TriggerAlarm(GameContext context)
@@ -60,7 +76,7 @@ public sealed class LaserTripwire
 
         HasTriggeredAlarm = true;
         context.IsAlarmTriggered = true;
-        context.EventBus.Publish(new AlarmTriggeredEvent(context.PlayerPosition, $"LaserTripwire:{Id}"));
+        context.EventBus.Publish(new AlarmTriggeredEvent(context.PlayerPosition, $"{AlarmReasonPrefix}{Id}"));
     }
 
     private bool DoesActorIntersectBeam(Vector2 actorPosition, float actorRadius)
@@ -73,6 +89,26 @@ public sealed class LaserTripwire
         Vector2 closestPoint = ClosestPointOnSegment(actorPosition, Origin, BeamEnd);
         float distanceSquared = Vector2.DistanceSquared(actorPosition, closestPoint);
         return distanceSquared <= actorRadius * actorRadius;
+    }
+
+    private bool DidActorPassThroughBeam(Vector2? previousPosition, Vector2 currentPosition, float actorRadius)
+    {
+        if (previousPosition is not Vector2 stepStart || actorRadius <= 0f)
+        {
+            return false;
+        }
+
+        float stepDistanceSquared = Vector2.DistanceSquared(stepStart, currentPosition);
+        float maxStepSquared = MaxContinuousStepDistance * MaxContinuousStepDistance;
+        if (stepDistanceSquared <= SegmentLengthEpsilon || stepDistanceSquared > maxStepSquared)
+        {
+            return false;
+        }
+
+        Vector2 stepDirection = Vector2.Normalize(currentPosition - stepStart);
+        float stepDistance = MathF.Sqrt(stepDistanceSquared);
+        return VisionRaycaster.TryIntersectRayWithSegment(stepStart, stepDirection, Origin, BeamEnd, out float hitDistance)
+            && hitDistance <= stepDistance;
     }
 
     private static Vector2 ClosestPointOnSegment(Vector2 point, Vector2 segmentStart, Vector2 segmentEnd)

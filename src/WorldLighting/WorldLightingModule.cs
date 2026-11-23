@@ -9,19 +9,25 @@ namespace ShadowHeist.WorldLighting;
 
 /// <summary>
 /// Owned by: Ali (ShadowHeist.WorldLighting)
-/// Loads level geometry, obstacles, and laser tripwires into GameContext and renders the 3D bank environment, furniture, lasers, and player FOV.
+/// Loads level geometry, obstacles, broken glass hazards, and laser tripwires into GameContext and renders the 3D bank environment, shadow mood lighting, furniture, lasers, glass hazards, and player FOV.
 /// </summary>
 public sealed class WorldLightingModule : IGameSystem, IDisposable
 {
     private const string Level1MapPath = "assets/maps/level1_city_bank.json";
     private const string AllPowerGroupId = "all";
+    private const string KeypadInteractableType = "KeypadTerminal";
     private const float AimDistanceEpsilonSquared = 0.001f;
 
     private readonly Architecture3DRenderer _architecture = new();
     private readonly Furniture3DRenderer _furniture = new();
     private readonly BankDecorRenderer _decor = new();
     private readonly LaserTripwire3DRenderer _laserRenderer = new();
+    private readonly BrokenGlass3DRenderer _glassRenderer = new();
+    private readonly ShadowMood3DRenderer _shadowMoodRenderer = new();
+    private readonly ShadowLightingController _shadowLighting = new();
     private readonly List<LaserTripwire> _lasers = new();
+    private readonly List<BrokenGlassTile> _glassHazards = new();
+    private readonly List<Vector2> _keypadPositions = new();
     private IReadOnlyList<Vector2> _visionConeVertices = Array.Empty<Vector2>();
     private IReadOnlyList<RectangleBounds>? _visionBlockingWalls;
     private LevelMapData? _currentMap;
@@ -30,6 +36,8 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
 
     public LevelMapData? CurrentMap => _currentMap;
     public IReadOnlyList<LaserTripwire> Lasers => _lasers;
+    public IReadOnlyList<BrokenGlassTile> GlassHazards => _glassHazards;
+    public ShadowLightingController ShadowLighting => _shadowLighting;
     public IReadOnlyList<Vector2> PlayerVisionCone => _visionConeVertices;
 
     public IReadOnlyList<RectangleBounds> GetVisionBlockingWalls(GameContext context) =>
@@ -40,8 +48,9 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
         string mapPath = File.Exists(context.SelectedMapPath) ? context.SelectedMapPath : Level1MapPath;
         _currentMap = MapLoader.LoadFromFile(mapPath, context);
         _visionBlockingWalls = BuildWallsExcludingWaistHighObstacles(context);
+        _shadowLighting.Reset();
         EnsureModelsLoaded(context);
-        SpawnInitialLasers();
+        PopulateLevelHazardsAndKeypads();
         context.EventBus.Subscribe<PowerStateChangedEvent>(OnPowerStateChanged);
 
         _currentAimDegrees = context.PlayerRotationDegrees;
@@ -59,28 +68,36 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
             return;
         }
 
+        _shadowLighting.SetPowerState(context.AreLobbyLightsPowered);
+        _shadowLighting.Update(deltaTime, context);
+
         Vector2 aimTarget = context.AimWorldOverride ?? context.CurrentInput.AimWorldPosition;
         UpdateAimAngle(context.PlayerPosition, aimTarget, context.PlayerRotationDegrees);
 
         IReadOnlyList<RectangleBounds> visionWalls = GetVisionBlockingWalls(context);
-        _visionConeVertices = VisionRaycaster.ComputeVisionCone(
-            context.PlayerPosition,
-            _currentAimDegrees,
-            visionWalls);
+        _visionConeVertices = VisionRaycaster.ComputeVisionCone(context.PlayerPosition, _currentAimDegrees, visionWalls);
 
         UpdateLasers(context, visionWalls);
+        foreach (BrokenGlassTile glassTile in _glassHazards)
+        {
+            glassTile.Update(context);
+        }
     }
 
     public void Draw(GameContext context)
     {
+        IReadOnlyList<RectangleBounds> architecturalWalls = _currentMap?.Walls ?? context.Walls;
         ExteriorStreet3DRenderer.Draw(context.ElapsedSeconds, context.IsAlarmTriggered);
-        _architecture.Draw(_currentMap?.Walls ?? context.Walls, _currentMap?.GetawayZone, context.ElapsedSeconds, context.PlayerPosition, context.Camera.Camera.Position);
+        _architecture.Draw(architecturalWalls, _currentMap?.GetawayZone, context.ElapsedSeconds, context.PlayerPosition, context.Camera.Camera.Position);
+        _shadowMoodRenderer.Draw(_shadowLighting, architecturalWalls, _keypadPositions, context.ElapsedSeconds);
         _furniture.Draw();
         _decor.Draw(context);
-        if (context.AreLobbyLightsPowered)
+        _glassRenderer.Draw(_glassHazards, context.ElapsedSeconds);
+        if (context.AreLobbyLightsPowered && _shadowLighting.IsMainPowerOnline)
         {
             VisionCone3DRenderer.DrawWarmLampGlows();
         }
+
         AmbientAtmosphere3DRenderer.Draw(context.ElapsedSeconds, context.AreLobbyLightsPowered);
         VisionCone3DRenderer.DrawPlayerVisionCone(_visionConeVertices);
         _laserRenderer.Draw(_lasers, context.ElapsedSeconds);
@@ -117,35 +134,40 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
         _modelsLoaded = true;
     }
 
-    private void SpawnInitialLasers()
+    private void PopulateLevelHazardsAndKeypads()
     {
         _lasers.Clear();
-        if (_currentMap?.Lasers is null)
+        if (_currentMap?.Lasers is not null)
         {
-            return;
+            _lasers.AddRange(_currentMap.Lasers.Select(s => new LaserTripwire(s.Id, s.Origin, s.Direction)));
         }
 
-        foreach (LaserSpawnData spawn in _currentMap.Lasers)
+        _glassHazards.Clear();
+        if (_currentMap?.GlassHazards is not null)
         {
-            _lasers.Add(new LaserTripwire(spawn.Id, spawn.Origin, spawn.Direction));
+            _glassHazards.AddRange(_currentMap.GlassHazards.Select(s => new BrokenGlassTile(s.Id, s.Bounds)));
+        }
+
+        _keypadPositions.Clear();
+        if (_currentMap?.Interactables is not null)
+        {
+            _keypadPositions.AddRange(_currentMap.Interactables
+                .Where(i => string.Equals(i.Type, KeypadInteractableType, StringComparison.OrdinalIgnoreCase))
+                .Select(i => new Vector2(i.X, i.Y)));
         }
     }
 
     private void UpdateAimAngle(Vector2 playerPosition, Vector2 aimWorldPosition, float fallbackDegrees)
     {
         Vector2 toTarget = aimWorldPosition - playerPosition;
-        if (toTarget.LengthSquared() < AimDistanceEpsilonSquared)
-        {
-            _currentAimDegrees = fallbackDegrees;
-            return;
-        }
-
-        _currentAimDegrees = MathF.Atan2(toTarget.Y, toTarget.X) * HeistConstants.RadToDeg;
+        _currentAimDegrees = toTarget.LengthSquared() < AimDistanceEpsilonSquared
+            ? fallbackDegrees
+            : MathF.Atan2(toTarget.Y, toTarget.X) * HeistConstants.RadToDeg;
     }
 
     private void UpdateLasers(GameContext context, IReadOnlyList<RectangleBounds>? visionWalls = null)
     {
-        IReadOnlyList<RectangleBounds> walls = visionWalls ?? BuildWallsExcludingWaistHighObstacles(context);
+        IReadOnlyList<RectangleBounds> walls = visionWalls ?? GetVisionBlockingWalls(context);
         foreach (LaserTripwire laser in _lasers)
         {
             laser.Update(context, walls: walls);
@@ -160,15 +182,6 @@ public sealed class WorldLightingModule : IGameSystem, IDisposable
         }
 
         var obstacleSet = obstacles.Select(obstacle => obstacle.ToBounds()).ToHashSet();
-        var filteredWalls = new List<RectangleBounds>(context.Walls.Count);
-        foreach (RectangleBounds wall in context.Walls)
-        {
-            if (!obstacleSet.Contains(wall))
-            {
-                filteredWalls.Add(wall);
-            }
-        }
-
-        return filteredWalls;
+        return context.Walls.Where(wall => !obstacleSet.Contains(wall)).ToList();
     }
 }

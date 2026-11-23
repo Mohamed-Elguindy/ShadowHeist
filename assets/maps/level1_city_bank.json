@@ -54,6 +54,22 @@
       }
     }
   ],
+  "glassHazards": [
+    {
+      "id": "glass_corridor_east",
+      "x": 992,
+      "y": 224,
+      "width": 56,
+      "height": 44
+    },
+    {
+      "id": "glass_lobby_south",
+      "x": 420,
+      "y": 580,
+      "width": 60,
+      "height": 44
+    }
+  ],
   "interactables": [
     {
       "type": "LootCrate",
